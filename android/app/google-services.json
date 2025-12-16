@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "831800848138",
+    "project_id": "predator-figth-mma",
+    "storage_bucket": "predator-figth-mma.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:831800848138:android:5c22ba94e97ac767a854f3",
+        "android_client_info": {
+          "package_name": "com.predatormma.predator_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBMEF7U8FBpgqE9kx0O7llwF2UP4Eq1nd8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
