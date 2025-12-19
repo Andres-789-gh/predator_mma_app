@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'injection_container.dart' as di; 
 
 void main() async {
-  // Asegura que el motor gráfico de Flutter esté listo antes de llamar código nativo
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Inicializa Firebase usando la configuración generada
+  // Inicia Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Arranca la App
+  // Inicia la Inyección de Dependencias (NUEVO)
+  await di.init();
+
   runApp(const MyApp());
 }
 
@@ -21,17 +23,18 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Predator MMA',
+      title: 'Predator App',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // Usara un color oscuro/rojo
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
         useMaterial3: true,
       ),
+      // txt simple hasta el Login
       home: const Scaffold(
         body: Center(
-          child: Text('Conexión con Firebase Exitosa'),
+          child: Text('Predator MMA - Backend Listo 🚀'),
         ),
-      ),
+      ), 
     );
   }
 }
