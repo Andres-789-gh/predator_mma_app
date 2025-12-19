@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/schedule/data/schedule_repository.dart';
+import 'features/auth/presentation/cubit/auth_cubit.dart';
 
 // Variable global para acceder a las dependencias desde cualquier lado
 final sl = GetIt.instance;
@@ -27,4 +28,7 @@ Future<void> init() async {
   );
 
   // inventario (pendiente)
+
+  // Presentacion
+  sl.registerFactory(() => AuthCubit(sl()));
 }
