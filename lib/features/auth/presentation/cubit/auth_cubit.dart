@@ -6,63 +6,70 @@ import 'auth_state.dart';
 class AuthCubit extends Cubit<AuthState> {
   final AuthRepository _authRepository;
 
-  // Inyectamos el repositorio en el constructor
-  AuthCubit(this._authRepository) : super(AuthInitial());
+  AuthCubit(this._authRepository) : super(const AuthInitial());
 
-  // ---------------------------------------------------------------------------
-  // VERIFICAR SESION AL INICIAR APP
-  // ---------------------------------------------------------------------------
+  // Rellena con ceros si el documento es muy corto
+  // (para que Firebase no rechace la creación de la cuenta)
+  String _normalizePassword(String documentId) {
+    if (documentId.length < 6) {
+      return documentId.padRight(6, '0');
+    }
+    return documentId;
+  }
+
+  // Verificar sesión
   Future<void> checkAuthStatus() async {
     try {
-      // No emitimos Loading aqui para no mostrar spinner apenas abre la app
-      // simplemente verificamos rapido
       final user = await _authRepository.getCurrentUser();
-      
       if (user != null) {
         emit(AuthAuthenticated(user));
       } else {
-        emit(AuthUnauthenticated());
+        emit(const AuthUnauthenticated());
       }
     } catch (e) {
-      // Si falla la verificacion silenciosa, mandamos al login
-      emit(AuthUnauthenticated());
+      emit(const AuthUnauthenticated());
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // INICIAR SESION (LOGIN)
-  // ---------------------------------------------------------------------------
+  // Login
   Future<void> signIn({required String email, required String password}) async {
     try {
-      emit(AuthLoading()); // 1. Ponemos a cargar la pantalla
+      emit(const AuthLoading()); 
 
-      // 2. Llamamos al repositorio (Backend)
       final user = await _authRepository.signIn(email: email, password: password);
 
-      emit(AuthAuthenticated(user)); // 3. Exito!
+      emit(AuthAuthenticated(user));
     } catch (e) {
-      // El repositorio ya nos da el mensaje de error limpio (sin "Exception: ...")
-      // pero por seguridad limpiamos el string si viene sucio
       final cleanMessage = e.toString().replaceAll('Exception: ', '');
-      emit(AuthError(cleanMessage)); // 4. Fallo
+      emit(AuthError(cleanMessage));
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // REGISTRARSE
-  // ---------------------------------------------------------------------------
+  // Registro
   Future<void> signUp({
-    required String email, 
-    required String password, 
-    required UserModel userModel
+    required String email,
+    required String documentId,
+    required String accessKey,
+    required UserModel userModel,
   }) async {
     try {
-      emit(AuthLoading());
+      emit(const AuthLoading());
 
+      // validar clave profe
+      final isValidKey = await _authRepository.verifyRegistrationKey(accessKey);
+      
+      if (!isValidKey) {
+        throw Exception('El código de acceso del gimnasio es incorrecto.');
+      }
+
+      // normalizar password
+      final firebasePassword = _normalizePassword(documentId);
+
+      // crear user
       final newUser = await _authRepository.signUp(
-        email: email, 
-        password: password, 
-        userModel: userModel
+        email: email,
+        password: firebasePassword, 
+        userModel: userModel,
       );
 
       emit(AuthAuthenticated(newUser));
@@ -72,11 +79,9 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // CERRAR SESION
-  // ---------------------------------------------------------------------------
+  // Logout
   Future<void> signOut() async {
     await _authRepository.signOut();
-    emit(AuthUnauthenticated());
+    emit(const AuthUnauthenticated());
   }
 }

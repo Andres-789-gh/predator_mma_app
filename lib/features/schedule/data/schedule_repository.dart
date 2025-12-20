@@ -36,19 +36,25 @@ class ScheduleRepository {
     required String userId,
   }) async {
     final classRef = _firestore.collection('classes').doc(classId);
-
+    final userRef = _firestore.collection('users').doc(userId);
     try {
-      return await _firestore.runTransaction((transaction) async { 
-        final snapshot = await transaction.get(classRef);
+      return await _firestore.runTransaction((transaction) async {
+        final classSnapshot = await transaction.get(classRef);
+        final userSnapshot = await transaction.get(userRef);
+        if (!classSnapshot.exists) throw Exception('la clase ya no existe');
+        if (!userSnapshot.exists) throw Exception('usuario no encontrado');
 
-        if (!snapshot.exists) throw Exception('la clase ya no existe');
+        final classModel = ClassMapper.fromMap(classSnapshot.data()!, classSnapshot.id);
+        
+        final userData = userSnapshot.data()!;
+        final isWaiverSigned = userData['legal']?['is_signed'] ?? false;
 
-        final classModel = ClassMapper.fromMap(snapshot.data()!, snapshot.id);
+        if (!isWaiverSigned) {
+          throw Exception('Debes firmar la exoneración (Waiver) antes de reservar clase.');
+        }
 
-        // Validaciones
         if (classModel.isCancelled) throw Exception('la clase ha sido cancelada');
         
-        // Validar que no este duplicado (ni en lista, ni en espera)
         if (classModel.attendees.contains(userId)) {
           throw Exception('ya estas inscrito en esta clase');
         }
@@ -56,15 +62,13 @@ class ScheduleRepository {
           throw Exception('ya estas en lista de espera');
         }
 
-        // Decision de si entra a clase o a espera
+        // Decision cupo
         if (classModel.attendees.length < classModel.maxCapacity) {
-          // cupo -> confirmado
           transaction.update(classRef, {
             'attendees': FieldValue.arrayUnion([userId])
           });
           return BookingStatus.confirmed;
         } else {
-          // lleno -> lista de espera
           transaction.update(classRef, {
             'waitlist': FieldValue.arrayUnion([userId])
           });
@@ -72,7 +76,7 @@ class ScheduleRepository {
         }
       });
     } catch (e) {
-      throw Exception('$e');
+      throw Exception('$e'); 
     }
   }
 

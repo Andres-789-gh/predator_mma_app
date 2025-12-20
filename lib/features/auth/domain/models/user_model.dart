@@ -20,7 +20,7 @@ class UserModel {
   final String? waiverSignatureUrl;
 
   final UserPlan? activePlan;
-  final EmergencyContact? emergencyContact;
+  final String emergencyContact;
 
   final List<AccessExceptionModel> accessExceptions;
 
@@ -41,7 +41,7 @@ class UserModel {
     this.waiverSignedAt,
     this.waiverSignatureUrl,
     this.activePlan,
-    this.emergencyContact,
+    required this.emergencyContact,
     List<AccessExceptionModel> accessExceptions = const [], 
   }) : accessExceptions = List.unmodifiable(accessExceptions);
 
@@ -64,13 +64,6 @@ class UserPlan {
     this.remainingClasses,
     this.pauses = const [],
   });
-}
-
-class EmergencyContact {
-  final String name;
-  final String phone;
-
-  const EmergencyContact({required this.name, required this.phone});
 }
 
 class PlanPause {

@@ -68,9 +68,7 @@ class UserMapper {
           : null,
       
       // contacto de emergencia
-      emergencyContact: map['emergency_contact'] != null
-          ? _EmergencyContactMapper.fromMap(map['emergency_contact'])
-          : null,
+      emergencyContact: map['emergency_contact'] ?? '',
 
       accessExceptions: safeExceptions,
     );
@@ -105,9 +103,7 @@ class UserMapper {
           ? _UserPlanMapper.toMap(user.activePlan!) 
           : null,
           
-      'emergency_contact': user.emergencyContact != null
-          ? _EmergencyContactMapper.toMap(user.emergencyContact!)
-          : null,
+      'emergency_contact': user.emergencyContact,
       
       'access_exceptions': user.accessExceptions
           .map((x) => AccessExceptionMapper.toMap(x))
@@ -159,22 +155,6 @@ class _PlanPauseMapper {
       'start_date': Timestamp.fromDate(pause.startDate),
       'end_date': Timestamp.fromDate(pause.endDate),
       'created_by': pause.createdBy,
-    };
-  }
-}
-
-class _EmergencyContactMapper {
-  static EmergencyContact fromMap(Map<String, dynamic> map) {
-    return EmergencyContact(
-      name: map['name'] ?? '',
-      phone: map['phone'] ?? '',
-    );
-  }
-
-  static Map<String, dynamic> toMap(EmergencyContact contact) {
-    return {
-      'name': contact.name,
-      'phone': contact.phone,
     };
   }
 }

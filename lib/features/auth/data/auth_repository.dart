@@ -166,4 +166,26 @@ class AuthRepository {
       return null;
     }
   }
+
+  // validar clave (del profe)
+  Future<bool> verifyRegistrationKey(String candidateKey) async {
+    try {
+      final doc = await _firestore
+          .collection('gym_config')
+          .doc('general_settings')
+          .get();
+
+      if (!doc.exists) {
+        // Si no hay config, asume bloqueo por seguridad
+        throw Exception('Error de configuración del sistema. Contacte al admin.');
+      }
+
+      final realKey = doc.data()?['registration_key'] ?? '';
+      
+      // Compara lo que escribio el usuario con lo que hay en base de datos
+      return candidateKey.trim() == realKey;
+    } catch (e) {
+      throw Exception('Error validando clave de acceso: $e');
+    }
+  }
 }
