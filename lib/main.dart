@@ -3,7 +3,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'injection_container.dart' as di;
 import 'features/auth/presentation/cubit/auth_cubit.dart';
+import 'features/auth/presentation/cubit/auth_state.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
+import 'features/home/presentation/screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,7 +25,6 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Predator',
         debugShowCheckedModeBanner: false,
-        
         themeMode: ThemeMode.system, 
 
         // tema claro
@@ -50,7 +51,21 @@ class MyApp extends StatelessWidget {
           useMaterial3: true,
         ),
 
-        home: const LoginScreen(),
+        // Portero
+        home: BlocBuilder<AuthCubit, AuthState>(
+          builder: (context, state) {
+            if (state is AuthAuthenticated) {
+              return const HomeScreen(); // Home
+            }
+            if (state is AuthUnauthenticated) {
+              return const LoginScreen(); // Login
+            }
+            // pantalla de espera
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator(color: Color(0xFFD32F2F))),
+            );
+          },
+        ),
       ),
     );
   }

@@ -42,9 +42,9 @@ class UserMapper {
       // mapeo aplanado: busca dentro de la carpeta 'personal_info'
       firstName: map['personal_info']?['first_name'] ?? '',
       lastName: map['personal_info']?['last_name'] ?? '',
-      documentId: map['personal_info']?['document_id'] ?? '',
-      phoneNumber: map['personal_info']?['phone_number'] ?? '',
-      address: map['personal_info']?['address'] ?? '',
+      documentId: map['personal_info']?['document_id'] ?? 'Sin Documento', 
+      phoneNumber: map['personal_info']?['phone_number'] ?? 'Sin Teléfono',
+      address: map['personal_info']?['address'] ?? 'Sin Dirección',
       
       // convierte el timestamp de firebase a fecha dart
       birthDate: birthDateTs.toDate(),
@@ -61,9 +61,7 @@ class UserMapper {
       isWaiverSigned: map['legal']?['is_signed'] ?? false,
       waiverSignedAt: (map['legal']?['signed_at'] as Timestamp?)?.toDate(),
       waiverSignatureUrl: map['legal']?['signature_url'],
-
-      // usa los mappers auxiliares para el plan
-      activePlan: map['active_plan'] != null 
+      activePlan: (map['active_plan'] is Map<String, dynamic>)
           ? _UserPlanMapper.fromMap(map['active_plan']) 
           : null,
       

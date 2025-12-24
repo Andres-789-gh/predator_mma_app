@@ -12,10 +12,10 @@ class UserModel {
   final DateTime birthDate; 
   
   final UserRole role;
-  final bool isLegacyUser;
+  final bool isLegacyUser; 
   final String? notificationToken;
   
-  final bool isWaiverSigned; //antiguo?
+  final bool isWaiverSigned; 
   final DateTime? waiverSignedAt;
   final String? waiverSignatureUrl;
 
@@ -24,15 +24,14 @@ class UserModel {
 
   final List<AccessExceptionModel> accessExceptions;
 
-  // Constructor
   UserModel({
     required this.userId,
     required this.email,
     required this.firstName,
     required this.lastName,
-    this.documentId = '',
-    this.phoneNumber = '',
-    this.address = '',
+    required this.documentId, 
+    required this.phoneNumber,
+    required this.address,
     required this.birthDate,
     this.role = UserRole.client, 
     this.isLegacyUser = false, 
@@ -46,9 +45,48 @@ class UserModel {
   }) : accessExceptions = List.unmodifiable(accessExceptions);
 
   String get fullName => '$firstName $lastName';
+  
+  // copywith
+  UserModel copyWith({
+    String? userId,
+    String? email,
+    String? firstName,
+    String? lastName,
+    String? documentId,
+    String? phoneNumber,
+    String? address,
+    DateTime? birthDate,
+    UserRole? role,
+    bool? isLegacyUser,
+    String? notificationToken,
+    bool? isWaiverSigned,
+    DateTime? waiverSignedAt,
+    String? waiverSignatureUrl,
+    UserPlan? activePlan,
+    String? emergencyContact,
+    List<AccessExceptionModel>? accessExceptions,
+  }) {
+    return UserModel(
+      userId: userId ?? this.userId,
+      email: email ?? this.email,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      documentId: documentId ?? this.documentId,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      address: address ?? this.address,
+      birthDate: birthDate ?? this.birthDate,
+      role: role ?? this.role,
+      isLegacyUser: isLegacyUser ?? this.isLegacyUser,
+      notificationToken: notificationToken ?? this.notificationToken,
+      isWaiverSigned: isWaiverSigned ?? this.isWaiverSigned,
+      waiverSignedAt: waiverSignedAt ?? this.waiverSignedAt,
+      waiverSignatureUrl: waiverSignatureUrl ?? this.waiverSignatureUrl,
+      activePlan: activePlan ?? this.activePlan,
+      emergencyContact: emergencyContact ?? this.emergencyContact,
+      accessExceptions: accessExceptions ?? this.accessExceptions,
+    );
+  }
 }
-
-// sub-modelos
 
 class UserPlan {
   final PlanType type;
