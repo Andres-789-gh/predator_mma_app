@@ -23,3 +23,11 @@ enum BookingStatus {
   waitlist,       // Está en cola de espera
   none            // Default (cancelo o nunca registro)
 }
+
+enum ClassStatus {
+  reserved,       // agendada 
+  available,      // Puede reservar
+  availableWithTicket, // Ticket (ingreso extra)
+  blockedByPlan,  // Plan no deja y no tiene tickets
+  full           // Clase llena
+}

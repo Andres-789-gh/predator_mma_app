@@ -9,19 +9,15 @@ class UserModel {
   final String documentId;
   final String phoneNumber;
   final String address;
-  final DateTime birthDate; 
-  
+  final DateTime birthDate;
   final UserRole role;
-  final bool isLegacyUser; 
+  final bool isLegacyUser;
   final String? notificationToken;
-  
-  final bool isWaiverSigned; 
+  final bool isWaiverSigned;
   final DateTime? waiverSignedAt;
   final String? waiverSignatureUrl;
-
   final UserPlan? activePlan;
   final String emergencyContact;
-
   final List<AccessExceptionModel> accessExceptions;
 
   UserModel({
@@ -29,24 +25,23 @@ class UserModel {
     required this.email,
     required this.firstName,
     required this.lastName,
-    required this.documentId, 
+    required this.documentId,
     required this.phoneNumber,
     required this.address,
     required this.birthDate,
-    this.role = UserRole.client, 
-    this.isLegacyUser = false, 
-    this.notificationToken, 
-    this.isWaiverSigned = false, 
+    this.role = UserRole.client,
+    this.isLegacyUser = false,
+    this.notificationToken,
+    this.isWaiverSigned = false,
     this.waiverSignedAt,
     this.waiverSignatureUrl,
     this.activePlan,
     required this.emergencyContact,
-    List<AccessExceptionModel> accessExceptions = const [], 
+    List<AccessExceptionModel> accessExceptions = const [],
   }) : accessExceptions = List.unmodifiable(accessExceptions);
 
   String get fullName => '$firstName $lastName';
   
-  // copywith
   UserModel copyWith({
     String? userId,
     String? email,
@@ -102,6 +97,52 @@ class UserPlan {
     this.remainingClasses,
     this.pauses = const [],
   });
+
+  DateTime get effectiveEndDate {
+    if (pauses.isEmpty) return endDate;
+    
+    int totalPausedDays = 0;
+    for (final pause in pauses) {
+      final days = pause.endDate.difference(pause.startDate).inDays;
+      totalPausedDays += (days > 0 ? days : 0); 
+    }
+    
+    return endDate.add(Duration(days: totalPausedDays));
+  }
+
+  bool isActive(DateTime now) {
+    if (now.isAfter(effectiveEndDate)) return false;
+    if (isPaused(now)) return false;
+    return true;
+  }
+
+  bool isPaused(DateTime date) {
+    if (pauses.isEmpty) return false;
+    for (final pause in pauses) {
+      if ((date.isAfter(pause.startDate) && date.isBefore(pause.endDate)) ||
+          date.isAtSameMomentAs(pause.startDate) ||
+          date.isAtSameMomentAs(pause.endDate)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  UserPlan copyWith({
+    PlanType? type,
+    DateTime? startDate,
+    DateTime? endDate,
+    int? remainingClasses,
+    List<PlanPause>? pauses,
+  }) {
+    return UserPlan(
+      type: type ?? this.type,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      remainingClasses: remainingClasses ?? this.remainingClasses,
+      pauses: pauses ?? this.pauses,
+    );
+  }
 }
 
 class PlanPause {
@@ -114,4 +155,16 @@ class PlanPause {
     required this.endDate,
     required this.createdBy,
   });
+
+  PlanPause copyWith({
+    DateTime? startDate,
+    DateTime? endDate,
+    String? createdBy,
+  }) {
+    return PlanPause(
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      createdBy: createdBy ?? this.createdBy,
+    );
+  }
 }

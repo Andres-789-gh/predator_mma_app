@@ -61,67 +61,64 @@ class HomeScreen extends StatelessWidget {
             // header
             Text(
               'Hola, ${user.firstName}',
-              style: TextStyle(
-                color: textColor,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(color: textColor, fontSize: 28, fontWeight: FontWeight.bold),
             ),
-            Text(
-              'Gestiona tus clases', 
-              style: TextStyle(color: isDark ? Colors.grey : Colors.grey[700], fontSize: 16),
-            ),
-            const SizedBox(height: 30),
-  
-            // alerta waiver
+            
             if (!isWaiverSigned) ...[
+              const SizedBox(height: 40),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: Colors.red.withOpacity(0.1),
                   border: Border.all(color: Colors.red),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(
                   children: [
-                    const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 40),
-                    const SizedBox(height: 10),
+                    const Icon(Icons.block, color: Colors.red, size: 50),
+                    const SizedBox(height: 20),
                     const Text(
-                      'Exoneración Pendiente',
-                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16),
+                      'Acceso Restringido',
+                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 20),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 10),
                     Text(
                       isMinor 
                         ? 'Al ser menor de edad ($age años), tu acudiente debe firmar presencialmente.'
                         : 'Debes firmar la exoneración para poder reservar clases.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: textColor.withOpacity(0.8), fontSize: 14),
+                      style: TextStyle(color: textColor.withOpacity(0.8), fontSize: 16),
                     ),
                     
-                    // mostrar btn de firmar si es mayor de edad
                     if (!isMinor) ...[
-                      const SizedBox(height: 15),
+                      const SizedBox(height: 30),
                       SizedBox(
                         width: double.infinity,
-                        child: ElevatedButton(
+                        height: 50,
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.edit_document),
+                          label: const Text('IR A FIRMAR'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red,
                             foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                           onPressed: () {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Próximamente: Pantalla de Firma')),
                             );
                           },
-                          child: const Text('FIRMAR AHORA'),
                         ),
                       ),
                     ]
                   ],
                 ),
+              ),
+            ] else ...[
+              
+              Text(
+                'Gestiona tus clases', 
+                style: TextStyle(color: isDark ? Colors.grey : Colors.grey[700], fontSize: 16),
               ),
               const SizedBox(height: 30),
             ],

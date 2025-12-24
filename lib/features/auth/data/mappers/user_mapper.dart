@@ -1,54 +1,39 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/models/user_model.dart';
-import '../../domain/models/access_exception_model.dart'; 
+import '../../domain/models/access_exception_model.dart';
 import '../../../../core/constants/enums.dart';
 import 'access_exception_mapper.dart';
 
 class UserMapper {
   
-  // Mapeo user principal
-  
   static UserModel fromMap(Map<String, dynamic> map, String docId) {
-    // saca la fecha cruda para revisarla antes de convertir
     final birthDateTs = map['personal_info']?['birth_date'];
     
-    /* Logica negocio:
-    Temas de menores de edad, la edad no define a que clases entra (eso lo define el Plan que compre),
-    sirve para saber si el documento de exoneracion lo firma el usuario o 
-    si debe firmarlo el acudiente (caso menores de edad) y subir el PDF, 
-    osea el padre se presenta presencialmente en el gimnasio, firma la exonaracion y se adjunta el PDF en el aplicativo.
-    */
     if (birthDateTs == null) {
       throw Exception('error critico: el usuario $docId no tiene fecha de nacimiento');
     }
-
     if (birthDateTs is! Timestamp) {
       throw Exception('error critico: formato de fecha invalido para usuario $docId');
     }
 
     final rawExceptions = map['access_exceptions'];
-    
     final safeExceptions = rawExceptions is List
         ? rawExceptions
-            .whereType<Map<String, dynamic>>() // filtra solo lo que sea mapa valido
-            .map((x) => AccessExceptionMapper.fromMap(x)) // convierte
+            .whereType<Map<String, dynamic>>() 
+            .map((x) => AccessExceptionMapper.fromMap(x)) 
             .toList()
-        : <AccessExceptionModel>[]; // si no es lista, devulve vacio para no romper la app
+        : <AccessExceptionModel>[]; 
 
     return UserModel(
       userId: docId,
       email: map['email'] ?? '',
-      
-      // mapeo aplanado: busca dentro de la carpeta 'personal_info'
       firstName: map['personal_info']?['first_name'] ?? '',
       lastName: map['personal_info']?['last_name'] ?? '',
       documentId: map['personal_info']?['document_id'] ?? 'Sin Documento', 
       phoneNumber: map['personal_info']?['phone_number'] ?? 'Sin Teléfono',
       address: map['personal_info']?['address'] ?? 'Sin Dirección',
-      
-      // convierte el timestamp de firebase a fecha dart
       birthDate: birthDateTs.toDate(),
-      
+
       role: UserRole.values.firstWhere(
         (e) => e.name == (map['role'] ?? 'client'),
         orElse: () => UserRole.client,
@@ -56,23 +41,20 @@ class UserMapper {
       
       isLegacyUser: map['is_legacy_user'] ?? false,
       notificationToken: map['notification_token'],
-
-      // datos legales
       isWaiverSigned: map['legal']?['is_signed'] ?? false,
       waiverSignedAt: (map['legal']?['signed_at'] as Timestamp?)?.toDate(),
       waiverSignatureUrl: map['legal']?['signature_url'],
+      
       activePlan: (map['active_plan'] is Map<String, dynamic>)
           ? _UserPlanMapper.fromMap(map['active_plan']) 
           : null,
       
-      // contacto de emergencia
       emergencyContact: map['emergency_contact'] ?? '',
 
       accessExceptions: safeExceptions,
     );
   }
 
-  // funcion contraria: convierte objeto dart a mapa firebase
   static Map<String, dynamic> toMap(UserModel user) {
     return {
       'email': user.email,
@@ -110,8 +92,6 @@ class UserMapper {
   }
 }
 
-// Mappers auxiliares (privados)
-
 class _UserPlanMapper {
   static UserPlan fromMap(Map<String, dynamic> map) {
     return UserPlan(
@@ -121,7 +101,9 @@ class _UserPlanMapper {
       ),
       startDate: (map['start_date'] as Timestamp).toDate(),
       endDate: (map['end_date'] as Timestamp).toDate(),
-      remainingClasses: map['remaining_classes'],
+      
+      remainingClasses: map['remaining_classes'] as int?,
+      
       pauses: (map['pauses'] as List<dynamic>?)
           ?.map((x) => _PlanPauseMapper.fromMap(x))
           .toList() ?? [],

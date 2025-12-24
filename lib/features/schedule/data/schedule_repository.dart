@@ -1,7 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../domain/models/class_model.dart';
+import '../../auth/data/mappers/user_mapper.dart'; 
+import '../../auth/data/mappers/access_exception_mapper.dart';
 import 'mappers/class_mapper.dart';
 import '../../../../core/constants/enums.dart';
+import '../../auth/domain/models/user_model.dart';
+import '../domain/schedule_logic.dart'; 
+import '../domain/class_logic.dart'; 
+import '../../auth/domain/models/access_exception_model.dart';
 
 class ScheduleRepository {
   final FirebaseFirestore _firestore;
@@ -9,7 +15,6 @@ class ScheduleRepository {
   ScheduleRepository({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
-  // leer clases
   Future<List<ClassModel>> getClasses({
     required DateTime fromDate,
     required DateTime toDate,
@@ -19,51 +24,124 @@ class ScheduleRepository {
           .collection('classes')
           .where('start_time', isGreaterThanOrEqualTo: Timestamp.fromDate(fromDate))
           .where('start_time', isLessThanOrEqualTo: Timestamp.fromDate(toDate))
-          .orderBy('start_time') // ordenadas por hora
+          .orderBy('start_time')
           .get();
 
       return snapshot.docs
           .map((doc) => ClassMapper.fromMap(doc.data(), doc.id))
           .toList();
     } catch (e) {
-      throw Exception('error al cargar horario: $e');
+      throw Exception('Error al cargar horario: $e');
     }
   }
 
-  // reservar cupo
+  Future<ClassModel?> checkConflict(ClassModel newClass) async {
+    try {
+      final startOfDay = DateTime(newClass.startTime.year, newClass.startTime.month, newClass.startTime.day);
+      final endOfDay = startOfDay.add(const Duration(days: 1));
+
+      final existingClasses = await getClasses(fromDate: startOfDay, toDate: endOfDay);
+
+      return ScheduleLogic.findConflict(newClass, existingClasses);
+    } catch (e) {
+      throw Exception('Error verificando conflictos: $e');
+    }
+  }
+
+  ClassStatus getClassStatus(UserModel user, ClassModel classModel) {
+    if (classModel.isUserConfirmed(user.userId) || classModel.isUserOnWaitlist(user.userId)) {
+      return ClassStatus.reserved;
+    }
+
+    if (classModel.isFull) {
+      return ClassStatus.full;
+    }
+    
+    if (_doesPlanAllowClass(user, classModel)) {
+      return ClassStatus.available;
+    }
+
+    // Validación Ticket Extra
+    final hasValidTicket = user.accessExceptions.any(
+      (exc) => _isValidException(exc, classModel, DateTime.now())
+    );
+
+    if (hasValidTicket) {
+      return ClassStatus.availableWithTicket;
+    }
+
+    return ClassStatus.blockedByPlan;
+  }
+
+
   Future<BookingStatus> reserveClass({
     required String classId,
     required String userId,
   }) async {
     final classRef = _firestore.collection('classes').doc(classId);
     final userRef = _firestore.collection('users').doc(userId);
+
     try {
       return await _firestore.runTransaction((transaction) async {
         final classSnapshot = await transaction.get(classRef);
         final userSnapshot = await transaction.get(userRef);
-        if (!classSnapshot.exists) throw Exception('la clase ya no existe');
-        if (!userSnapshot.exists) throw Exception('usuario no encontrado');
+
+        if (!classSnapshot.exists) throw Exception('La clase ya no existe');
+        if (!userSnapshot.exists) throw Exception('Usuario no encontrado');
 
         final classModel = ClassMapper.fromMap(classSnapshot.data()!, classSnapshot.id);
+        final userModel = UserMapper.fromMap(userSnapshot.data()!, userSnapshot.id);
+        final now = DateTime.now();
+
+        if (!userModel.isWaiverSigned) throw Exception('Debes firmar la exoneración antes de reservar.');
+        if (classModel.isCancelled) throw Exception('La clase ha sido cancelada');
         
-        final userData = userSnapshot.data()!;
-        final isWaiverSigned = userData['legal']?['is_signed'] ?? false;
-
-        if (!isWaiverSigned) {
-          throw Exception('Debes firmar la exoneración (Waiver) antes de reservar clase.');
-        }
-
-        if (classModel.isCancelled) throw Exception('la clase ha sido cancelada');
+        if (classModel.isUserConfirmed(userId)) throw Exception('Ya estás inscrito en esta clase');
+        if (classModel.isUserOnWaitlist(userId)) throw Exception('Ya estás en lista de espera');
         
-        if (classModel.attendees.contains(userId)) {
-          throw Exception('ya estas inscrito en esta clase');
-        }
-        if (classModel.waitlist.contains(userId)) {
-          throw Exception('ya estas en lista de espera');
+        if (classModel.hasFinished) throw Exception('La clase ya finalizó');
+
+        if (userModel.activePlan != null && userModel.activePlan!.isPaused(now)) {
+          throw Exception('Tu plan está pausado actualmente, no puedes reservar');
         }
 
-        // Decision cupo
-        if (classModel.attendees.length < classModel.maxCapacity) {
+        // Lógica de Reserva
+        bool useException = false;
+        String? exceptionIdToConsume;
+        String planError = '';
+
+        try {
+          await _assertBasePlanAsync(userModel, classModel, now);
+        } catch (e) {
+          planError = e.toString().replaceAll('Exception: ', '');
+          
+          final validException = userModel.accessExceptions.firstWhere(
+            (exc) => _isValidException(exc, classModel, now),
+            orElse: () => throw Exception(planError),
+          );
+
+          useException = true;
+          exceptionIdToConsume = validException.id;
+        }
+
+        // Consumo Ticket
+        if (useException && exceptionIdToConsume != null) {
+          final updatedExceptions = userModel.accessExceptions.map((exc) {
+            if (exc.id == exceptionIdToConsume) {
+              return exc.copyWith(quantity: exc.quantity - 1);
+            }
+            return exc;
+          }).where((exc) => exc.quantity > 0).toList();
+
+          transaction.update(userRef, {
+            'access_exceptions': updatedExceptions
+                .map((x) => AccessExceptionMapper.toMap(x))
+                .toList()
+          });
+        }
+
+        // Asignación Cupo
+        if (classModel.availableSlots > 0) {
           transaction.update(classRef, {
             'attendees': FieldValue.arrayUnion([userId])
           });
@@ -76,11 +154,11 @@ class ScheduleRepository {
         }
       });
     } catch (e) {
-      throw Exception('$e'); 
+      final msg = e.toString().replaceAll('Exception: ', '');
+      throw Exception(msg);
     }
   }
 
-  // cancelar reserva
   Future<void> cancelReservation({
     required String classId,
     required String userId,
@@ -90,66 +168,149 @@ class ScheduleRepository {
     try {
       await _firestore.runTransaction((transaction) async {
         final snapshot = await transaction.get(classRef);
-
-        if (!snapshot.exists) throw Exception('la clase no existe');
+        if (!snapshot.exists) throw Exception('La clase no existe');
 
         final classModel = ClassMapper.fromMap(snapshot.data()!, snapshot.id);
 
-        // Validar si la clase ya paso o esta empezando justo ahora
-        if (!classModel.startTime.isAfter(DateTime.now())) {
-             throw Exception('no puedes cancelar una clase que ya paso o esta empezando');
+        if (classModel.hasFinished || classModel.startTime.isBefore(DateTime.now())) {
+             throw Exception('No puedes cancelar una clase que ya pasó o empezó');
         }
 
-        // Identificar donde esta el usuario
-        final bool isInAttendees = classModel.attendees.contains(userId);
-        final bool isInWaitlist = classModel.waitlist.contains(userId);
+        final bool isInAttendees = classModel.isUserConfirmed(userId);
+        final bool isInWaitlist = classModel.isUserOnWaitlist(userId);
 
-        if (!isInAttendees && !isInWaitlist) {
-          throw Exception('no estas inscrito en esta clase');
-        }
+        if (!isInAttendees && !isInWaitlist) throw Exception('No estás inscrito en esta clase');
 
-        // lista de espera -> se sale y ya
         if (isInWaitlist) {
-          transaction.update(classRef, {
-            'waitlist': FieldValue.arrayRemove([userId])
-          });
+          transaction.update(classRef, {'waitlist': FieldValue.arrayRemove([userId])});
           return;
         }
 
-        // confirmado para clase -> Sale y mira si alguien sube
         if (isInAttendees) {
-          // 1ro saca al usuario
-          transaction.update(classRef, {
-            'attendees': FieldValue.arrayRemove([userId])
-          });
+          transaction.update(classRef, {'attendees': FieldValue.arrayRemove([userId])});
 
-          // Revisa si hay alguien esperando y si realmente libera un espacio matematico
           if (classModel.waitlist.isNotEmpty) {
-            
-            final nextUser = classModel.waitlist.first; // 1ro de la fila
-            
-            // Entra a clase, sale de espera
+            final nextUser = classModel.waitlist.first; 
             transaction.update(classRef, {
-              'attendees': FieldValue.arrayUnion([nextUser]),
-              'waitlist': FieldValue.arrayRemove([nextUser])
+              'attendees': FieldValue.arrayUnion([nextUser]), 
+              'waitlist': FieldValue.arrayRemove([nextUser])  
             });
           }
         }
       });
     } catch (e) {
-      throw Exception('error al cancelar reserva: $e');
+      final msg = e.toString().replaceAll('Exception: ', '');
+      throw Exception(msg);
     }
   }
 
-  // crear clase (Admin)
+  // metodos admin
+
   Future<void> createClass(ClassModel classModel) async {
     try {
-      // mapper para convertir a mapa de firebase
       final docRef = _firestore.collection('classes').doc(); 
-      
       await docRef.set(ClassMapper.toMap(classModel));
     } catch (e) {
-      throw Exception('error creando clase: $e');
+      throw Exception('Error creando clase: $e');
+    }
+  }
+
+  Future<void> replaceClass({required String oldClassId, required ClassModel newClass}) async {
+    try {
+      final batch = _firestore.batch();
+      final oldRef = _firestore.collection('classes').doc(oldClassId);
+      batch.delete(oldRef);
+      final newRef = _firestore.collection('classes').doc();
+      batch.set(newRef, ClassMapper.toMap(newClass));
+      await batch.commit();
+    } catch (e) {
+      throw Exception('Error reemplazando clase: $e');
+    }
+  }
+
+
+  bool _isValidException(AccessExceptionModel exception, ClassModel classModel, DateTime now) {
+    if (exception.quantity <= 0) return false;
+    if (exception.validUntil != null && now.isAfter(exception.validUntil!)) return false;
+
+    final type = exception.validForPlan;
+
+    if (type == PlanType.wild) {
+      final minutes = classModel.startTime.hour * 60 + classModel.startTime.minute;
+      if (minutes > 690) return false; 
+    }
+    if (type == PlanType.kids) {
+      final className = classModel.classType.toLowerCase();
+      if (!className.contains('kids') && !className.contains('niños')) return false;
+    }
+    return true;
+  }
+
+  bool _doesPlanAllowClass(UserModel user, ClassModel classModel) {
+    final activePlan = user.activePlan;
+    if (activePlan == null) return false;
+    
+    // Regla temporal
+    if (!classModel.canReserveNow) return false;
+
+    final PlanType planType = activePlan.type;
+    
+    if (planType == PlanType.wild) {
+      final minutes = classModel.startTime.hour * 60 + classModel.startTime.minute;
+      if (minutes > 690) return false;
+    }
+    if (planType == PlanType.weekends) {
+      final day = classModel.startTime.weekday;
+      if (day != 6 && day != 7) return false;
+    }
+    if (planType == PlanType.kids) {
+      final type = classModel.classType.toLowerCase();
+      if (!type.contains('kids') && !type.contains('niños')) return false;
+    }
+    return true;
+  }
+
+  Future<void> _assertBasePlanAsync(UserModel userModel, ClassModel classModel, DateTime now) async {
+    final activePlan = userModel.activePlan;
+    if (activePlan == null) throw Exception('No tienes un plan activo.');
+
+    if (!classModel.canReserveNow) {
+       throw Exception('El tiempo de reserva ha finalizado o la clase es muy lejana.');
+    }
+
+    final PlanType planType = activePlan.type;
+    
+    // Validaciones de reglas
+    if (planType == PlanType.wild) {
+      final minutes = classModel.startTime.hour * 60 + classModel.startTime.minute;
+      if (minutes > 690) throw Exception('Tu Plan WILD no permite clases en este horario.');
+    }
+    if (planType == PlanType.weekends) {
+      final day = classModel.startTime.weekday;
+      if (day != 6 && day != 7) throw Exception('Tu Plan WEEKENDS solo sirve sábados y domingos.');
+    }
+    if (planType == PlanType.kids) {
+      final type = classModel.classType.toLowerCase();
+      if (!type.contains('kids') && !type.contains('niños')) throw Exception('Tu Plan KIDS no permite esta clase.');
+    }
+
+    // Límite Diario
+    bool hasDailyLimit = (planType == PlanType.wild || planType == PlanType.full || planType == PlanType.fitness);
+    if (userModel.isLegacyUser || planType == PlanType.unlimited) hasDailyLimit = false;
+    
+    if (hasDailyLimit) {
+      final startOfClassDay = DateTime(classModel.startTime.year, classModel.startTime.month, classModel.startTime.day);
+      final endOfClassDay = startOfClassDay.add(const Duration(days: 1));
+      
+      final existingBookings = await _firestore.collection('classes')
+          .where('start_time', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfClassDay))
+          .where('start_time', isLessThan: Timestamp.fromDate(endOfClassDay))
+          .where('attendees', arrayContains: userModel.userId)
+          .get(); 
+          
+      if (existingBookings.docs.isNotEmpty) {
+        throw Exception('Tu plan base ya usó su cupo diario.');
+      }
     }
   }
 }

@@ -67,8 +67,20 @@ class AuthRepository {
   }
 
   Future<bool> verifyRegistrationKey(String key) async {
-    const validKey = "PREDATOR2026"; 
-    return key == validKey; 
+    try {
+      final doc = await _firestore.collection('gym_config').doc('general_settings').get();
+      
+      if (doc.exists) {
+        final currentKey = doc.data()?['registration_key'] as String?;
+        // Compara clave ingresada con la de bd
+        return key.trim() == currentKey?.trim(); 
+      }
+      
+      // si no hay config en la BD, nadie entra
+      return false; 
+    } catch (e) {
+      return false; // Si falla la conexión, deniega el acceso por seguridad
+    }
   }
 
   // Helper privado
