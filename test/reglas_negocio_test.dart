@@ -1,12 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-// Asegúrate de que este import coincida con tu pubspec.yaml (predator_app o predator_mma_app)
 import 'package:predator_app/core/constants/enums.dart';
 import 'package:predator_app/features/auth/domain/models/user_model.dart';
 import 'package:predator_app/features/auth/domain/models/access_exception_model.dart';
 import 'package:predator_app/features/schedule/domain/models/class_model.dart';
 
-// --- LÓGICA SIMULADA PARA EL TEST ---
-// (Copiamos la lógica pequeña aquí para probarla aislada de Firebase)
 
 bool simulationDoesPlanAllowClass(UserModel user, ClassModel classModel) {
   final activePlan = user.activePlan;
@@ -131,6 +128,23 @@ void main() {
       // 2. El ticket debe salvarlo
       final ticketOk = simulationCheckTickets(userWildConTicket, claseNoche);
       expect(ticketOk, true, reason: 'El ticket Full debió permitir la entrada nocturna');
+    });
+
+    test('Usuario KIDS SI debe poder reservar clase de NIÑOS', () {
+      final userKids = UserModel(
+        userId: 'u2', email: 'kid@test.com', firstName: 'Kid', lastName: 'User',
+        documentId: '123', phoneNumber: '000', address: 'Cr 1', birthDate: DateTime(2015),
+        emergencyContact: 'Mom',
+        activePlan: UserPlan(
+          type: PlanType.kids, 
+          startDate: DateTime.now(), 
+          endDate: DateTime.now().add(const Duration(days: 30))
+        ),
+      );
+
+      final resultado = simulationDoesPlanAllowClass(userKids, claseKids); 
+      
+      expect(resultado, true, reason: 'El plan Kids debe permitir reservar clases tipo Kids');
     });
   });
 }
