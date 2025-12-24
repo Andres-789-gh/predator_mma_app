@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
-import '../../../auth/presentation/screens/login_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -16,12 +15,14 @@ class HomeScreen extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final textColor = theme.colorScheme.onSurface;
 
-    // no autenticado = muestra login o carga
+    // no autenticado, muestra carga
     if (authState is! AuthAuthenticated) {
-      return const LoginScreen();
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator(color: Colors.red)),
+      );
     }
 
-    final user = (authState as AuthAuthenticated).user;
+    final user = authState.user;
     final bool hasActivePlan = user.activePlan != null; 
     final bool isWaiverSigned = user.isWaiverSigned;
 
@@ -261,11 +262,6 @@ class HomeScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.pop(ctx); // cerrar diálogo
                 context.read<AuthCubit>().signOut();
-                // Login y borrar historial
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  (route) => false,
-                );
               },
               child: const Text('Salir', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
             ),
