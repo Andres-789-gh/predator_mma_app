@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
+import '../../../schedule/presentation/cubit/schedule_cubit.dart';
+import '../../../schedule/data/schedule_repository.dart';
+import '../../../schedule/presentation/screens/schedule_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -10,7 +13,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Obtener estado y tema
-    final authState = context.watch<AuthCubit>().state;
+    final authState = context.select((AuthCubit c) => c.state);   
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final textColor = theme.colorScheme.onSurface;
@@ -25,10 +28,20 @@ class HomeScreen extends StatelessWidget {
     final user = authState.user;
     final bool hasActivePlan = user.activePlan != null; 
     final bool isWaiverSigned = user.isWaiverSigned;
-
+    final bool hasTickets = user.accessExceptions.any((t) => t.quantity > 0);
+    final bool canReserve = hasActivePlan || hasTickets;
     // Calcular edad
-    final age = DateTime.now().difference(user.birthDate).inDays ~/ 365;
+    final today = DateTime.now();
+    int age = today.year - user.birthDate.year;
+    if (today.month < user.birthDate.month || 
+      (today.month == user.birthDate.month && today.day < user.birthDate.day)) {
+      age--;
+    }
+
     final bool isMinor = age < 18;
+    final Color ticketTextColor = hasActivePlan 
+        ? Colors.white 
+        : (isDark ? Colors.white : Colors.black);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -43,11 +56,9 @@ class HomeScreen extends StatelessWidget {
           statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
         ),
         actions: [
-          // btn salir con confirmación
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.red),
             onPressed: () {
-              // llamar función del dialogo
               _showLogoutDialog(context);
             },
           ),
@@ -65,57 +76,58 @@ class HomeScreen extends StatelessWidget {
             ),
             
             if (!isWaiverSigned) ...[
-              const SizedBox(height: 40),
+              const SizedBox(height: 30),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  border: Border.all(color: Colors.red),
+                  color: Colors.red.withOpacity(0.05),
+                  border: Border.all(color: Colors.red.withOpacity(0.5)),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(
                   children: [
-                    const Icon(Icons.block, color: Colors.red, size: 50),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Acceso Restringido',
-                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 20),
-                    ),
+                    const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 40),
                     const SizedBox(height: 10),
+                    const Text(
+                      'Exoneración Pendiente',
+                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 18),
+                    ),
+                    const SizedBox(height: 8),
                     Text(
                       isMinor 
                         ? 'Al ser menor de edad ($age años), tu acudiente debe firmar presencialmente.'
                         : 'Debes firmar la exoneración para poder reservar clases.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: textColor.withOpacity(0.8), fontSize: 16),
+                      style: TextStyle(color: textColor.withOpacity(0.8), fontSize: 14),
                     ),
                     
                     if (!isMinor) ...[
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 15),
                       SizedBox(
                         width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.edit_document),
-                          label: const Text('IR A FIRMAR'),
+                        height: 45,
+                        child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red,
                             foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
                           onPressed: () {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Próximamente: Pantalla de Firma')),
                             );
                           },
+                          child: const Text('FIRMAR AHORA', style: TextStyle(fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ]
                   ],
                 ),
               ),
+              const SizedBox(height: 40),
             ] else ...[
-              
               Text(
                 'Gestiona tus clases', 
                 style: TextStyle(color: isDark ? Colors.grey : Colors.grey[700], fontSize: 16),
@@ -231,9 +243,109 @@ class HomeScreen extends StatelessWidget {
                       style: TextStyle(color: isDark ? Colors.grey : Colors.black54),
                     ),
                   ],
+
+                  // Tickets
+                  if (hasTickets) ...[
+                    const SizedBox(height: 20),
+                    Divider(color: ticketTextColor.withOpacity(0.2)),
+                    const SizedBox(height: 10),
+                    Text(
+                      'INGRESOS EXTRA DISPONIBLES:',
+                      style: TextStyle(color: ticketTextColor, fontSize: 10, fontWeight: FontWeight.bold)
+                    ),
+                    const SizedBox(height: 5),
+                    ...user.accessExceptions.where((t) => t.quantity > 0).map((t) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.local_activity, color: Colors.amber, size: 16),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${t.validForPlan.name.toUpperCase()}: ${t.quantity}',
+                            style: TextStyle(color: ticketTextColor, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    )),
+                  ],
                 ],
               ),
             ),
+            
+            const SizedBox(height: 40),
+
+            // Btn reservar
+            if (canReserve) ...[
+              Container(
+                width: double.infinity,
+                height: 55, 
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(15),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFD32F2F), Color(0xFFB71C1C)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.red.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(15),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => BlocProvider(
+                            create: (context) => ScheduleCubit(
+                              repository: context.read<ScheduleRepository>(),
+                            ),
+                            child: const ScheduleScreen(),
+                          ),
+                        ),
+                      );
+                    },
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.calendar_month, color: Colors.white, size: 22),
+                        SizedBox(width: 10),
+                        Text(
+                          'VER HORARIOS Y RESERVAR',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ] else ...[
+              Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.lock_clock, size: 40, color: Colors.grey[400]),
+                    const SizedBox(height: 10),
+                    Text(
+                      'No tienes ingresos disponibles',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -257,7 +369,7 @@ class HomeScreen extends StatelessWidget {
             ),
             TextButton(
               onPressed: () {
-                Navigator.pop(ctx); // cerrar diálogo
+                Navigator.pop(ctx);
                 context.read<AuthCubit>().signOut();
               },
               child: const Text('Salir', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),

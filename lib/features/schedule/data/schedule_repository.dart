@@ -15,6 +15,8 @@ class ScheduleRepository {
   ScheduleRepository({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
+  // Lectura
+
   Future<List<ClassModel>> getClasses({
     required DateTime fromDate,
     required DateTime toDate,
@@ -38,8 +40,7 @@ class ScheduleRepository {
   Future<ClassModel?> checkConflict(ClassModel newClass) async {
     try {
       final startOfDay = DateTime(newClass.startTime.year, newClass.startTime.month, newClass.startTime.day);
-      final endOfDay = startOfDay.add(const Duration(days: 1));
-
+      final endOfDay = startOfDay.add(const Duration(days: 1)).subtract(const Duration(seconds: 1));
       final existingClasses = await getClasses(fromDate: startOfDay, toDate: endOfDay);
 
       return ScheduleLogic.findConflict(newClass, existingClasses);
@@ -73,6 +74,7 @@ class ScheduleRepository {
     return ClassStatus.blockedByPlan;
   }
 
+  // Escritura reservar
 
   Future<BookingStatus> reserveClass({
     required String classId,
@@ -131,7 +133,8 @@ class ScheduleRepository {
               return exc.copyWith(quantity: exc.quantity - 1);
             }
             return exc;
-          }).where((exc) => exc.quantity > 0).toList();
+          })
+          .toList();
 
           transaction.update(userRef, {
             'access_exceptions': updatedExceptions
@@ -159,18 +162,25 @@ class ScheduleRepository {
     }
   }
 
+  // Escritura
+
   Future<void> cancelReservation({
     required String classId,
     required String userId,
   }) async {
     final classRef = _firestore.collection('classes').doc(classId);
+    final userRef = _firestore.collection('users').doc(userId);
 
     try {
       await _firestore.runTransaction((transaction) async {
-        final snapshot = await transaction.get(classRef);
-        if (!snapshot.exists) throw Exception('La clase no existe');
+        final classSnapshot = await transaction.get(classRef);
+        final userSnapshot = await transaction.get(userRef);
 
-        final classModel = ClassMapper.fromMap(snapshot.data()!, snapshot.id);
+        if (!classSnapshot.exists) throw Exception('La clase no existe');
+        if (!userSnapshot.exists) throw Exception('Usuario no encontrado');
+
+        final classModel = ClassMapper.fromMap(classSnapshot.data()!, classSnapshot.id);
+        final userModel = UserMapper.fromMap(userSnapshot.data()!, userSnapshot.id);
 
         if (classModel.hasFinished || classModel.startTime.isBefore(DateTime.now())) {
              throw Exception('No puedes cancelar una clase que ya pasó o empezó');
@@ -181,6 +191,34 @@ class ScheduleRepository {
 
         if (!isInAttendees && !isInWaitlist) throw Exception('No estás inscrito en esta clase');
 
+        // Logica reembolso
+        // Si estaba confirmado (no en lista de espera), verificamos si gastó ticket
+        if (isInAttendees) {
+          bool coveredByPlan = _doesPlanAllowClass(userModel, classModel);
+          
+          // Si el plan no lo cubre, asume que usó Ticket y se devuelve
+          if (!coveredByPlan) {
+             bool ticketRefunded = false;
+             
+             final updatedExceptions = userModel.accessExceptions.map((exc) {
+               if (!ticketRefunded && _isValidExceptionForRefund(exc, classModel)) {
+                 ticketRefunded = true;
+                 return exc.copyWith(quantity: exc.quantity + 1); // +1 💰
+               }
+               return exc;
+             }).toList();
+
+             if (ticketRefunded) {
+               transaction.update(userRef, {
+                 'access_exceptions': updatedExceptions
+                    .map((x) => AccessExceptionMapper.toMap(x))
+                    .toList()
+               });
+             }
+          }
+        }
+
+        // Sacar de listas
         if (isInWaitlist) {
           transaction.update(classRef, {'waitlist': FieldValue.arrayRemove([userId])});
           return;
@@ -228,6 +266,7 @@ class ScheduleRepository {
     }
   }
 
+  // Validaciones privadas
 
   bool _isValidException(AccessExceptionModel exception, ClassModel classModel, DateTime now) {
     if (exception.quantity <= 0) return false;
@@ -243,6 +282,30 @@ class ScheduleRepository {
       final className = classModel.classType.toLowerCase();
       if (!className.contains('kids') && !className.contains('niños')) return false;
     }
+    return true;
+  }
+
+  // Validación para saber qué ticket devolver
+  bool _isValidExceptionForRefund(AccessExceptionModel exception, ClassModel classModel) {
+    final type = exception.validForPlan;
+
+    // Si es Wild, devuelve si la clase cancelada era de mañana
+    if (type == PlanType.wild) {
+      final minutes = classModel.startTime.hour * 60 + classModel.startTime.minute;
+      if (minutes > 690) return false; 
+    }
+    // Si es Kids, devuelve si la clase cancelada era de niños
+    if (type == PlanType.kids) {
+      final className = classModel.classType.toLowerCase();
+      if (!className.contains('kids') && !className.contains('niños')) return false;
+    }
+    // Si es Weekend, devuelve si la clase era fin de semana
+    if (type == PlanType.weekends) {
+      final day = classModel.startTime.weekday;
+      if (day != 6 && day != 7) return false;
+    }
+
+    // Si el ticket es FULL, devuelve true siempre
     return true;
   }
 

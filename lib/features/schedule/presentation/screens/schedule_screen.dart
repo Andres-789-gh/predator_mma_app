@@ -39,6 +39,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5);
+
     final user = context.select((AuthCubit cubit) {
       final state = cubit.state;
       return (state is AuthAuthenticated) ? state.user : null;
@@ -51,10 +54,20 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Horarios')),
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        title: const Text('Horarios', style: TextStyle(fontWeight: FontWeight.bold)),
+        elevation: 0,
+        backgroundColor: bgColor, 
+        foregroundColor: isDark ? Colors.white : Colors.black,
+      ),
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildDateSelector(),
+          // Selector de Fechas
+          _buildTimelineCalendar(isDark),
+
+          // Lista de Clases
           Expanded(
             child: BlocConsumer<ScheduleCubit, ScheduleState>(
               listener: (context, state) {
@@ -71,7 +84,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               },
               builder: (context, state) {
                 if (state is ScheduleLoading) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(child: CircularProgressIndicator(color: Colors.red));
                 }
 
                 if (state is ScheduleLoaded || state is ScheduleOperationSuccess) {
@@ -82,10 +95,23 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   final isOpLoading = (state is ScheduleLoaded) ? state.isOperationLoading : false;
 
                   if (items.isEmpty) {
-                    return const Center(child: Text('No hay clases programadas para hoy.'));
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.event_busy, size: 60, color: Colors.grey.withOpacity(0.5)),
+                          const SizedBox(height: 10),
+                          Text(
+                            'No hay clases para este día.',
+                            style: TextStyle(color: Colors.grey.withOpacity(0.8), fontSize: 16),
+                          ),
+                        ],
+                      ),
+                    );
                   }
 
                   return ListView.builder(
+                    padding: const EdgeInsets.only(top: 10, bottom: 20),
                     itemCount: items.length,
                     itemBuilder: (context, index) {
                       final item = items[index];
@@ -141,56 +167,96 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
   }
 
-  Widget _buildDateSelector() {
-    return Container(
-      height: 90,
-      color: Colors.grey[100],
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: 7, 
-        itemBuilder: (context, index) {
-          final date = DateTime.now().add(Duration(days: index));
-          final isSelected = date.day == _selectedDate.day && date.month == _selectedDate.month;
+  Widget _buildTimelineCalendar(bool isDark) {
+    final selectedColor = Colors.red;
+    final unselectedTextColor = isDark ? Colors.white70 : Colors.black54;
+    final bgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
 
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedDate = date;
-              });
-              _loadClassesForDate(date);
-            },
-            child: Container(
-              width: 60,
-              margin: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: isSelected ? Colors.blue : Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: isSelected ? null : Border.all(color: Colors.grey[300]!),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    DateFormat('E').format(date),
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.grey,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    date.day.toString(),
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                ],
+    final monthFormat = DateFormat('MMMM yyyy', 'es'); 
+
+    return Container(
+      color: bgColor,
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+            child: Text(
+              toBeginningOfSentenceCase(monthFormat.format(_selectedDate)) ?? '',
+              style: TextStyle(
+                fontSize: 18, 
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black87
               ),
             ),
-          );
-        },
+          ),
+          const SizedBox(height: 10),
+          
+          SizedBox(
+            height: 85, 
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: 8,
+              itemBuilder: (context, index) {
+                final date = DateTime.now().add(Duration(days: index));
+                final isSelected = date.day == _selectedDate.day && date.month == _selectedDate.month;
+                
+                final dayName = DateFormat('E', 'es').format(date).toUpperCase().replaceAll('.', ''); 
+                final dayNumber = date.day.toString();
+
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedDate = date;
+                    });
+                    _loadClassesForDate(date);
+                  },
+                  child: Container(
+                    width: 60,
+                    margin: EdgeInsets.only(
+                      left: index == 0 ? 20 : 5, 
+                      right: index == 7 ? 20 : 5,
+                      top: 5, bottom: 5
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected ? selectedColor : Colors.transparent,
+                      borderRadius: BorderRadius.circular(16),
+                      border: isSelected ? null : Border.all(color: Colors.grey.withOpacity(0.3)),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          dayName,
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : unselectedTextColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          dayNumber,
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : (isDark ? Colors.white : Colors.black),
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (index == 0 && !isSelected) ...[
+                           const SizedBox(height: 4),
+                           CircleAvatar(radius: 2, backgroundColor: selectedColor),
+                        ]
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
