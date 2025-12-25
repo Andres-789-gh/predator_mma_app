@@ -77,4 +77,10 @@ extension ClassBusinessRules on ClassModel {
     // si la hora actual ya paso la fecha limite no deja reservar
     return now.isBefore(deadline);
   }
+
+  bool get canCancelNow {
+    final now = DateTime.now();
+    if (now.isAfter(startTime)) return false;
+    return true; 
+  }
 }

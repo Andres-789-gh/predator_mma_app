@@ -13,7 +13,7 @@ class ScheduleCubit extends Cubit<ScheduleState> {
       : _repository = repository, 
         super(ScheduleInitial());
 
-  // Helper privado
+  // helper privado
   List<ScheduleItem> _mapClassesToItems(List<ClassModel> classes, UserModel user) {
     return classes.map((c) {
       final status = _repository.getClassStatus(user, c);
@@ -21,7 +21,7 @@ class ScheduleCubit extends Cubit<ScheduleState> {
     }).toList();
   }
 
-  // Cargar clases
+  // cargar horario
   Future<void> loadSchedule(DateTime from, DateTime to, UserModel user) async {
     try {
       emit(ScheduleLoading());
@@ -34,7 +34,7 @@ class ScheduleCubit extends Cubit<ScheduleState> {
     }
   }
 
-  // Refresh
+  // refrescar horario
   Future<void> refreshSchedule(DateTime from, DateTime to, UserModel user) async {
     try {
       final classes = await _repository.getClasses(fromDate: from, toDate: to);
@@ -46,11 +46,11 @@ class ScheduleCubit extends Cubit<ScheduleState> {
           
       emit(ScheduleLoaded(items: items, selectedDate: currentDate));
     } catch (e) {
-      debugPrint('Error refrescando horario: $e');
+      debugPrint('error refrescando horario: $e');
     }
   }
 
-  // Reservar
+  // reservar clase
   Future<void> reserveClass({
     required String classId, 
     required UserModel user,
@@ -58,48 +58,53 @@ class ScheduleCubit extends Cubit<ScheduleState> {
     required DateTime currentToDate,
   }) async {
     
-    // Backup del ViewModel
+    // variables de respaldo
     List<ScheduleItem> backupItems = [];
     DateTime backupDate = currentFromDate;
 
+    // marcar tarjeta como cargando sin borrar la lista
     if (state is ScheduleLoaded) {
       final loadedState = state as ScheduleLoaded;
       backupItems = loadedState.items;
       backupDate = loadedState.selectedDate;
-      emit(loadedState.copyWith(isOperationLoading: true));
+      emit(loadedState.copyWith(processingId: classId));
     }
 
     try {
       await _repository.reserveClass(classId: classId, userId: user.userId);
       
+      // recargar datos actualizados
       final updatedClasses = await _repository.getClasses(fromDate: currentFromDate, toDate: currentToDate);
       final updatedItems = _mapClassesToItems(updatedClasses, user);
       
+      // exito
       emit(ScheduleOperationSuccess(
         message: '¡Reserva exitosa!', 
         items: updatedItems
       ));
 
+      // restaurar estado cargado y limpiar id de proceso
       emit(ScheduleLoaded(
         items: updatedItems, 
         selectedDate: backupDate,
-        isOperationLoading: false,
+        processingId: null, // limpia el spinner
       ));
 
     } catch (e) {
       emit(ScheduleError(e.toString().replaceAll('Exception: ', '')));
 
+      // restaurar estado anterior en caso de error
       if (backupItems.isNotEmpty) {
         emit(ScheduleLoaded(
           items: backupItems,
           selectedDate: backupDate,
-          isOperationLoading: false, 
+          processingId: null, 
         ));
       }
     }
   }
 
-  // Cancelar
+  // cancelar clase
   Future<void> cancelClass({
     required String classId, 
     required UserModel user,
@@ -114,7 +119,7 @@ class ScheduleCubit extends Cubit<ScheduleState> {
       final loadedState = state as ScheduleLoaded;
       backupItems = loadedState.items;
       backupDate = loadedState.selectedDate;
-      emit(loadedState.copyWith(isOperationLoading: true));
+      emit(loadedState.copyWith(processingId: classId));
     }
 
     try {
@@ -131,7 +136,7 @@ class ScheduleCubit extends Cubit<ScheduleState> {
       emit(ScheduleLoaded(
         items: updatedItems, 
         selectedDate: backupDate,
-        isOperationLoading: false,
+        processingId: null,
       ));
       
     } catch (e) {
@@ -141,7 +146,7 @@ class ScheduleCubit extends Cubit<ScheduleState> {
         emit(ScheduleLoaded(
           items: backupItems,
           selectedDate: backupDate,
-          isOperationLoading: false,
+          processingId: null,
         ));
       }
     }

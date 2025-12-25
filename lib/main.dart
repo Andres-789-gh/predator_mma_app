@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'injection_container.dart' as di;
 import 'features/auth/presentation/cubit/auth_cubit.dart';
 import 'features/auth/presentation/cubit/auth_state.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/home/presentation/screens/home_screen.dart';
-import 'package:intl/date_symbol_data_local.dart';
-import 'features/schedule/data/schedule_repository.dart';
-
+import 'features/schedule/data/schedule_repository.dart'; 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  await di.init(); 
   await initializeDateFormatting('es', null);
 
   runApp(

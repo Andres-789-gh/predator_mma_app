@@ -15,28 +15,30 @@ class ScheduleLoading extends ScheduleState {}
 class ScheduleLoaded extends ScheduleState {
   final List<ScheduleItem> items;
   final DateTime selectedDate;
-  final bool isOperationLoading;
+  
+  final String? processingId; 
 
   ScheduleLoaded({
     required List<ScheduleItem> items,
     required this.selectedDate,
-    this.isOperationLoading = false,
+    this.processingId,
   }) : items = List.unmodifiable(items);
 
   ScheduleLoaded copyWith({
     List<ScheduleItem>? items,
     DateTime? selectedDate,
-    bool? isOperationLoading,
+    String? processingId,
+    bool clearProcessingId = false,
   }) {
     return ScheduleLoaded(
       items: items ?? this.items,
       selectedDate: selectedDate ?? this.selectedDate,
-      isOperationLoading: isOperationLoading ?? this.isOperationLoading,
+      processingId: clearProcessingId ? null : (processingId ?? this.processingId),
     );
   }
 
   @override
-  List<Object?> get props => [items, selectedDate, isOperationLoading];
+  List<Object?> get props => [items, selectedDate, processingId];
 }
 
 class ScheduleOperationSuccess extends ScheduleState {

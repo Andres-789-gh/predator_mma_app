@@ -64,21 +64,55 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Selector de Fechas
+          // selector de fechas
           _buildTimelineCalendar(isDark),
 
-          // Lista de Clases
+          // lista de clases
           Expanded(
             child: BlocConsumer<ScheduleCubit, ScheduleState>(
               listener: (context, state) {
                 if (state is ScheduleOperationSuccess) {
+                  context.read<AuthCubit>().checkAuthStatus(); 
+
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(state.message), backgroundColor: Colors.green),
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          const Icon(Icons.check_circle, color: Colors.white),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              state.message, 
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white))),
+                        ],
+                      ),
+                      backgroundColor: Colors.green,
+                      behavior: SnackBarBehavior.floating,
+                      margin: const EdgeInsets.all(16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
                   );
                 }
                 if (state is ScheduleError) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          const Icon(Icons.error_outline, color: Colors.white),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              state.message, 
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)
+                            )
+                          ),
+                        ],
+                      ),
+                      backgroundColor: Colors.red,
+                      behavior: SnackBarBehavior.floating,
+                      margin: const EdgeInsets.all(16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
                   );
                 }
               },
@@ -92,18 +126,20 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       ? state.items 
                       : (state as ScheduleOperationSuccess).items;
                   
-                  final isOpLoading = (state is ScheduleLoaded) ? state.isOperationLoading : false;
+                  // obtener id en proceso si existe
+                  final processingId = (state is ScheduleLoaded) ? state.processingId : null;
+                  final isGlobalProcessing = processingId != null;
 
                   if (items.isEmpty) {
                     return Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.event_busy, size: 60, color: Colors.grey.withOpacity(0.5)),
+                          Icon(Icons.event_busy, size: 60, color: Colors.grey.withValues(alpha: 0.5)),
                           const SizedBox(height: 10),
                           Text(
                             'No hay clases para este día.',
-                            style: TextStyle(color: Colors.grey.withOpacity(0.8), fontSize: 16),
+                            style: TextStyle(color: Colors.grey.withValues(alpha: 0.8), fontSize: 16),
                           ),
                         ],
                       ),
@@ -116,13 +152,21 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     itemBuilder: (context, index) {
                       final item = items[index];
                       
+                      // determina si esta tarjeta especifica esta cargando
+                      final isCardLoading = processingId == item.classModel.classId;
+                      
+                      // bloquea interaccion si hay cualquier carga activa
+                      final canInteract = !isGlobalProcessing;
+
                       return ClassCard(
                         classModel: item.classModel,
                         status: item.status,
-                        isLoading: isOpLoading,
-                        onActionPressed: _getActionCallback(
-                          context, item.status, item.classModel.classId, user, isOpLoading
-                        ),
+                        isLoading: isCardLoading,
+                        onActionPressed: canInteract 
+                            ? _getActionCallback(
+                                context, item.status, item.classModel.classId, user
+                              )
+                            : null, // deshabilita si hay otra accion en curso
                       );
                     },
                   );
@@ -141,30 +185,93 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     BuildContext context, 
     ClassStatus status, 
     String classId, 
-    UserModel user, 
-    bool isLoading
+    UserModel user
   ) {
-    if (isLoading) return null;
     if (status == ClassStatus.blockedByPlan) return null;
 
     final start = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
     final end = start.add(const Duration(days: 1)).subtract(const Duration(seconds: 1));
 
-    if (status == ClassStatus.reserved) {
-      return () => context.read<ScheduleCubit>().cancelClass(
-        classId: classId, 
-        user: user, 
-        currentFromDate: start, 
-        currentToDate: end
-      );
-    } else {
-      return () => context.read<ScheduleCubit>().reserveClass(
-        classId: classId, 
-        user: user, 
-        currentFromDate: start, 
-        currentToDate: end
-      );
+    // lógica cancelar
+    if (status == ClassStatus.reserved || status == ClassStatus.waitlist) {
+      return () {
+        _showConfirmationDialog(
+          context, 
+          title: '¿Cancelar Reserva?', 
+          content: 'Si cancelas, liberarás tu cupo.',
+          isDestructive: true,
+          onConfirm: () {
+             context.read<ScheduleCubit>().cancelClass(
+              classId: classId, 
+              user: user, 
+              currentFromDate: start, 
+              currentToDate: end
+            );
+          }
+        );
+      };
+    } 
+    // lógica reservar
+    else {
+      return () {
+        if (!user.isWaiverSigned) {
+          _showWaiverDialog(context);
+          return;
+        }
+
+        _showConfirmationDialog(
+          context,
+          title: 'Confirmar Reserva',
+          content: status == ClassStatus.availableWithTicket 
+              ? '¿Usar ingreso extra para reservar esta clase?' 
+              : '¿Deseas reservar tu cupo para esta clase?',
+          isDestructive: false,
+          onConfirm: () {
+            context.read<ScheduleCubit>().reserveClass(
+              classId: classId, 
+              user: user, 
+              currentFromDate: start, 
+              currentToDate: end
+            );
+          }
+        );
+      };
     }
+  }
+
+  void _showConfirmationDialog(BuildContext context, {
+    required String title, 
+    required String content, 
+    required VoidCallback onConfirm,
+    bool isDestructive = false,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        title: Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
+        content: Text(content, style: TextStyle(color: isDark ? Colors.grey[300] : Colors.black87)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Volver', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isDestructive ? Colors.red : Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              onConfirm();
+            },
+            child: Text(isDestructive ? 'Sí, Cancelar' : 'Confirmar'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildTimelineCalendar(bool isDark) {
@@ -223,7 +330,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     decoration: BoxDecoration(
                       color: isSelected ? selectedColor : Colors.transparent,
                       borderRadius: BorderRadius.circular(16),
-                      border: isSelected ? null : Border.all(color: Colors.grey.withOpacity(0.3)),
+                      border: isSelected ? null : Border.all(color: Colors.grey.withValues(alpha: 0.3)),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -255,6 +362,42 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 );
               },
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showWaiverDialog(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+            SizedBox(width: 10),
+            Text('Acción Requerida'),
+          ],
+        ),
+        content: const Text(
+          'No puedes reservar clases sin haber firmado la exoneración de responsabilidad legal.\n\nPor favor, ve al Inicio y fírmala.',
+          style: TextStyle(fontSize: 16),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Entendido', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.pop(context);
+            },
+            child: const Text('Ir a Firmar', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

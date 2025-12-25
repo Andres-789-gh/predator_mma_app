@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/enums.dart';
 import '../../domain/models/class_model.dart';
+import '../../domain/class_logic.dart';
 
 class ClassCard extends StatelessWidget {
   final ClassModel classModel;
@@ -13,123 +14,225 @@ class ClassCard extends StatelessWidget {
     super.key,
     required this.classModel,
     required this.status,
-    this.isLoading = false,
+    required this.isLoading,
     this.onActionPressed,
   });
 
   @override
   Widget build(BuildContext context) {
-    final config = _getStatusConfig(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isExpired = classModel.hasFinished; 
+    
+    // verifica permiso
+    bool isButtonEnabled = true;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: config.color.withValues(alpha: 0.5), width: 1),
+    // color y texto
+    Color statusColor;
+    String buttonText;
+    IconData statusIcon;
+    bool isDestructive = false;
+
+    // determina estado visual
+    if (isExpired) {
+       // clase finalizada
+       statusColor = isDark ? Colors.grey[700]! : Colors.grey;
+       buttonText = 'FINALIZADA';
+       statusIcon = Icons.history;
+       isButtonEnabled = false;
+    } else {
+      switch (status) {
+        case ClassStatus.available:
+        case ClassStatus.availableWithTicket:
+          // logica para reservar
+          if (!classModel.canReserveNow) {
+            statusColor = Colors.grey;
+            buttonText = 'RESERVA CERRADA';
+            statusIcon = Icons.timer_off;
+            isButtonEnabled = false;
+          } else {
+            // estado disponible
+            statusColor = status == ClassStatus.availableWithTicket ? Colors.amber : const Color(0xFF4CAF50);
+            buttonText = status == ClassStatus.availableWithTicket ? 'USAR TICKET' : 'RESERVAR';
+            statusIcon = status == ClassStatus.availableWithTicket ? Icons.confirmation_number_outlined : Icons.add_circle_outline;
+          }
+          break;
+
+        case ClassStatus.reserved:
+          // logica para cancelar
+          if (!classModel.canCancelNow) {
+            statusColor = const Color(0xFF2196F3);
+            buttonText = 'NO CANCELABLE';
+            statusIcon = Icons.lock_clock;
+            isButtonEnabled = false;
+          } else {
+            // estado cancelable
+            statusColor = const Color(0xFF2196F3);
+            buttonText = 'CANCELAR RESERVA';
+            statusIcon = Icons.check_circle;
+            isDestructive = true;
+          }
+          break;
+
+        case ClassStatus.waitlist:
+          statusColor = Colors.orange;
+          buttonText = 'SALIR DE LISTA';
+          statusIcon = Icons.hourglass_empty;
+          isDestructive = true;
+          break;
+
+        case ClassStatus.full:
+          statusColor = Colors.grey;
+          buttonText = 'CLASE LLENA';
+          statusIcon = Icons.block;
+          isButtonEnabled = false;
+          break;
+
+        case ClassStatus.blockedByPlan:
+          statusColor = Colors.red.withValues(alpha: 0.5);
+          buttonText = 'NO DISPONIBLE';
+          statusIcon = Icons.lock;
+          isButtonEnabled = false;
+          break;
+      }
+    }
+
+    final timeFormat = DateFormat('h:mm a');
+    final startTime = timeFormat.format(classModel.startTime);
+    final endTime = timeFormat.format(classModel.endTime);
+    
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: status == ClassStatus.reserved 
+            ? Border.all(color: statusColor.withValues(alpha: 0.5), width: 1.5) 
+            : null,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
               children: [
-                Text(
-                  '${DateFormat('h:mm a').format(classModel.startTime)} - ${classModel.classType}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                Column(
+                  children: [
+                    Text(startTime, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+                    Text(endTime, style: TextStyle(fontSize: 12, color: isDark ? Colors.grey : Colors.grey[600])),
+                  ],
                 ),
-                _buildStatusBadge(config),
-              ],
-            ),
-            const SizedBox(height: 8),
-            
-            // Info
-            Row(
-              children: [
-                const Icon(Icons.person, size: 16, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text(classModel.coachName),
-                const Spacer(),
-                const Icon(Icons.group, size: 16, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text('${classModel.attendees.length} / ${classModel.maxCapacity}'),
-              ],
-            ),
-            const SizedBox(height: 12),
+                const SizedBox(width: 16),
+                Container(height: 40, width: 2, color: statusColor.withValues(alpha: 0.3)),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        classModel.classType.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 16, 
+                          fontWeight: FontWeight.w900, 
+                          fontStyle: FontStyle.italic, 
+                          color: isDark ? Colors.white : Colors.black87
+                        )
+                      ),
+                      
+                      const SizedBox(height: 4),
+                      
+                      Row(
+                        children: [
+                          Icon(Icons.person, size: 14, color: isDark ? Colors.grey : Colors.grey[600]),
+                          const SizedBox(width: 4),
+                          Text(
+                            classModel.coachName, 
+                            style: TextStyle(fontSize: 13, color: isDark ? Colors.grey : Colors.grey[700])
+                          ),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 6),
+                      
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: isDark ? Colors.white24 : Colors.grey[300]!),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'MÁX. ${classModel.maxCapacity}',
+                              style: TextStyle(
+                                fontSize: 10, 
+                                color: isDark ? Colors.grey : Colors.grey[600],
+                                fontWeight: FontWeight.bold
+                              ),
+                            ),
+                          ),
 
-            // Btn accion
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: config.color,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: Colors.grey[300],
+                          if (status == ClassStatus.full) ...[
+                             const SizedBox(width: 8),
+                             const Text(
+                               'SIN CUPOS',
+                               style: TextStyle(fontSize: 10, color: Colors.red, fontWeight: FontWeight.bold),
+                             ),
+                          ]
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                onPressed: isLoading ? null : onActionPressed,
+              ],
+            ),
+          ),
+
+          // btn de accion inteligente
+          GestureDetector(
+            onTap: (isLoading || !isButtonEnabled) ? null : onActionPressed,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: !isButtonEnabled 
+                    ? (isDark ? Colors.white10 : Colors.grey[200])
+                    : (isDestructive ? Colors.red.withValues(alpha: 0.1) : statusColor.withValues(alpha: 0.1)),
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
+                ),
+              ),
+              child: Center(
                 child: isLoading
-                    ? const SizedBox(
-                        height: 20, width: 20, 
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
-                      )
-                    : Text(config.buttonText),
+                    ? SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: statusColor))
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(statusIcon, size: 16, color: !isButtonEnabled ? Colors.grey : (isDestructive ? Colors.red : statusColor)),
+                          const SizedBox(width: 8),
+                          Text(
+                            buttonText,
+                            style: TextStyle(
+                              color: !isButtonEnabled ? Colors.grey : (isDestructive ? Colors.red : statusColor),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ],
+                      ),
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Configuración de colores
-  _StatusConfig _getStatusConfig(BuildContext context) {
-    switch (status) {
-      case ClassStatus.reserved:
-        return _StatusConfig(Colors.green, 'Cancelar Reserva', Icons.check_circle);
-      case ClassStatus.available:
-        return _StatusConfig(Colors.blue, 'Reservar Clase', Icons.event_available);
-      case ClassStatus.availableWithTicket:
-        return _StatusConfig(Colors.amber[800]!, 'Usar Ticket Extra', Icons.local_activity);
-      case ClassStatus.full:
-        return _StatusConfig(Colors.orange, 'Unirse a Lista de Espera', Icons.hourglass_empty);
-      case ClassStatus.blockedByPlan:
-        return _StatusConfig(Colors.grey, 'No Disponible', Icons.lock);
-    }
-  }
-
-  // Construcción del Badge pequeño
-  Widget _buildStatusBadge(_StatusConfig config) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: config.color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(config.icon, size: 14, color: config.color),
-          if (status == ClassStatus.availableWithTicket) ...[
-            const SizedBox(width: 4),
-            Text(
-              'Ticket', 
-              style: TextStyle(color: config.color, fontSize: 12, fontWeight: FontWeight.bold),
-            ),
-          ]
+          ),
         ],
       ),
     );
   }
-}
-
-// Clase auxiliar para pasar configuración
-class _StatusConfig {
-  final Color color;
-  final String buttonText;
-  final IconData icon;
-
-  _StatusConfig(this.color, this.buttonText, this.icon);
 }

@@ -29,5 +29,6 @@ enum ClassStatus {
   available,      // Puede reservar
   availableWithTicket, // Ticket (ingreso extra)
   blockedByPlan,  // Plan no deja y no tiene tickets
-  full           // Clase llena
+  full,           // Clase llena
+  waitlist
 }
