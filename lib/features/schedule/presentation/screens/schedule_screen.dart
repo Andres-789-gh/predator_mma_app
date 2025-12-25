@@ -126,7 +126,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       ? state.items 
                       : (state as ScheduleOperationSuccess).items;
                   
-                  // obtener id en proceso si existe
                   final processingId = (state is ScheduleLoaded) ? state.processingId : null;
                   final isGlobalProcessing = processingId != null;
 
@@ -151,11 +150,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     itemCount: items.length,
                     itemBuilder: (context, index) {
                       final item = items[index];
-                      
-                      // determina si esta tarjeta especifica esta cargando
                       final isCardLoading = processingId == item.classModel.classId;
-                      
-                      // bloquea interaccion si hay cualquier carga activa
                       final canInteract = !isGlobalProcessing;
 
                       return ClassCard(
@@ -166,7 +161,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             ? _getActionCallback(
                                 context, item.status, item.classModel.classId, user
                               )
-                            : null, // deshabilita si hay otra accion en curso
+                            : null,
                       );
                     },
                   );
@@ -192,7 +187,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final start = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
     final end = start.add(const Duration(days: 1)).subtract(const Duration(seconds: 1));
 
-    // lógica cancelar
     if (status == ClassStatus.reserved || status == ClassStatus.waitlist) {
       return () {
         _showConfirmationDialog(
@@ -211,7 +205,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         );
       };
     } 
-    // lógica reservar
     else {
       return () {
         if (!user.isWaiverSigned) {
@@ -308,7 +301,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               itemCount: 8,
               itemBuilder: (context, index) {
                 final date = DateTime.now().add(Duration(days: index));
-                final isSelected = date.day == _selectedDate.day && date.month == _selectedDate.month;
+                
+                final isSelected = date.day == _selectedDate.day && 
+                                   date.month == _selectedDate.month &&
+                                   date.year == _selectedDate.year;
                 
                 final dayName = DateFormat('E', 'es').format(date).toUpperCase().replaceAll('.', ''); 
                 final dayNumber = date.day.toString();
@@ -397,7 +393,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               Navigator.pop(ctx);
               Navigator.pop(context);
             },
-            child: const Text('Ir a Firmar', style: TextStyle(color: Colors.white)),
+            child: const Text('Firmar', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

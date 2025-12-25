@@ -44,7 +44,11 @@ class ScheduleCubit extends Cubit<ScheduleState> {
           ? (state as ScheduleLoaded).selectedDate 
           : from;
           
-      emit(ScheduleLoaded(items: items, selectedDate: currentDate));
+      emit(ScheduleLoaded(
+        items: items, 
+        selectedDate: currentDate,
+        processingId: null, 
+      ));
     } catch (e) {
       debugPrint('error refrescando horario: $e');
     }
@@ -58,11 +62,9 @@ class ScheduleCubit extends Cubit<ScheduleState> {
     required DateTime currentToDate,
   }) async {
     
-    // variables de respaldo
     List<ScheduleItem> backupItems = [];
     DateTime backupDate = currentFromDate;
 
-    // marcar tarjeta como cargando sin borrar la lista
     if (state is ScheduleLoaded) {
       final loadedState = state as ScheduleLoaded;
       backupItems = loadedState.items;
@@ -73,27 +75,23 @@ class ScheduleCubit extends Cubit<ScheduleState> {
     try {
       await _repository.reserveClass(classId: classId, userId: user.userId);
       
-      // recargar datos actualizados
       final updatedClasses = await _repository.getClasses(fromDate: currentFromDate, toDate: currentToDate);
       final updatedItems = _mapClassesToItems(updatedClasses, user);
       
-      // exito
       emit(ScheduleOperationSuccess(
         message: '¡Reserva exitosa!', 
         items: updatedItems
       ));
 
-      // restaurar estado cargado y limpiar id de proceso
       emit(ScheduleLoaded(
         items: updatedItems, 
         selectedDate: backupDate,
-        processingId: null, // limpia el spinner
+        processingId: null,
       ));
 
     } catch (e) {
       emit(ScheduleError(e.toString().replaceAll('Exception: ', '')));
 
-      // restaurar estado anterior en caso de error
       if (backupItems.isNotEmpty) {
         emit(ScheduleLoaded(
           items: backupItems,
