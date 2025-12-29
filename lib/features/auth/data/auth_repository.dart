@@ -44,22 +44,35 @@ class AuthRepository {
     required String password,
     required UserModel userModel,
   }) async {
-    // Crear en Auth
-    final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+    const String genericError = 'El correo electrónico o el documento de identidad ya están registrados.';
 
-    // Actualizar ID en el modelo
-    final newUser = userModel.copyWith(userId: userCredential.user!.uid);
-    
-    // Guardar en Firestore
-    await _firestore
-        .collection('users')
-        .doc(newUser.userId)
-        .set(UserMapper.toMap(newUser));
+    try {
+      final documentExists = await _checkDocumentExists(userModel.documentId);
+      
+      if (documentExists) {
+        throw Exception(genericError);
+      }
 
-    return newUser;
+      final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      final newUser = userModel.copyWith(userId: userCredential.user!.uid);
+      
+      await _firestore
+          .collection('users')
+          .doc(newUser.userId)
+          .set(UserMapper.toMap(newUser));
+
+      return newUser;
+
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'email-already-in-use') {
+        throw Exception(genericError);
+      }
+      rethrow;
+    }
   }
 
   Future<void> signOut() async {
@@ -90,5 +103,15 @@ class AuthRepository {
       return UserMapper.fromMap(doc.data()!, doc.id); 
     }
     return null;
+  }
+
+  // Doble documento
+  Future<bool> _checkDocumentExists(String documentId) async {
+    final query = await _firestore
+        .collection('users')
+        .where('personal_info.document_id', isEqualTo: documentId) 
+        .limit(1)
+        .get();
+    return query.docs.isNotEmpty;
   }
 }

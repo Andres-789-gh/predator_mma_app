@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../data/auth_repository.dart';
 import '../../domain/models/user_model.dart';
 import 'auth_state.dart';
+import 'package:flutter/foundation.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   final AuthRepository _authRepository;
@@ -16,15 +17,19 @@ class AuthCubit extends Cubit<AuthState> {
     return documentId;
   }
 
-  Future<void> checkAuthStatus() async {
+  Future<void> checkAuthStatus({bool silent = false}) async {
     try {
+      if (!silent) emit(const AuthLoading());
+      
       final user = await _authRepository.getCurrentUser();
+      
       if (user != null) {
         emit(AuthAuthenticated(user));
       } else {
         emit(const AuthUnauthenticated());
       }
     } catch (e) {
+      debugPrint('Error verificando sesión: $e'); 
       emit(const AuthUnauthenticated());
     }
   }
@@ -34,22 +39,19 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       emit(const AuthLoading());
 
-      final user = await _authRepository.signIn(email: email, password: password);
-
-      emit(AuthAuthenticated(user));
+      await _authRepository.signIn(email: email, password: password);
+      
+      await checkAuthStatus(silent: true); 
+      
     } on FirebaseAuthException catch (e) {
-      // Captura errores de Firebase especificos
       String message = 'Error de autenticación';
       
-      // Traducion de error
       switch (e.code) {
         case 'user-not-found':
         case 'invalid-email':
         case 'invalid-credential':
-          message = 'Usuario no encontrado o datos incorrectos.';
-          break;
         case 'wrong-password':
-          message = 'Contraseña incorrecta.';
+          message = 'Credenciales incorrectas.';
           break;
         case 'user-disabled':
           message = 'Esta cuenta ha sido deshabilitada.';
@@ -62,8 +64,7 @@ class AuthCubit extends Cubit<AuthState> {
       }
       emit(AuthError(message)); 
     } catch (e) {
-      // otro error
-      emit(AuthError('Ocurrió un error inesperado: $e'));
+      emit(const AuthError('Ocurrió un error inesperado. Intenta nuevamente.'));
     }
   }
 
@@ -80,28 +81,34 @@ class AuthCubit extends Cubit<AuthState> {
       final isValidKey = await _authRepository.verifyRegistrationKey(accessKey);
       
       if (!isValidKey) {
-        throw Exception('El código de acceso es incorrecto.');
+        throw InvalidAccessKeyException(); 
       }
 
       final firebasePassword = _normalizePassword(documentId);
 
-      final newUser = await _authRepository.signUp(
+      await _authRepository.signUp(
         email: email,
         password: firebasePassword, 
         userModel: userModel,
       );
 
-      emit(AuthAuthenticated(newUser));
+      await checkAuthStatus(silent: true);
+
+    } on InvalidAccessKeyException {
+       emit(const AuthError('El código de acceso es incorrecto.'));
+
     } on FirebaseAuthException catch (e) {
        String message = 'Error en el registro';
        if (e.code == 'email-already-in-use') {
-         message = 'El correo ya está registrado.';
+         message = 'El correo o documento ya está registrado.';
        } else if (e.code == 'weak-password') {
          message = 'La contraseña es muy débil.';
        }
        emit(AuthError(message));
+       
     } catch (e) {
       final cleanMessage = e.toString().replaceAll('Exception: ', '');
+      
       emit(AuthError(cleanMessage));
     }
   }
@@ -111,3 +118,5 @@ class AuthCubit extends Cubit<AuthState> {
     emit(const AuthUnauthenticated());
   }
 }
+
+class InvalidAccessKeyException implements Exception {}
