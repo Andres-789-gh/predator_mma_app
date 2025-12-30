@@ -158,22 +158,55 @@ class _WaiverScreenState extends State<WaiverScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // --- ENCABEZADO LITERAL  ---
-                  Center(
-                    child: Column(
+                  
+                  // --- 1. ENCABEZADO MODIFICADO (HORIZONTAL) ---
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        // Aquí deberías poner tu logo real
-                        const Icon(Icons.shield, size: 50, color: Colors.red), 
-                        const SizedBox(height: 10),
-                        Text("PREDATOR FIGHTCLUB", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: textColor)),
-                        Text("3132184502 / 3132184504 / 3132184508", style: TextStyle(fontSize: 12, color: textColor)),
-                        Text("AVENIDA BOYACA 73A-42 / BOGOTA DC", style: TextStyle(fontSize: 12, color: textColor)),
-                        Text("FIGHTCLUB_PREDATOR@GMAIL.COM", style: TextStyle(fontSize: 12, color: textColor)),
-                        const SizedBox(height: 5),
-                        Text("MMA FIGHT CLUB V PREDATOR", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.red)),
+                        // COLUMNA IZQUIERDA: INFORMACIÓN
+                        Expanded(
+                          flex: 7, 
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "PREDATOR FIGHTCLUB", 
+                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: textColor)
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                "3132184502 / 3132184504 / 3132184500\nAVENIDA BOYACA # 73A - 42 / BOGOTA DC", 
+                                style: TextStyle(fontSize: 10, color: textColor.withValues(alpha: 0.8), height: 1.3)
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                "FIGHTCLUB.PREDATOR@GMAIL.COM", 
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: textColor)
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        const SizedBox(width: 10),
+
+                        // COLUMNA DERECHA: LOGO
+                        Expanded(
+                          flex: 3, 
+                          child: Image.asset(
+                            'assets/images/logo_predator.png',
+                            fit: BoxFit.contain,
+                            height: 80, // Control de altura para que no explote
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(Icons.shield, size: 50, color: Colors.red);
+                            },
+                          ),
+                        ),
                       ],
                     ),
                   ),
+
                   const Divider(thickness: 2, height: 30),
 
                   // --- TEXTO INTRODUCTORIO LITERAL  ---
@@ -187,12 +220,12 @@ class _WaiverScreenState extends State<WaiverScreen> {
                     "Las Artes Marciales Mixtas (conocidas como MMA por sus siglas en inglés) son definidas por Acevedo y Cheung (2011), como una disciplina de combate ecléctica, es decir que acoplan técnicas y tácticas de diversos deportes de combate así como de artes marciales.\n\n"
                     "Con base en lo anterior se debe concientizar que la práctica y competencia en MMA así como de las categorías disciplinares que la componen: Grappling (lucha), Stricking (combate con golpes) y acondicionamiento físico, puede desarrollar la fuerza absoluta de sus músculos, así como la rápida y la estática... Además, gran movilidad de los procesos nerviosos, ya que la actividad del luchador implica una gran cantidad de movimientos posibles (ataques, defensas, contra llaves, tácticas).\n\n"
                     "Así también la práctica de disciplinas de combate puede conllevar lesiones osteomusculares u otros tipos de afectación a la salud debido a las técnicas que se ejecutan (golpes, proyecciones, sumisiones) y rutinas de entrenamiento condicional.",
-                    style: TextStyle(fontSize: 13, height: 1.4, color: textColor.withValues(alpha: 0.8)), // .withValues para evitar deprecation
+                    style: TextStyle(fontSize: 13, height: 1.4, color: textColor.withValues(alpha: 0.8)),
                     textAlign: TextAlign.justify,
                   ),
                   const SizedBox(height: 20),
 
-                  // --- CUESTIONARIO PAR-Q [cite: 22] ---
+                  // --- CUESTIONARIO PAR-Q ---
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(

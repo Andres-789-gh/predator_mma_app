@@ -48,3 +48,20 @@ app.*.map.json
 /android/.gradle
 /android/build
 /android/app/build
+
+
+# SEGURIDAD Y CLAVES
+
+# Configuración de Firebase (Android e iOS)
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# Claves de firma de Android (JAMÁS SUBIR)
+key.properties
+**/*.keystore
+**/*.jks
+
+# Archivos de entorno y Claves Maestras
+.env
+service-account.json
+firebase-service-account.json
