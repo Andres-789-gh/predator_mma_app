@@ -10,6 +10,7 @@ class AuthCubit extends Cubit<AuthState> {
 
   AuthCubit(this._authRepository) : super(const AuthInitial());
 
+  // normaliza el documento para usarlo como contraseña
   String _normalizePassword(String documentId) {
     if (documentId.length < 6) {
       return documentId.padRight(6, '0');
@@ -17,6 +18,7 @@ class AuthCubit extends Cubit<AuthState> {
     return documentId;
   }
 
+  // verifica el estado actual de la sesión
   Future<void> checkAuthStatus({bool silent = false}) async {
     try {
       if (!silent) emit(const AuthLoading());
@@ -34,7 +36,7 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
-  // login
+  // inicia sesión con correo y contraseña
   Future<void> signIn({required String email, required String password}) async {
     try {
       emit(const AuthLoading());
@@ -48,10 +50,14 @@ class AuthCubit extends Cubit<AuthState> {
       
       switch (e.code) {
         case 'user-not-found':
-        case 'invalid-email':
-        case 'invalid-credential':
+          message = 'Usuario no registrado.';
+          break;
         case 'wrong-password':
+        case 'invalid-credential':
           message = 'Credenciales incorrectas.';
+          break;
+        case 'invalid-email':
+          message = 'El formato del correo no es válido.';
           break;
         case 'user-disabled':
           message = 'Esta cuenta ha sido deshabilitada.';
@@ -68,7 +74,7 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
-  // registro
+  // registra un nuevo usuario
   Future<void> signUp({
     required String email,
     required String documentId,
@@ -78,6 +84,7 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       emit(const AuthLoading());
 
+      // valida clave de acceso del gym
       final isValidKey = await _authRepository.verifyRegistrationKey(accessKey);
       
       if (!isValidKey) {

@@ -1,8 +1,8 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:signature/signature.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
@@ -15,19 +15,19 @@ class WaiverScreen extends StatefulWidget {
 }
 
 class _WaiverScreenState extends State<WaiverScreen> {
-  // Controlador de firma
+  // controlador de firma
   final SignatureController _signatureController = SignatureController(
     penStrokeWidth: 3,
     penColor: Colors.black,
     exportBackgroundColor: Colors.transparent,
   );
 
-  // Estado del formulario
+  // estado del formulario
   bool _isLoading = false;
-  final Map<int, bool> _answers = {}; // Índice de pregunta -> SI/NO
-  final Map<int, TextEditingController> _specsControllers = {}; // Especificaciones
+  final Map<int, bool> _answers = {}; 
+  final Map<int, TextEditingController> _specsControllers = {}; 
 
-  // Preguntas del documento
+  // preguntas del doc
   final List<String> _questions = [
     "1. ¿Alguna vez su doctor le ha diagnosticado problemas cardíacos?",
     "2. ¿Tiene dolores en el pecho con frecuencia?",
@@ -46,9 +46,8 @@ class _WaiverScreenState extends State<WaiverScreen> {
     super.dispose();
   }
 
-  // Lógica de guardado
   Future<void> _submitWaiver(String userId) async {
-    // 1. Validaciones
+    //validaciones
     if (_signatureController.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Debes firmar el documento al final.')),
@@ -63,7 +62,6 @@ class _WaiverScreenState extends State<WaiverScreen> {
       return;
     }
 
-    // Validar especificaciones obligatorias
     for (int i = 0; i < _questions.length; i++) {
       if (_answers[i] == true) {
         if (_specsControllers[i]?.text.trim().isEmpty ?? true) {
@@ -78,52 +76,44 @@ class _WaiverScreenState extends State<WaiverScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // 2. Convertir firma a imagen
+      // convierte firma a imagen
       final Uint8List? data = await _signatureController.toPngBytes();
       if (data == null) throw Exception('Error al procesar la firma');
 
-      // 3. Subir a Firebase Storage
-      final storageRef = FirebaseStorage.instance
-          .ref()
-          .child('waivers')
-          .child(userId)
-          .child('signature_${DateTime.now().millisecondsSinceEpoch}.png');
+      // convierte bytes a string base64
+      final String base64Signature = base64Encode(data);
 
-      await storageRef.putData(data);
-      final signatureUrl = await storageRef.getDownloadURL();
-
-      // 4. Preparar datos del cuestionario
-      Map<String, dynamic> medicalData = {};
+      // prepara datos del cuestionario
+      Map<String, dynamic> questionnaireData = {};
       for (int i = 0; i < _questions.length; i++) {
-        medicalData['q${i + 1}'] = {
+        questionnaireData['q${i + 1}'] = {
           'question': _questions[i],
           'answer': _answers[i],
           'specification': _answers[i] == true ? _specsControllers[i]?.text.trim() : null,
         };
       }
 
-      // 5. Actualizar Firestore
+      // actualiza firestore
       await FirebaseFirestore.instance.collection('users').doc(userId).update({
         'legal.is_signed': true,
-        'legal.signature_url': signatureUrl,
+        'legal.signature_base64': base64Signature, 
         'legal.signed_at': FieldValue.serverTimestamp(),
-        'medical_history': medicalData, // Guardamos las respuestas médicas por seguridad
+        'waiver_responses': questionnaireData, 
       });
 
       if (mounted) {
-        // Recargar AuthCubit para que la app sepa que ya firmó
         context.read<AuthCubit>().checkAuthStatus();
         
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('¡Documento firmado exitosamente! Bienvenido.')),
         );
-        Navigator.pop(context); // Volver al Home (que ahora estará desbloqueado)
+        Navigator.pop(context); 
       }
 
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error guardando firma: $e')),
+          SnackBar(content: Text('Error guardando: $e')),
         );
       }
     } finally {
@@ -137,11 +127,12 @@ class _WaiverScreenState extends State<WaiverScreen> {
       final state = c.state;
       return (state is AuthAuthenticated) ? state.user.userId : null;
     });
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black87;
     final bgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
 
-    if (userId == null) return const Scaffold(body: Center(child: Text("Error de usuario")));
+    if (userId == null) return const Scaffold(body: Center(child: Text("Error de usuario: Reinicia la app")));
 
     return Scaffold(
       appBar: AppBar(
@@ -159,13 +150,12 @@ class _WaiverScreenState extends State<WaiverScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   
-                  // --- 1. ENCABEZADO MODIFICADO (HORIZONTAL) ---
                   Container(
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        // COLUMNA IZQUIERDA: INFORMACIÓN
+                        // clm izquierda info
                         Expanded(
                           flex: 7, 
                           child: Column(
@@ -177,13 +167,18 @@ class _WaiverScreenState extends State<WaiverScreen> {
                               ),
                               const SizedBox(height: 5),
                               Text(
-                                "3132184502 / 3132184504 / 3132184500\nAVENIDA BOYACA # 73A - 42 / BOGOTA DC", 
+                                "3132184502 / 3132184504\nAVENIDA BOYACA 73A-42\nBOGOTA DC", 
                                 style: TextStyle(fontSize: 10, color: textColor.withValues(alpha: 0.8), height: 1.3)
                               ),
                               const SizedBox(height: 5),
                               Text(
-                                "FIGHTCLUB.PREDATOR@GMAIL.COM", 
+                                "FIGHTCLUB_PREDATOR@GMAIL.COM", 
                                 style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: textColor)
+                              ),
+                              const SizedBox(height: 5),
+                              const Text(
+                                "MMA FIGHT CLUB V PREDATOR", 
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.red)
                               ),
                             ],
                           ),
@@ -191,13 +186,13 @@ class _WaiverScreenState extends State<WaiverScreen> {
                         
                         const SizedBox(width: 10),
 
-                        // COLUMNA DERECHA: LOGO
+                        // clm derecha logo
                         Expanded(
                           flex: 3, 
                           child: Image.asset(
-                            'assets/images/logo_predator.png',
+                            'assets/images/logo_predator.png', 
                             fit: BoxFit.contain,
-                            height: 80, // Control de altura para que no explote
+                            height: 80,
                             errorBuilder: (context, error, stackTrace) {
                               return const Icon(Icons.shield, size: 50, color: Colors.red);
                             },
@@ -209,7 +204,7 @@ class _WaiverScreenState extends State<WaiverScreen> {
 
                   const Divider(thickness: 2, height: 30),
 
-                  // --- TEXTO INTRODUCTORIO LITERAL  ---
+                  // texto introductorio
                   Text(
                     "CONSENTIMIENTO INFORMADO",
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textColor),
@@ -225,7 +220,7 @@ class _WaiverScreenState extends State<WaiverScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // --- CUESTIONARIO PAR-Q ---
+                  // cuestionario par-q
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -255,7 +250,7 @@ class _WaiverScreenState extends State<WaiverScreen> {
 
                   const SizedBox(height: 20),
 
-                  // --- DECLARACIÓN FINAL LITERAL  ---
+                  // declaración final
                   Text(
                     "DECLARACIÓN Y ACEPTACIÓN",
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textColor),
@@ -271,14 +266,14 @@ class _WaiverScreenState extends State<WaiverScreen> {
 
                   const SizedBox(height: 20),
 
-                  // --- PAD DE FIRMA ---
+                  // pad de firma
                   Text("FIRMA DEL USUARIO", style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
                   const SizedBox(height: 5),
                   Container(
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.grey),
                       borderRadius: BorderRadius.circular(10),
-                      color: Colors.white, // Fondo blanco para que la firma se vea bien
+                      color: Colors.white,
                     ),
                     child: Signature(
                       controller: _signatureController,
@@ -299,7 +294,7 @@ class _WaiverScreenState extends State<WaiverScreen> {
 
                   const SizedBox(height: 30),
 
-                  // --- BOTÓN FINAL ---
+                  // btn final
                   SizedBox(
                     height: 55,
                     child: ElevatedButton(
@@ -321,7 +316,6 @@ class _WaiverScreenState extends State<WaiverScreen> {
     );
   }
 
-  // Widget auxiliar para cada pregunta
   Widget _buildQuestionItem(int index, Color textColor) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -341,7 +335,7 @@ class _WaiverScreenState extends State<WaiverScreen> {
                   onChanged: (val) {
                     setState(() {
                       _answers[index] = val!;
-                      _specsControllers[index]?.clear(); // Limpiar si cambia a NO
+                      _specsControllers[index]?.clear(); 
                     });
                   },
                 ),
@@ -363,7 +357,7 @@ class _WaiverScreenState extends State<WaiverScreen> {
               ),
             ],
           ),
-          // Campo de especificaciones si marca SÍ 
+          // campo de especificaciones
           if (_answers[index] == true)
             Padding(
               padding: const EdgeInsets.only(left: 10),
