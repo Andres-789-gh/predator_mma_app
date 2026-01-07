@@ -4,28 +4,22 @@ import '../../domain/models/class_model.dart';
 class ClassMapper {
   
   static ClassModel fromMap(Map<String, dynamic> map, String docId) {
-    // saca los timestamps crudos
     final startTs = map['start_time'];
     final endTs = map['end_time'];
 
-    // clase sin hora = error bd
     if (startTs == null || endTs == null) {
       throw Exception('error critico: la clase $docId no tiene horarios definidos');
     }
 
-    // asegurar que sean timestamps reales
     if (startTs is! Timestamp || endTs is! Timestamp) {
       throw Exception('error critico: formato de fecha invalido en clase $docId');
     }
 
-    // manejo seguro de listas:
-    // si viene null o algo que no es lista, devuelve lista vacia para no romper la app
     final rawAttendees = map['attendees'];
     final safeAttendees = rawAttendees is List 
         ? rawAttendees.whereType<String>().toList() 
         : <String>[];
 
-    // manejo seguro de lista de espera
     final rawWaitlist = map['waitlist'];
     final safeWaitlist = rawWaitlist is List 
         ? rawWaitlist.whereType<String>().toList() 
@@ -35,15 +29,13 @@ class ClassMapper {
       classId: docId,
       startTime: startTs.toDate(),
       endTime: endTs.toDate(),
-      
+      classTypeId: map['class_type_id'] ?? '',
       classType: map['type'] ?? 'General',
       coachId: map['coach_id'] ?? '',
       coachName: map['coach_name'] ?? 'Instructor',
       maxCapacity: (map['max_capacity'] ?? 12).clamp(1, 100), 
-      
       attendees: safeAttendees,
       waitlist: safeWaitlist,
-      
       isCancelled: map['is_cancelled'] ?? false,
       recurrenceId: map['recurrence_id'],
     );
@@ -53,6 +45,7 @@ class ClassMapper {
     return {
       'start_time': Timestamp.fromDate(model.startTime),
       'end_time': Timestamp.fromDate(model.endTime),
+      'class_type_id': model.classTypeId,
       'type': model.classType,
       'coach_id': model.coachId,
       'coach_name': model.coachName,

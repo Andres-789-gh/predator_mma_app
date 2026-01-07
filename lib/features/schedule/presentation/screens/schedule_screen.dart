@@ -72,7 +72,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             child: BlocConsumer<ScheduleCubit, ScheduleState>(
               listener: (context, state) {
                 if (state is ScheduleOperationSuccess) {
-                  context.read<AuthCubit>().checkAuthStatus(); 
+                  context.read<AuthCubit>().checkAuthStatus(silent: true);
 
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(

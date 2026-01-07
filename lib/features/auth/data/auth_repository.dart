@@ -114,4 +114,20 @@ class AuthRepository {
         .get();
     return query.docs.isNotEmpty;
   }
+
+  Future<List<UserModel>> getInstructors() async {
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .where('is_instructor', isEqualTo: true)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => UserMapper.fromMap(doc.data(), doc.id))
+          .toList();
+    } catch (e) {
+      print('Error obteniendo instructores: $e');
+      return [];
+    }
+  }
 }

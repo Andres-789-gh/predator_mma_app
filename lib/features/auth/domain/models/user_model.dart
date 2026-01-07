@@ -11,6 +11,7 @@ class UserModel {
   final String address;
   final DateTime birthDate;
   final UserRole role;
+  final bool isInstructor;
   final bool isLegacyUser;
   final String? notificationToken;
   final bool isWaiverSigned;
@@ -30,6 +31,7 @@ class UserModel {
     required this.address,
     required this.birthDate,
     this.role = UserRole.client,
+    this.isInstructor = false,
     this.isLegacyUser = false,
     this.notificationToken,
     this.isWaiverSigned = false,
@@ -52,6 +54,7 @@ class UserModel {
     String? address,
     DateTime? birthDate,
     UserRole? role,
+    bool? isInstructor,
     bool? isLegacyUser,
     String? notificationToken,
     bool? isWaiverSigned,
@@ -71,6 +74,7 @@ class UserModel {
       address: address ?? this.address,
       birthDate: birthDate ?? this.birthDate,
       role: role ?? this.role,
+      isInstructor: isInstructor ?? this.isInstructor, // nuevo
       isLegacyUser: isLegacyUser ?? this.isLegacyUser,
       notificationToken: notificationToken ?? this.notificationToken,
       isWaiverSigned: isWaiverSigned ?? this.isWaiverSigned,

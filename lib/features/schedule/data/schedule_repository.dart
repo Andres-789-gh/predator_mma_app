@@ -8,6 +8,8 @@ import '../../auth/domain/models/user_model.dart';
 import '../domain/schedule_logic.dart'; 
 import '../domain/class_logic.dart'; 
 import '../../auth/domain/models/access_exception_model.dart';
+import '../domain/models/class_type_model.dart';
+import 'mappers/class_type_mapper.dart';
 
 class ScheduleRepository {
   final FirebaseFirestore _firestore;
@@ -244,12 +246,36 @@ class ScheduleRepository {
 
   // metodos admin
 
-  Future<void> createClass(ClassModel classModel) async {
+  Future<void> createClassType(ClassTypeModel classType) async {
+    try {
+      final docRef = _firestore.collection('class_types').doc();
+      await docRef.set(ClassTypeMapper.toMap(classType));
+    } catch (e) {
+      throw Exception('Error creando tipo de clase: $e');
+    }
+  }
+
+  Future<List<ClassTypeModel>> getClassTypes() async {
+    try {
+      final snapshot = await _firestore
+          .collection('class_types')
+          .where('active', isEqualTo: true)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => ClassTypeMapper.fromMap(doc.data(), doc.id))
+          .toList();
+    } catch (e) {
+      throw Exception('Error cargando tipos de clase: $e');
+    }
+  }
+
+  Future<void> createScheduleClass(ClassModel classModel) async {
     try {
       final docRef = _firestore.collection('classes').doc(); 
       await docRef.set(ClassMapper.toMap(classModel));
     } catch (e) {
-      throw Exception('Error creando clase: $e');
+      throw Exception('Error agendando clase: $e');
     }
   }
 

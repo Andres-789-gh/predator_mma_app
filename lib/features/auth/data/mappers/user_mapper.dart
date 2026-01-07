@@ -39,6 +39,7 @@ class UserMapper {
         orElse: () => UserRole.client,
       ),
       
+      isInstructor: map['is_instructor'] ?? false,
       isLegacyUser: map['is_legacy_user'] ?? false,
       notificationToken: map['notification_token'],
       isWaiverSigned: map['legal']?['is_signed'] ?? false,
@@ -59,6 +60,7 @@ class UserMapper {
     return {
       'email': user.email,
       'role': user.role.name,
+      'is_instructor': user.isInstructor,
       'is_legacy_user': user.isLegacyUser,
       'notification_token': user.notificationToken,
       

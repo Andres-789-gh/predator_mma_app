@@ -1,29 +1,22 @@
 class ClassModel {
-  final String classId; 
-  final DateTime startTime; 
-  final DateTime endTime; 
-  final String classType; 
-  
-  // info del profesor
+  final String classId;
+  final DateTime startTime;
+  final DateTime endTime;
+  final String classTypeId;
+  final String classType;
   final String coachId;
-  final String coachName; 
-  
-  final int maxCapacity; 
-  
-  // Listas blindadas
-  final List<String> attendees; 
-  final List<String> waitlist; 
-
+  final String coachName;
+  final int maxCapacity;
+  final List<String> attendees;
+  final List<String> waitlist;
   final bool isCancelled;
-
-  // identificador para edicion masiva:
-  // agrupa clases recurrentes (ej: todas las de viernes 7:30 pm)
   final String? recurrenceId;
 
   ClassModel({
     required this.classId,
     required this.startTime,
     required this.endTime,
+    required this.classTypeId,
     required this.classType,
     required this.coachId,
     required this.coachName,
@@ -33,11 +26,9 @@ class ClassModel {
     this.isCancelled = false,
     this.recurrenceId,
   }) : 
-    // convertir lists en inmutables
     attendees = List.unmodifiable(attendees),
     waitlist = List.unmodifiable(waitlist) {
     
-    // Validaciones
     if (endTime.isBefore(startTime)) {
       throw ArgumentError('Error: La clase termina antes de empezar.');
     }
@@ -47,10 +38,14 @@ class ClassModel {
     }
   }
 
+  bool get isFull => attendees.length >= maxCapacity;
+  int get availableSpots => maxCapacity - attendees.length;
+
   ClassModel copyWith({
     String? classId,
     DateTime? startTime,
     DateTime? endTime,
+    String? classTypeId,
     String? classType,
     String? coachId,
     String? coachName,
@@ -65,15 +60,13 @@ class ClassModel {
       classId: classId ?? this.classId,
       startTime: startTime ?? this.startTime,
       endTime: endTime ?? this.endTime,
+      classTypeId: classTypeId ?? this.classTypeId,
       classType: classType ?? this.classType,
       coachId: coachId ?? this.coachId,
       coachName: coachName ?? this.coachName,
       maxCapacity: maxCapacity ?? this.maxCapacity,
-      
-      // Si mandan nueva lista, la blinda. Si no, deja la vieja.
       attendees: attendees != null ? List<String>.from(attendees) : this.attendees,
       waitlist: waitlist != null ? List<String>.from(waitlist) : this.waitlist,
-      
       isCancelled: isCancelled ?? this.isCancelled,
       recurrenceId: clearRecurrenceId ? null : (recurrenceId ?? this.recurrenceId),
     );
