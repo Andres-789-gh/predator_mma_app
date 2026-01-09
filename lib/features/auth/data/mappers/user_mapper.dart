@@ -15,7 +15,7 @@ class UserMapper {
     if (birthDateTs is! Timestamp) {
       throw Exception('error critico: formato de fecha invalido para usuario $docId');
     }
-
+    
     final rawExceptions = map['access_exceptions'];
     final safeExceptions = rawExceptions is List
         ? rawExceptions
@@ -23,6 +23,11 @@ class UserMapper {
             .map((x) => AccessExceptionMapper.fromMap(x)) 
             .toList()
         : <AccessExceptionModel>[]; 
+    final roleString = (map['role'] ?? 'client').toString().trim().toLowerCase();
+    final safeRole = UserRole.values.firstWhere(
+      (e) => e.name.toLowerCase() == roleString,
+      orElse: () => UserRole.client,
+    );
 
     return UserModel(
       userId: docId,
@@ -33,25 +38,17 @@ class UserMapper {
       phoneNumber: map['personal_info']?['phone_number'] ?? 'Sin Teléfono',
       address: map['personal_info']?['address'] ?? 'Sin Dirección',
       birthDate: birthDateTs.toDate(),
-
-      role: UserRole.values.firstWhere(
-        (e) => e.name == (map['role'] ?? 'client'),
-        orElse: () => UserRole.client,
-      ),
-      
+      role: safeRole,
       isInstructor: map['is_instructor'] ?? false,
       isLegacyUser: map['is_legacy_user'] ?? false,
       notificationToken: map['notification_token'],
       isWaiverSigned: map['legal']?['is_signed'] ?? false,
       waiverSignedAt: (map['legal']?['signed_at'] as Timestamp?)?.toDate(),
       waiverSignatureUrl: map['legal']?['signature_url'],
-      
       activePlan: (map['active_plan'] is Map<String, dynamic>)
           ? _UserPlanMapper.fromMap(map['active_plan']) 
           : null,
-      
       emergencyContact: map['emergency_contact'] ?? '',
-
       accessExceptions: safeExceptions,
     );
   }
@@ -103,9 +100,7 @@ class _UserPlanMapper {
       ),
       startDate: (map['start_date'] as Timestamp).toDate(),
       endDate: (map['end_date'] as Timestamp).toDate(),
-      
       remainingClasses: map['remaining_classes'] as int?,
-      
       pauses: (map['pauses'] as List<dynamic>?)
           ?.map((x) => _PlanPauseMapper.fromMap(x))
           .toList() ?? [],

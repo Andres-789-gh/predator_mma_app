@@ -1,0 +1,57 @@
+import 'package:equatable/equatable.dart';
+import '../../../auth/domain/models/user_model.dart';
+import '../../../schedule/domain/models/class_type_model.dart';
+import '../../../schedule/domain/models/class_model.dart'; 
+
+abstract class AdminState extends Equatable {
+  const AdminState();
+
+  @override
+  List<Object?> get props => [];
+}
+
+class AdminInitial extends AdminState {}
+
+class AdminLoading extends AdminState {}
+
+class AdminLoadedData extends AdminState {
+  final List<UserModel> instructors;
+  final List<ClassTypeModel> classTypes;
+
+  const AdminLoadedData({
+    required this.instructors,
+    required this.classTypes,
+  });
+
+  @override
+  List<Object> get props => [instructors, classTypes];
+}
+
+class AdminOperationSuccess extends AdminState {
+  final String message;
+  const AdminOperationSuccess(this.message);
+
+  @override
+  List<Object> get props => [message];
+}
+
+class AdminError extends AdminState {
+  final String message;
+  const AdminError(this.message);
+
+  @override
+  List<Object> get props => [message];
+}
+
+class AdminConflictDetected extends AdminState {
+  final ClassModel newClass;       
+  final ClassModel conflictingClass; 
+
+  const AdminConflictDetected({
+    required this.newClass,
+    required this.conflictingClass,
+  });
+
+  @override
+  List<Object> get props => [newClass, conflictingClass];
+}

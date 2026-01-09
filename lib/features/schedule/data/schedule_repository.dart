@@ -10,6 +10,8 @@ import '../domain/class_logic.dart';
 import '../../auth/domain/models/access_exception_model.dart';
 import '../domain/models/class_type_model.dart';
 import 'mappers/class_type_mapper.dart';
+import '../domain/models/schedule_pattern_model.dart';
+import 'mappers/schedule_pattern_mapper.dart';
 
 class ScheduleRepository {
   final FirebaseFirestore _firestore;
@@ -400,6 +402,27 @@ class ScheduleRepository {
       if (existingBookings.docs.isNotEmpty) {
         throw Exception('Tu plan base ya usó su cupo diario.');
       }
+    }
+  }
+
+  // Guardar patron
+  Future<void> saveSchedulePattern(SchedulePatternModel pattern) async {
+    try {
+      await _firestore.collection('schedule_patterns').add(SchedulePatternMapper.toMap(pattern));
+    } catch (e) {
+      throw Exception('Error guardando el patrón de horario: $e');
+    }
+  }
+
+  // Leer patron
+  Future<List<SchedulePatternModel>> getSchedulePatterns() async {
+    try {
+      final snapshot = await _firestore.collection('schedule_patterns').where('active', isEqualTo: true).get();
+      return snapshot.docs
+          .map((doc) => SchedulePatternMapper.fromMap(doc.data(), doc.id))
+          .toList();
+    } catch (e) {
+      throw Exception("Error leyendo patrones: $e");
     }
   }
 }

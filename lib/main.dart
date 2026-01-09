@@ -6,8 +6,9 @@ import 'injection_container.dart' as di;
 import 'features/auth/presentation/cubit/auth_cubit.dart';
 import 'features/auth/presentation/cubit/auth_state.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
-import 'features/home/presentation/screens/home_screen.dart';
-import 'features/schedule/data/schedule_repository.dart'; 
+import 'features/schedule/data/schedule_repository.dart';
+import 'features/auth/data/auth_repository.dart';
+import 'core/widgets/role_dispatcher.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,8 +17,15 @@ void main() async {
   await initializeDateFormatting('es', null);
 
   runApp(
-    RepositoryProvider(
-      create: (context) => ScheduleRepository(),
+    MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider<AuthRepository>(
+          create: (context) => di.sl<AuthRepository>(),
+        ),
+        RepositoryProvider<ScheduleRepository>(
+          create: (context) => ScheduleRepository(),
+        ),
+      ],
       child: const MyApp(),
     ),
   );
@@ -35,7 +43,6 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         themeMode: ThemeMode.system, 
 
-        // tema claro
         theme: ThemeData(
           brightness: Brightness.light,
           scaffoldBackgroundColor: Colors.white,
@@ -47,7 +54,6 @@ class MyApp extends StatelessWidget {
           useMaterial3: true,
         ),
 
-        // tema oscuro
         darkTheme: ThemeData(
           brightness: Brightness.dark,
           scaffoldBackgroundColor: Colors.black,
@@ -59,19 +65,12 @@ class MyApp extends StatelessWidget {
           useMaterial3: true,
         ),
 
-        // Portero
         home: BlocBuilder<AuthCubit, AuthState>(
           builder: (context, state) {
             if (state is AuthAuthenticated) {
-              return const HomeScreen(); // Home
+              return RoleDispatcher(user: state.user);
             }
-            if (state is AuthUnauthenticated) {
-              return const LoginScreen(); // Login
-            }
-            // pantalla de espera
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator(color: Color(0xFFD32F2F))),
-            );
+            return const LoginScreen();
           },
         ),
       ),
