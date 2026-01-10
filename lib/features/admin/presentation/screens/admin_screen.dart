@@ -223,7 +223,18 @@ class _AdminViewState extends State<_AdminView> with SingleTickerProviderStateMi
                 flex: 2,
                 child: InkWell(
                   onTap: () async {
-                    final t = await showTimePicker(context: context, initialTime: const TimeOfDay(hour: 7, minute: 0));
+                    FocusManager.instance.primaryFocus?.unfocus();
+                    
+                    final t = await showTimePicker(
+                      context: context, 
+                      initialTime: const TimeOfDay(hour: 7, minute: 0)
+                    );
+                    await Future.delayed(const Duration(milliseconds: 100));
+                    
+                    if (context.mounted) {
+                      FocusManager.instance.primaryFocus?.unfocus();
+                    }
+
                     if (t != null) setState(() => _tempStartTime = t);
                   },
                   child: InputDecorator(
@@ -350,6 +361,8 @@ class _AdminViewState extends State<_AdminView> with SingleTickerProviderStateMi
   void _addTimeSlot() {
     if (_tempStartTime == null) return;
     
+    FocusScope.of(context).unfocus(); 
+
     final hrs = int.tryParse(_tempHoursCtrl.text) ?? 0;
     final mins = int.tryParse(_tempMinCtrl.text) ?? 0;
     
@@ -359,6 +372,13 @@ class _AdminViewState extends State<_AdminView> with SingleTickerProviderStateMi
 
     setState(() {
       _timeSlots.add(TimeSlot(_tempStartTime!, totalMinutes));
+      
+      _timeSlots.sort((a, b) {
+        final minA = a.time.hour * 60 + a.time.minute;
+        final minB = b.time.hour * 60 + b.time.minute;
+        return minA.compareTo(minB);
+      });
+
       _tempStartTime = null; 
     });
   }
