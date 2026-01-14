@@ -3,6 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import 'admin_screen.dart';
+import '../../../auth/data/auth_repository.dart';
+import '../../../schedule/data/schedule_repository.dart';
+import '../cubit/admin_cubit.dart';
 
 class AdminHomeScreen extends StatelessWidget {
   const AdminHomeScreen({super.key});
@@ -17,72 +20,86 @@ class AdminHomeScreen extends StatelessWidget {
     final user = authState.user;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Panel de Control"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: "Cerrar Sesión",
-            onPressed: () => _showLogoutDialog(context),
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Hola, ${user.firstName}",
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              "Administrador General",
-              style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[700]),
-            ),
-            const SizedBox(height: 30),
-            
-            Expanded(
-              child: GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 15,
-                mainAxisSpacing: 15,
-                children: [
-                  _AdminMenuCard(
-                    icon: Icons.calendar_month,
-                    title: "Gestionar\nHorarios",
-                    color: Colors.redAccent,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const AdminScreen()),
-                      );
-                    },
-                  ),
-                  _AdminMenuCard(
-                    icon: Icons.people,
-                    title: "Usuarios\n(Próx.)",
-                    color: Colors.grey,
-                    onTap: () {},
-                  ),
-                  _AdminMenuCard(
-                    icon: Icons.monetization_on,
-                    title: "Planes\n(Próx.)",
-                    color: Colors.grey,
-                    onTap: () {},
-                  ),
-                  _AdminMenuCard(
-                    icon: Icons.analytics,
-                    title: "Reportes\n(Próx.)",
-                    color: Colors.grey,
-                    onTap: () {},
-                  ),
-                ],
-              ),
+    return BlocProvider(
+      lazy: false,
+      create: (context) => AdminCubit(
+        authRepository: context.read<AuthRepository>(),
+        scheduleRepository: context.read<ScheduleRepository>(),
+      )..loadFormData(checkSchedule: true, silent: true),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text("Panel de Control"),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout),
+              tooltip: "Cerrar Sesión",
+              onPressed: () => _showLogoutDialog(context),
             ),
           ],
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Hola, ${user.firstName}",
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                "Administrador General",
+                style: TextStyle(
+                  color: isDark ? Colors.grey[400] : Colors.grey[700],
+                ),
+              ),
+              const SizedBox(height: 30),
+
+              Expanded(
+                child: GridView.count(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 15,
+                  mainAxisSpacing: 15,
+                  children: [
+                    _AdminMenuCard(
+                      icon: Icons.calendar_month,
+                      title: "Gestionar\nHorarios",
+                      color: Colors.redAccent,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const AdminScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _AdminMenuCard(
+                      icon: Icons.people,
+                      title: "Usuarios\n(Próx.)",
+                      color: Colors.grey,
+                      onTap: () {},
+                    ),
+                    _AdminMenuCard(
+                      icon: Icons.monetization_on,
+                      title: "Planes\n(Próx.)",
+                      color: Colors.grey,
+                      onTap: () {},
+                    ),
+                    _AdminMenuCard(
+                      icon: Icons.analytics,
+                      title: "Reportes\n(Próx.)",
+                      color: Colors.grey,
+                      onTap: () {},
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

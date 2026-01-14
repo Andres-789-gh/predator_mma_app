@@ -44,14 +44,16 @@ class AdminError extends AdminState {
 }
 
 class AdminConflictDetected extends AdminState {
-  final ClassModel newClass;       
-  final ClassModel conflictingClass; 
+  final ClassModel newClass;
+  final List<ClassModel> conflictingClasses;
+  final AdminLoadedData originalData; 
 
   const AdminConflictDetected({
-    required this.newClass,
-    required this.conflictingClass,
+    required this.newClass, 
+    required this.conflictingClasses,
+    required this.originalData,
   });
 
   @override
-  List<Object> get props => [newClass, conflictingClass];
+  List<Object> get props => [newClass, conflictingClasses, originalData];
 }

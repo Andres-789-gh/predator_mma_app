@@ -5,7 +5,6 @@ import '../../../auth/domain/models/user_model.dart';
 import '../../../schedule/data/schedule_repository.dart';
 import '../../../schedule/domain/models/class_model.dart';
 import '../../../schedule/domain/models/class_type_model.dart';
-import '../../../schedule/domain/schedule_logic.dart';
 import 'admin_state.dart';
 import '../../../schedule/domain/models/schedule_pattern_model.dart';
 
@@ -27,7 +26,7 @@ class AdminCubit extends Cubit<AdminState> {
         super(AdminInitial());
 
   // Carga inicial de datos
-  Future<void> loadFormData({bool silent = false}) async {
+  Future<void> loadFormData({bool silent = false, bool checkSchedule = false}) async {
     try {
       if (!silent) emit(AdminLoading());
 
@@ -46,7 +45,9 @@ class AdminCubit extends Cubit<AdminState> {
         classTypes: classTypesList,
       ));
 
-      _checkAndRefillSchedule();
+      if (checkSchedule) {
+        await _checkAndRefillSchedule();
+      }
 
     } catch (e) {
       if (isClosed) return;
@@ -54,7 +55,7 @@ class AdminCubit extends Cubit<AdminState> {
     }
   }
 
-  // admin guarda horario nuevo
+  // Admin guarda horario nuevo
   Future<void> projectSchedule({
     required ClassTypeModel classType,
     required UserModel coach,
@@ -62,8 +63,17 @@ class AdminCubit extends Cubit<AdminState> {
     required List<int> weekDays,
     required List<TimeSlot> timeSlots,
     required DateTime startDate,
+    bool force = false,
   }) async {
     try {
+      AdminLoadedData? currentData;
+      
+      if (state is AdminLoadedData) {
+        currentData = state as AdminLoadedData;
+      } else if (state is AdminConflictDetected) {
+        currentData = (state as AdminConflictDetected).originalData;
+      }
+
       emit(AdminLoading());
 
       final pattern = SchedulePatternModel(
@@ -78,18 +88,26 @@ class AdminCubit extends Cubit<AdminState> {
           'duration': t.durationMinutes
         }).toList(),
       );
-      await _scheduleRepository.saveSchedulePattern(pattern);
-
+      
       await _generateClassesFromPattern(
         pattern, 
         months: 3, 
-        throwOnConflict: true,
+        throwOnConflict: !force,
         overrideClassType: classType,
         overrideCoach: coach,
         startDateOverride: startDate,
+        forceReplace: force,
+        preservedData: currentData, 
       );
 
-      emit(const AdminOperationSuccess("Horario guardado y generado por 3 meses."));
+      if (state is AdminConflictDetected) {
+        return; 
+      }
+
+      await _scheduleRepository.saveSchedulePattern(pattern);
+      
+      emit(const AdminOperationSuccess("Horario guardado."));
+      
       await loadFormData(silent: true);
 
     } catch (e) {
@@ -105,27 +123,48 @@ class AdminCubit extends Cubit<AdminState> {
       final patternsSnapshot = await _scheduleRepository.getSchedulePatterns();
       if (patternsSnapshot.isEmpty) return;
 
-      // Revisa si hay clases el mes que viene
-      final nextMonth = DateTime.now().add(const Duration(days: 30));
-      final classesNextMonth = await _scheduleRepository.getClasses(
-        fromDate: nextMonth,
-        toDate: nextMonth.add(const Duration(days: 1)),
+      final now = DateTime.now();
+      final startOfToday = DateTime(now.year, now.month, now.day);
+      final thisWeekClasses = await _scheduleRepository.getClasses(
+        fromDate: startOfToday,
+        toDate: startOfToday.add(const Duration(days: 7)),
       );
 
-      // Si está vacío rellena
-      if (classesNextMonth.isEmpty) {
-        debugPrint("Generando horarios...");
-        for (var pattern in patternsSnapshot) {
-           await _generateClassesFromPattern(pattern, months: 3, throwOnConflict: false);
-        }
-        debugPrint("Horarios generados correctamente.");
-        await loadFormData(silent: true);
+      final nextMonthDate = startOfToday.add(const Duration(days: 30));
+      final nextMonthClasses = await _scheduleRepository.getClasses(
+        fromDate: nextMonthDate,
+        toDate: nextMonthDate.add(const Duration(days: 7)),
+      );
+
+      DateTime? targetStartDate;
+
+      if (thisWeekClasses.isEmpty) {
+        debugPrint("Semana actual vacía. Generando desde hoy...");
+        targetStartDate = startOfToday;
+      } else if (nextMonthClasses.isEmpty) {
+        debugPrint("Semana actual activa. Extendiendo horario a futuro...");
+        targetStartDate = nextMonthDate;
+      } else {
+        debugPrint("Calendario saludable. Robot en reposo.");
+        return;
       }
+
+      for (var pattern in patternsSnapshot) {
+         await _generateClassesFromPattern(
+           pattern, 
+           months: 3, 
+           startDateOverride: targetStartDate,
+           throwOnConflict: false
+         );
+      }
+      debugPrint("Mantenimiento completado.");
+      
     } catch (e) {
-      debugPrint("Error en generación de horarios: $e");
+      debugPrint("Error en mantenimiento: $e");
     }
   }
 
+  // Generación de clases
   Future<void> _generateClassesFromPattern(
     SchedulePatternModel pattern, {
     required int months,
@@ -133,33 +172,64 @@ class AdminCubit extends Cubit<AdminState> {
     ClassTypeModel? overrideClassType,
     UserModel? overrideCoach,
     DateTime? startDateOverride,
+    bool forceReplace = false,
+    AdminLoadedData? preservedData, 
   }) async {
     
+    for (int i = 0; i < pattern.timeSlots.length; i++) {
+      for (int j = i + 1; j < pattern.timeSlots.length; j++) {
+        final slotA = pattern.timeSlots[i];
+        final slotB = pattern.timeSlots[j];
+        final startA = (slotA['hour'] as int) * 60 + (slotA['minute'] as int);
+        final endA = startA + (slotA['duration'] as int);
+        final startB = (slotB['hour'] as int) * 60 + (slotB['minute'] as int);
+        final endB = startB + (slotB['duration'] as int);
+
+        if (startA < endB && endA > startB) {
+           throw Exception("Error: Horarios superpuestos en la lista.");
+        }
+      }
+    }
+
     ClassTypeModel? type = overrideClassType;
     UserModel? coach = overrideCoach;
 
-    if (state is AdminLoadedData) {
+    if (preservedData != null) {
+      if (type == null) {
+        try { 
+          type = preservedData.classTypes.firstWhere((t) => t.id == pattern.classTypeId); 
+        } catch (e) {
+          debugPrint("admin_cubit: no se encontró tipo de clase en preservedData: $e");
+        }
+      }
+      if (coach == null) {
+        try { 
+          coach = preservedData.instructors.firstWhere((u) => u.userId == pattern.coachId); 
+        } catch (e) {
+          debugPrint("admin_cubit: no se encontró coach en preservedData: $e");
+        }
+      }
+    } else if (state is AdminLoadedData) {
       final loadedData = state as AdminLoadedData;
       
       if (type == null) {
-        try {
-          type = loadedData.classTypes.firstWhere((t) => t.id == pattern.classTypeId);
-        } catch (_) {
+        try { 
+          type = loadedData.classTypes.firstWhere((t) => t.id == pattern.classTypeId); 
+        } catch (e) {
+          debugPrint("admin_cubit: no se encontro tipo clase en loadeddata: $e");
         }
       }
 
       if (coach == null) {
-        try {
-           coach = loadedData.instructors.firstWhere((u) => u.userId == pattern.coachId);
-        } catch (_) {
+        try { 
+          coach = loadedData.instructors.firstWhere((u) => u.userId == pattern.coachId); 
+        } catch (e) {
+          debugPrint("admin_cubit: no se encontro coach en loadeddata: $e");
         }
       }
     }
 
-    if (type == null || coach == null) {
-      debugPrint("Saltando patrón corrupto o incompleto ID: ${pattern.id}");
-      return;
-    }
+    if (type == null || coach == null) return;
 
     final startDate = startDateOverride ?? DateTime.now();
     final endDate = DateTime(startDate.year, startDate.month + months, startDate.day);
@@ -170,11 +240,12 @@ class AdminCubit extends Cubit<AdminState> {
     );
 
     final List<ClassModel> classesToCreate = [];
+    final List<ClassModel> allDbConflicts = []; 
+    
     DateTime current = startDate;
 
     while (current.isBefore(endDate)) {
       if (pattern.weekDays.contains(current.weekday)) {
-        
         for (var slotMap in pattern.timeSlots) {
           final hour = slotMap['hour'] as int;
           final minute = slotMap['minute'] as int;
@@ -197,29 +268,63 @@ class AdminCubit extends Cubit<AdminState> {
             isCancelled: false,
           );
 
-          // Chequeo de conflictos
-          var conflict = ScheduleLogic.findConflict(newClass, existingClasses);
-          conflict ??= ScheduleLogic.findConflict(newClass, classesToCreate);
-
-          if (conflict != null) {
-            if (throwOnConflict) {
-              emit(AdminConflictDetected(
-                newClass: newClass,
-                conflictingClass: conflict,
-              ));
-              throw Exception("Conflicto detectado"); 
-            } else {
-              continue; 
-            }
+          if (forceReplace) {
+            classesToCreate.add(newClass);
+            continue;
           }
+
+          final dbConflicts = existingClasses.where((e) => 
+              newClass.startTime.isBefore(e.endTime) && 
+              newClass.endTime.isAfter(e.startTime)
+          ).toList();
+          
+          if (dbConflicts.isNotEmpty) {
+            if (throwOnConflict) {
+              allDbConflicts.addAll(dbConflicts);
+            } 
+            continue; 
+          }
+          
           classesToCreate.add(newClass);
         }
       }
       current = current.add(const Duration(days: 1));
     }
 
+    if (allDbConflicts.isNotEmpty && throwOnConflict) {
+       final refClass = classesToCreate.isNotEmpty ? classesToCreate.first : 
+          ClassModel(
+            classId: '', 
+            classTypeId: type.id, 
+            classType: type.name, 
+            coachId: coach.userId, 
+            coachName: '', 
+            startTime: DateTime.now(), 
+            endTime: DateTime.now().add(const Duration(hours: 1)),
+            maxCapacity: pattern.capacity,
+            attendees: [], 
+            waitlist: [], 
+            isCancelled: false
+          );
+
+       final finalData = preservedData ?? (state is AdminLoadedData ? state as AdminLoadedData : 
+          const AdminLoadedData(instructors: [], classTypes: []));
+
+       emit(AdminConflictDetected(
+          newClass: refClass,
+          conflictingClasses: allDbConflicts, 
+          originalData: finalData, 
+       ));
+       return; 
+    }
+
+    // Guardado en BD
     for (var cls in classesToCreate) {
-      await _scheduleRepository.createScheduleClass(cls);
+      if (forceReplace) {
+        await _scheduleRepository.forceReplaceSchedule(cls);
+      } else {
+        await _scheduleRepository.createScheduleClass(cls);
+      }
     }
   }
 
@@ -229,7 +334,7 @@ class AdminCubit extends Cubit<AdminState> {
       emit(AdminLoading());
       final newType = ClassTypeModel(id: '', name: name, description: description, active: true);
       await _scheduleRepository.createClassType(newType);
-      emit(const AdminOperationSuccess("Disciplina creada exitosamente"));
+      emit(const AdminOperationSuccess("Clase creada exitosamente"));
       await loadFormData(silent: true); 
     } catch (e) {
       emit(AdminError(e.toString().replaceAll('Exception: ', '')));
@@ -237,7 +342,7 @@ class AdminCubit extends Cubit<AdminState> {
     }
   }
 
-  // Reemplazar Clase
+  // Reemplazar Clase (individual)
   Future<void> replaceConflictingClass(String oldClassId, ClassModel newClass) async {
     try {
       emit(AdminLoading());

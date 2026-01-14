@@ -425,4 +425,34 @@ class ScheduleRepository {
       throw Exception("Error leyendo patrones: $e");
     }
   }
+
+  Future<void> forceReplaceSchedule(ClassModel newClass) async {
+    try {
+      final batch = _firestore.batch();
+      
+      final startOfDay = DateTime(newClass.startTime.year, newClass.startTime.month, newClass.startTime.day);
+      final endOfDay = startOfDay.add(const Duration(days: 1));
+
+      final snapshot = await _firestore.collection('classes')
+          .where('start_time', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+          .where('start_time', isLessThan: Timestamp.fromDate(endOfDay))
+          .get();
+
+      final candidates = snapshot.docs.map((d) => ClassMapper.fromMap(d.data(), d.id)).toList();
+
+      for (var existing in candidates) {
+         if (newClass.startTime.isBefore(existing.endTime) && 
+             newClass.endTime.isAfter(existing.startTime)) {
+            batch.delete(_firestore.collection('classes').doc(existing.classId));
+         }
+      }
+
+      final newRef = _firestore.collection('classes').doc();
+      batch.set(newRef, ClassMapper.toMap(newClass));
+
+      await batch.commit();
+    } catch (e) {
+      throw Exception('Error en reemplazo forzado: $e');
+    }
+  }
 }

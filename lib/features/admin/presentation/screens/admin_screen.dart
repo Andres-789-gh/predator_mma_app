@@ -116,6 +116,20 @@ class _AdminViewState extends State<_AdminView> with SingleTickerProviderStateMi
               ),
             );
           }
+
+          if (state is AdminConflictDetected) {
+            return GestureDetector(
+              onTap: () => FocusScope.of(context).unfocus(), 
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildScheduleTab(context, state.originalData),
+                  _buildCreateTypeTab(context),
+                ],
+              ),
+            );
+          }
+          
           return const Center(child: Text("Cargando..."));
         },
       ),
@@ -172,8 +186,8 @@ class _AdminViewState extends State<_AdminView> with SingleTickerProviderStateMi
             spacing: 10,
             children: [
               _buildDayChip("L", 1),
-              _buildDayChip("M", 2),
-              _buildDayChip("M", 3),
+              _buildDayChip("Ma", 2),
+              _buildDayChip("Mi", 3),
               _buildDayChip("J", 4),
               _buildDayChip("V", 5),
               _buildDayChip("S", 6),
@@ -410,7 +424,10 @@ class _AdminViewState extends State<_AdminView> with SingleTickerProviderStateMi
     );
   }
 
-  void _submit(AdminLoadedData state) {
+  void _submit(AdminLoadedData state, {bool force = false}) {
+
+    // Si ya esta cargando ignora el click
+    if (context.read<AdminCubit>().state is AdminLoading) return;
     if (_selectedClassTypeId == null || _selectedInstructorId == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Falta Clase o Profesor")));
       return;
@@ -436,19 +453,31 @@ class _AdminViewState extends State<_AdminView> with SingleTickerProviderStateMi
     context.read<AdminCubit>().projectSchedule(
       classType: selectedType,
       coach: selectedInstructor,
-      capacity: capacity, 
+      capacity: int.parse(_capacityController.text), 
       weekDays: _selectedWeekDays,
       timeSlots: _timeSlots,
       startDate: DateTime.now(),
+      force: force,
     );
   }
 
   // Dialogo de conflicto
   void _showConflictDialog(BuildContext context, AdminConflictDetected state) {
-    final timeFormat = DateFormat('h:mm a');
-    final oldStart = timeFormat.format(state.conflictingClass.startTime);
-    final oldEnd = timeFormat.format(state.conflictingClass.endTime);
     
+    final Map<String, dynamic> uniqueConflicts = {};
+    
+    for (var conflict in state.conflictingClasses) {
+      final dayName = DateFormat('EEEE', 'es').format(conflict.startTime);
+      final timeKey = "${conflict.startTime.hour}:${conflict.startTime.minute}";
+      final key = "$dayName-$timeKey-${conflict.classType}";
+
+      if (!uniqueConflicts.containsKey(key)) {
+        uniqueConflicts[key] = conflict;
+      }
+    }
+
+    final displayList = uniqueConflicts.values.toList();
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -459,41 +488,57 @@ class _AdminViewState extends State<_AdminView> with SingleTickerProviderStateMi
             Text("Choque de Horario"),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("Ya existe una clase en este horario:"),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("Clase: ${state.conflictingClass.classType}", style: const TextStyle(fontWeight: FontWeight.bold)),
-                  Text("Profe: ${state.conflictingClass.coachName}"),
-                  Text("Hora: $oldStart - $oldEnd"),
-                ],
-              ),
-            ),
-            const SizedBox(height: 15),
-            const Text("¿Deseas eliminar la clase antigua y reemplazarla con la nueva?"),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Se detectaron conflictos con las siguientes clases ya programadas:"),
+              const SizedBox(height: 15),
+
+              ...displayList.map((conflict) {
+                
+                String dayName = DateFormat('EEEE', 'es').format(conflict.startTime);
+                dayName = dayName[0].toUpperCase() + dayName.substring(1);
+
+                final start = DateFormat('h:mm a').format(conflict.startTime);
+                final end = DateFormat('h:mm a').format(conflict.endTime);
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border(left: BorderSide(color: Colors.red, width: 4)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(conflict.classType, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+                      Text(dayName, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
+                      Text("Profe: ${conflict.coachName}", style: const TextStyle(fontSize: 13)), // Agregué estilo opcional
+                      Text("Hora: $start - $end", style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                );
+              }).toList(),
+
+              const SizedBox(height: 15),
+              const Text("¿Deseas eliminar las clases conflictivas y reemplazarlas por el nuevo horario?"),
+            ],
+          ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx), 
-            child: const Text("No, cancelar"),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("No, Cancelar"),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
-              Navigator.pop(ctx); 
-              context.read<AdminCubit>().replaceConflictingClass(
-                state.conflictingClass.classId, 
-                state.newClass
-              );
+              Navigator.pop(ctx);
+              _submit(state.originalData, force: true);
             },
             child: const Text("Sí, Reemplazar"),
           ),
