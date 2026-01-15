@@ -39,6 +39,7 @@ class AdminCubit extends Cubit<AdminState> {
 
       final instructorsList = results[0] as List<UserModel>;
       final classTypesList = results[1] as List<ClassTypeModel>;
+      classTypesList.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
       emit(AdminLoadedData(
         instructors: instructorsList,

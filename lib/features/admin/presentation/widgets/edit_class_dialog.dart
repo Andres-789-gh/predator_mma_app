@@ -88,6 +88,9 @@ class _EditClassDialogState extends State<EditClassDialog> {
     final endDt = startDt.add(Duration(minutes: durationMin));
     final timeStr = "${DateFormat('h:mm a').format(startDt)} - ${DateFormat('h:mm a').format(endDt)}";
 
+    // Detector de clases pasadas
+    final isHistory = widget.classModel.endTime.isBefore(DateTime.now());
+
     return AlertDialog(
       scrollable: true,
       title: Column(
@@ -100,20 +103,33 @@ class _EditClassDialogState extends State<EditClassDialog> {
             decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(4)),
             child: Text(timeStr, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
           ),
+          // Etiqueta visual de clase pasada
+          if (isHistory)
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(4)),
+              child: const Text("HISTORIAL - SOLO LECTURA", style: TextStyle(fontSize: 10, color: Colors.amber, fontWeight: FontWeight.bold)),
+            )
         ],
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Selector de clase
+          // Selector de clase (Deshabilitado si es pasada)
           if (classTypes.isNotEmpty)
             DropdownButtonFormField<String>(
               value: _selectedTypeId,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: "Clase", border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12)),
+              decoration: InputDecoration(
+                labelText: "Clase", 
+                border: const OutlineInputBorder(), 
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                enabled: !isHistory
+              ),
               items: classTypes.map((t) => DropdownMenuItem(value: t.id, child: Text(t.name))).toList(),
-              onChanged: (v) => setState(() => _selectedTypeId = v),
+              onChanged: isHistory ? null : (v) => setState(() => _selectedTypeId = v),
               hint: const Text("Seleccionar clase"),
             ),
           const SizedBox(height: 15),
@@ -124,10 +140,21 @@ class _EditClassDialogState extends State<EditClassDialog> {
               Expanded(
                 flex: 3,
                 child: InkWell(
-                  onTap: _pickTime,
+                  onTap: isHistory ? null : _pickTime,
                   child: InputDecorator(
-                    decoration: const InputDecoration(labelText: "Inicio", border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12)),
-                    child: Text(_startTime.format(context), style: const TextStyle(fontSize: 15)),
+                    decoration: InputDecoration(
+                      labelText: "Inicio", 
+                      border: const OutlineInputBorder(), 
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                      enabled: !isHistory
+                    ),
+                    child: Text(
+                      _startTime.format(context), 
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: isHistory ? Colors.grey : null 
+                      )
+                    ),
                   ),
                 ),
               ),
@@ -138,8 +165,9 @@ class _EditClassDialogState extends State<EditClassDialog> {
                   controller: _hoursController,
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
-                  decoration: const InputDecoration(labelText: "Hrs", border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 5, vertical: 12)),
+                  decoration: InputDecoration(labelText: "Hrs", border: const OutlineInputBorder(), contentPadding: const EdgeInsets.symmetric(horizontal: 5, vertical: 12), enabled: !isHistory),
                   onChanged: (_) => setState((){}),
+                  enabled: !isHistory,
                 ),
               ),
               const SizedBox(width: 5),
@@ -149,8 +177,9 @@ class _EditClassDialogState extends State<EditClassDialog> {
                   controller: _minutesController,
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
-                  decoration: const InputDecoration(labelText: "Min", border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 5, vertical: 12)),
+                  decoration: InputDecoration(labelText: "Min", border: const OutlineInputBorder(), contentPadding: const EdgeInsets.symmetric(horizontal: 5, vertical: 12), enabled: !isHistory),
                   onChanged: (_) => setState((){}),
+                  enabled: !isHistory,
                 ),
               ),
             ],
@@ -165,9 +194,9 @@ class _EditClassDialogState extends State<EditClassDialog> {
                 child: DropdownButtonFormField<UserModel>(
                   value: _selectedCoach,
                   isExpanded: true,
-                  decoration: const InputDecoration(labelText: "Profesor", border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12)),
+                  decoration: InputDecoration(labelText: "Profesor", border: const OutlineInputBorder(), contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12), enabled: !isHistory),
                   items: widget.instructors.map((u) => DropdownMenuItem(value: u, child: Text("${u.firstName} ${u.lastName}", overflow: TextOverflow.ellipsis))).toList(),
-                  onChanged: (val) {
+                  onChanged: isHistory ? null : (val) {
                     if (val != null) setState(() => _selectedCoach = val);
                   },
                 ),
@@ -178,7 +207,8 @@ class _EditClassDialogState extends State<EditClassDialog> {
                 child: TextField(
                   controller: _capacityController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: "Cupo", border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12)),
+                  decoration: InputDecoration(labelText: "Cupo", border: const OutlineInputBorder(), contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12), enabled: !isHistory),
+                  enabled: !isHistory,
                 ),
               ),
             ],
@@ -186,35 +216,48 @@ class _EditClassDialogState extends State<EditClassDialog> {
           
           const SizedBox(height: 25),
           const Divider(),
-          const Padding(
-            padding: EdgeInsets.only(bottom: 10),
-            child: Text("Alcance de la acción:", style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-
-          // Selector de Alcance
-          Row(
-            children: [
-              _buildScopeOption(ClassEditMode.single, "Solo esta", Icons.event),
-              const SizedBox(width: 8),
-              _buildScopeOption(ClassEditMode.similar, "Similares", Icons.copy), 
-              const SizedBox(width: 8),
-              _buildScopeOption(ClassEditMode.allType, "Todas", Icons.all_inclusive, isWarning: true),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-          const Divider(),
-          Center(
-            child: TextButton.icon(
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.red,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10)
-              ),
-              onPressed: _confirmDelete,
-              icon: const Icon(Icons.delete_outline),
-              label: const Text("Eliminar Clase"),
+          
+          if (!isHistory) ...[
+            const Padding(
+              padding: EdgeInsets.only(bottom: 10),
+              child: Text("Alcance de la acción:", style: TextStyle(fontWeight: FontWeight.bold)),
             ),
-          ),
+            Row(
+              children: [
+                _buildScopeOption(ClassEditMode.single, "Solo esta", Icons.event),
+                const SizedBox(width: 8),
+                _buildScopeOption(ClassEditMode.similar, "Similares", Icons.copy), 
+                const SizedBox(width: 8),
+                _buildScopeOption(ClassEditMode.allType, "Todas", Icons.all_inclusive, isWarning: true),
+              ],
+            ),
+            const SizedBox(height: 20),
+            const Divider(),
+          ],
+
+          // Btn eliminar / mensaje pasada
+          if (!isHistory)
+            Center(
+              child: TextButton.icon(
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10)
+                ),
+                onPressed: _confirmDelete,
+                icon: const Icon(Icons.delete_outline),
+                label: const Text("Eliminar Clase"),
+              ),
+            )
+          else
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.only(top: 10, bottom: 8),
+                child: Text(
+                  "Clase finalizada (No editable)",
+                  style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
+                ),
+              ),
+            ),
         ],
       ),
       actions: [
@@ -223,12 +266,13 @@ class _EditClassDialogState extends State<EditClassDialog> {
           children: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Cancelar"),
+              child: Text(isHistory ? "Volver" : "Cancelar"),
             ),
-            FilledButton(
-              onPressed: _submitEdit,
-              child: const Text("Guardar"),
-            ),
+            if (!isHistory)
+              FilledButton(
+                onPressed: _submitEdit,
+                child: const Text("Guardar"),
+              ),
           ],
         )
       ],
@@ -280,6 +324,8 @@ class _EditClassDialogState extends State<EditClassDialog> {
   }
 
   void _confirmDelete() {
+    FocusManager.instance.primaryFocus?.unfocus();
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -290,23 +336,30 @@ class _EditClassDialogState extends State<EditClassDialog> {
              Text("¿Eliminar Clase?"),
           ],
         ),
-        content: RichText(
-          text: TextSpan(
-            style: DefaultTextStyle.of(context).style.copyWith(fontSize: 16),
+        content: Text.rich(
+          TextSpan(
+            style: const TextStyle(fontSize: 16),
             children: [
               const TextSpan(text: "Estás a punto de eliminar "),
+              
               if (_selectedMode != ClassEditMode.single)
-                 const TextSpan(text: "MÚLTIPLES", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+                 const TextSpan(
+                   text: "MÚLTIPLES", 
+                   style: TextStyle(fontWeight: FontWeight.bold)
+                 ),
+                 
               if (_selectedMode != ClassEditMode.single)
-                 const TextSpan(text: " clases según tu selección.\n\n"),
+                 const TextSpan(text: " sesiones según tu selección.\n\n"),
+                 
               if (_selectedMode == ClassEditMode.single)
-                 const TextSpan(text: "solo esta clase.\n\n"),
+                 const TextSpan(text: "solo esta sesión.\n\n"),
+                 
               const TextSpan(text: "Esta acción no se puede deshacer."),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar")),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Volver")),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
@@ -325,6 +378,8 @@ class _EditClassDialogState extends State<EditClassDialog> {
   }
 
   void _submitEdit() {
+    FocusManager.instance.primaryFocus?.unfocus();
+
     final cap = int.tryParse(_capacityController.text);
     if (cap == null || cap <= 0) return;
 
@@ -341,7 +396,7 @@ class _EditClassDialogState extends State<EditClassDialog> {
             final type = state.classTypes.firstWhere((t) => t.id == _selectedTypeId);
             typeName = type.name;
           } catch (_) {}
-       } else if (state is dynamic) {
+       } else if (state is! AdminLoading && state is! AdminInitial) {
           try {
             final list = (state as dynamic).classTypes as List<ClassTypeModel>;
             final type = list.firstWhere((t) => t.id == _selectedTypeId);
@@ -364,6 +419,7 @@ class _EditClassDialogState extends State<EditClassDialog> {
       endTime: newEnd,
     );
 
+    // Edición masiva
     if (_selectedMode != ClassEditMode.single) {
       showDialog(
         context: context,
@@ -375,18 +431,18 @@ class _EditClassDialogState extends State<EditClassDialog> {
                Text("Cambio Masivo"),
             ],
           ),
-          content: RichText(
-            text: TextSpan(
-              style: DefaultTextStyle.of(context).style.copyWith(fontSize: 16),
-              children: const [
+          content: const Text.rich(
+            TextSpan(
+              style: TextStyle(fontSize: 16),
+              children: [
                 TextSpan(text: "Estás a punto de modificar "),
-                TextSpan(text: "MÚLTIPLES", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+                TextSpan(text: "MÚLTIPLES", style: TextStyle(fontWeight: FontWeight.bold)),
                 TextSpan(text: " clases.\n\n¿Confirmar cambios?"),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Revisar")),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Volver")),
             FilledButton(
               onPressed: () {
                 Navigator.pop(ctx); 
@@ -402,12 +458,33 @@ class _EditClassDialogState extends State<EditClassDialog> {
           ],
         ),
       );
-    } else {
-      Navigator.pop(context);
-      context.read<AdminCubit>().editClass(
-        originalClass: widget.classModel,
-        updatedClass: updated,
-        mode: _selectedMode,
+    } 
+    // 2. Caso Solo Esta (Limpio y sin negritas forzadas)
+    else {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text("Confirmar Edición", style: TextStyle(fontWeight: FontWeight.bold)),
+          content: const Text(
+            "Se modificarán los datos de esta única sesión.\n\n¿Deseas guardar?",
+            style: TextStyle(fontSize: 16),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Volver")),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.pop(context);
+                context.read<AdminCubit>().editClass(
+                  originalClass: widget.classModel,
+                  updatedClass: updated,
+                  mode: _selectedMode,
+                );
+              }, 
+              child: const Text("Guardar"),
+            ),
+          ],
+        ),
       );
     }
   }

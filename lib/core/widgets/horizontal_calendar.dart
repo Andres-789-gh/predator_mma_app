@@ -4,11 +4,13 @@ import 'package:intl/intl.dart';
 class HorizontalCalendar extends StatelessWidget {
   final DateTime selectedDate;
   final Function(DateTime) onDateSelected;
+  final int daysCount;
 
   const HorizontalCalendar({
     super.key,
     required this.selectedDate,
     required this.onDateSelected,
+    this.daysCount = 8,
   });
 
   @override
@@ -42,7 +44,7 @@ class HorizontalCalendar extends StatelessWidget {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
-            itemCount: 8, 
+            itemCount: daysCount,
             itemBuilder: (context, index) {
               final date = DateTime.now().add(Duration(days: index));
               
@@ -59,7 +61,7 @@ class HorizontalCalendar extends StatelessWidget {
                   width: 60,
                   margin: EdgeInsets.only(
                     left: index == 0 ? 20 : 5,
-                    right: index == 13 ? 20 : 5,
+                    right: index == daysCount - 1 ? 20 : 5, 
                     top: 5, bottom: 5
                   ),
                   decoration: BoxDecoration(
@@ -88,8 +90,8 @@ class HorizontalCalendar extends StatelessWidget {
                         ),
                       ),
                       if (index == 0 && !isSelected) ...[
-                         const SizedBox(height: 4),
-                         CircleAvatar(radius: 2, backgroundColor: selectedColor),
+                          const SizedBox(height: 4),
+                          CircleAvatar(radius: 2, backgroundColor: selectedColor),
                       ]
                     ],
                   ),

@@ -155,7 +155,7 @@ class _AdminTypesTabState extends State<AdminTypesTab> {
   }
 
   void _confirmDeleteType(BuildContext context, String id) {
-    FocusScope.of(context).unfocus();
+    FocusScope.of(context).requestFocus(FocusNode());
 
     showDialog(
       context: context,
@@ -178,7 +178,7 @@ class _AdminTypesTabState extends State<AdminTypesTab> {
   }
 
   void _showEditTypeDialog(BuildContext context, dynamic type) {
-    FocusScope.of(context).unfocus();
+    FocusScope.of(context).requestFocus(FocusNode());
 
     final nameCtrl = TextEditingController(text: type.name);
     final descCtrl = TextEditingController(text: type.description);
@@ -194,25 +194,20 @@ class _AdminTypesTabState extends State<AdminTypesTab> {
             // Nombre
             TextField(
               controller: nameCtrl,
-              decoration: InputDecoration(
-                labelText: "Nombre",
-                filled: true,
-                fillColor: Colors.grey[100],
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              decoration: const InputDecoration(
+                labelText: "Nombre:",
+                labelStyle: TextStyle(fontSize: 16),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 5),
+            
             // Descripción
             TextField(
               controller: descCtrl,
               maxLines: 2,
-              decoration: InputDecoration(
-                labelText: "Descripción",
-                filled: true,
-                fillColor: Colors.grey[100],
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              decoration: const InputDecoration(
+                labelText: "Descripción:",
+                labelStyle: TextStyle(fontSize: 16),
               ),
             ),
           ],

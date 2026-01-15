@@ -59,6 +59,7 @@ class _AdminCalendarTabState extends State<AdminCalendarTab> {
         children: [
           HorizontalCalendar(
             selectedDate: _selectedDate,
+            daysCount: 15,
             onDateSelected: (date) {
               setState(() => _selectedDate = date);
               _fetchClassesForDate(date);
