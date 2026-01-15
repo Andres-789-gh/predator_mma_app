@@ -245,7 +245,7 @@ class _AdminGeneratorTabState extends State<AdminGeneratorTab> {
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  child: const Text("GUARDAR PATRÓN", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  child: const Text("GUARDAR HORARIO", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
               const SizedBox(height: 50),

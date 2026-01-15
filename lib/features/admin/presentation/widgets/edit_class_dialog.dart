@@ -111,7 +111,7 @@ class _EditClassDialogState extends State<EditClassDialog> {
             DropdownButtonFormField<String>(
               value: _selectedTypeId,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: "Tipo de Clase", border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12)),
+              decoration: const InputDecoration(labelText: "Clase", border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12)),
               items: classTypes.map((t) => DropdownMenuItem(value: t.id, child: Text(t.name))).toList(),
               onChanged: (v) => setState(() => _selectedTypeId = v),
               hint: const Text("Seleccionar clase"),
