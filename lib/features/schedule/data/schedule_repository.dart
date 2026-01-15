@@ -16,6 +16,8 @@ import 'mappers/schedule_pattern_mapper.dart';
 class ScheduleRepository {
   final FirebaseFirestore _firestore;
 
+  static const int cutOffTimeMinutes = 690;
+
   ScheduleRepository({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
@@ -304,7 +306,7 @@ class ScheduleRepository {
 
     if (type == PlanType.wild) {
       final minutes = classModel.startTime.hour * 60 + classModel.startTime.minute;
-      if (minutes > 690) return false; 
+      if (minutes > ScheduleRepository.cutOffTimeMinutes) return false; 
     }
     if (type == PlanType.kids) {
       final className = classModel.classType.toLowerCase();
@@ -320,7 +322,7 @@ class ScheduleRepository {
     // Si es Wild, devuelve si la clase cancelada era de mañana
     if (type == PlanType.wild) {
       final minutes = classModel.startTime.hour * 60 + classModel.startTime.minute;
-      if (minutes > 690) return false; 
+      if (minutes > ScheduleRepository.cutOffTimeMinutes) return false; 
     }
     // Si es Kids, devuelve si la clase cancelada era de niños
     if (type == PlanType.kids) {
@@ -348,7 +350,7 @@ class ScheduleRepository {
     
     if (planType == PlanType.wild) {
       final minutes = classModel.startTime.hour * 60 + classModel.startTime.minute;
-      if (minutes > 690) return false;
+      if (minutes > ScheduleRepository.cutOffTimeMinutes) return false;
     }
     if (planType == PlanType.weekends) {
       final day = classModel.startTime.weekday;
@@ -374,7 +376,7 @@ class ScheduleRepository {
     // Validaciones de reglas
     if (planType == PlanType.wild) {
       final minutes = classModel.startTime.hour * 60 + classModel.startTime.minute;
-      if (minutes > 690) throw Exception('Tu Plan WILD no permite clases en este horario.');
+      if (minutes > ScheduleRepository.cutOffTimeMinutes) throw Exception('Tu Plan WILD no permite clases en este horario.');
     }
     if (planType == PlanType.weekends) {
       final day = classModel.startTime.weekday;
@@ -453,6 +455,86 @@ class ScheduleRepository {
       await batch.commit();
     } catch (e) {
       throw Exception('Error en reemplazo forzado: $e');
+    }
+  }
+
+  // EDICIÓN de clases:
+  
+  // actualiza una clase especifica
+  Future<void> updateClass(ClassModel classModel) async {
+    try {
+      await _firestore.collection('classes').doc(classModel.classId).update(ClassMapper.toMap(classModel));
+    } catch (e) {
+      throw Exception('error actualizando clase: $e');
+    }
+  }
+
+  // actualiza lote de clases por lista de ids
+  Future<void> updateBatchClasses(List<String> classIds, Map<String, dynamic> updates) async {
+    try {
+      for (var i = 0; i < classIds.length; i += 500) {
+        final batch = _firestore.batch();
+        final end = (i + 500 < classIds.length) ? i + 500 : classIds.length;
+        final chunk = classIds.sublist(i, end);
+
+        for (var id in chunk) {
+          final ref = _firestore.collection('classes').doc(id);
+          batch.update(ref, updates);
+        }
+        await batch.commit();
+      }
+    } catch (e) {
+      throw Exception('error en actualizacion masiva: $e');
+    }
+  }
+
+  // actualiza patrones coincidentes
+  Future<void> updateMatchingPatterns({
+    required String classTypeId,
+    required Map<String, dynamic> updates,
+    int? specificWeekday,
+    int? specificHour,
+    int? specificMinute,
+  }) async {
+    try {
+      final snapshot = await _firestore
+          .collection('schedule_patterns')
+          .where('active', isEqualTo: true)
+          .where('class_type_id', isEqualTo: classTypeId)
+          .get();
+
+      final batch = _firestore.batch();
+      bool changesMade = false;
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final weekDays = List<int>.from(data['week_days'] ?? []);
+        final timeSlots = List<dynamic>.from(data['time_slots'] ?? []);
+        
+        bool isMatch = true;
+
+        // filtra por dia
+        if (specificWeekday != null && !weekDays.contains(specificWeekday)) {
+          isMatch = false;
+        }
+        
+        // filtra por hora exacta
+        if (isMatch && specificHour != null && specificMinute != null) {
+           final hasSlot = timeSlots.any((slot) => 
+             slot['hour'] == specificHour && slot['minute'] == specificMinute
+           );
+           if (!hasSlot) isMatch = false;
+        }
+
+        if (isMatch) {
+          batch.update(doc.reference, updates);
+          changesMade = true;
+        }
+      }
+
+      if (changesMade) await batch.commit();
+    } catch (e) {
+      throw Exception('error actualizando patrones: $e');
     }
   }
 }

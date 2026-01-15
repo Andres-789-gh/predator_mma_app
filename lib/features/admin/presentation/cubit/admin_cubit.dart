@@ -7,6 +7,7 @@ import '../../../schedule/domain/models/class_model.dart';
 import '../../../schedule/domain/models/class_type_model.dart';
 import 'admin_state.dart';
 import '../../../schedule/domain/models/schedule_pattern_model.dart';
+import '../../../../core/constants/enums.dart';
 
 class TimeSlot {
   final TimeOfDay time;
@@ -25,7 +26,6 @@ class AdminCubit extends Cubit<AdminState> {
         _scheduleRepository = scheduleRepository,
         super(AdminInitial());
 
-  // Carga inicial de datos
   Future<void> loadFormData({bool silent = false, bool checkSchedule = false}) async {
     try {
       if (!silent) emit(AdminLoading());
@@ -55,7 +55,6 @@ class AdminCubit extends Cubit<AdminState> {
     }
   }
 
-  // Admin guarda horario nuevo
   Future<void> projectSchedule({
     required ClassTypeModel classType,
     required UserModel coach,
@@ -150,12 +149,12 @@ class AdminCubit extends Cubit<AdminState> {
       }
 
       for (var pattern in patternsSnapshot) {
-         await _generateClassesFromPattern(
-           pattern, 
-           months: 3, 
-           startDateOverride: targetStartDate,
-           throwOnConflict: false
-         );
+          await _generateClassesFromPattern(
+            pattern, 
+            months: 3, 
+            startDateOverride: targetStartDate, 
+            throwOnConflict: false
+          );
       }
       debugPrint("Mantenimiento completado.");
       
@@ -164,7 +163,6 @@ class AdminCubit extends Cubit<AdminState> {
     }
   }
 
-  // Generación de clases
   Future<void> _generateClassesFromPattern(
     SchedulePatternModel pattern, {
     required int months,
@@ -254,7 +252,7 @@ class AdminCubit extends Cubit<AdminState> {
           final startDateTime = DateTime(current.year, current.month, current.day, hour, minute);
           final endDateTime = startDateTime.add(Duration(minutes: duration));
 
-          final newClass = ClassModel(
+          var newClass = ClassModel(
             classId: '',
             classTypeId: type.id,
             classType: type.name,
@@ -268,21 +266,36 @@ class AdminCubit extends Cubit<AdminState> {
             isCancelled: false,
           );
 
-          if (forceReplace) {
-            classesToCreate.add(newClass);
-            continue;
-          }
-
           final dbConflicts = existingClasses.where((e) => 
               newClass.startTime.isBefore(e.endTime) && 
               newClass.endTime.isAfter(e.startTime)
           ).toList();
           
           if (dbConflicts.isNotEmpty) {
-            if (throwOnConflict) {
+            if (!forceReplace && throwOnConflict) {
               allDbConflicts.addAll(dbConflicts);
-            } 
-            continue; 
+              continue; 
+            }
+            
+            if (forceReplace) {
+               final Set<String> migratedAttendees = {};
+               final Set<String> migratedWaitlist = {};
+
+               for (var oldClass in dbConflicts) {
+                 migratedAttendees.addAll(oldClass.attendees);
+                 migratedWaitlist.addAll(oldClass.waitlist);
+               }
+
+               if (migratedAttendees.isNotEmpty || migratedWaitlist.isNotEmpty) {
+                 newClass = newClass.copyWith(
+                   attendees: migratedAttendees.toList(),
+                   waitlist: migratedWaitlist.toList(),
+                 );
+                 debugPrint("Migrando ${migratedAttendees.length} alumnos a la nueva clase.");
+               }
+            } else {
+              continue;
+            }
           }
           
           classesToCreate.add(newClass);
@@ -318,7 +331,6 @@ class AdminCubit extends Cubit<AdminState> {
        return; 
     }
 
-    // Guardado en BD
     for (var cls in classesToCreate) {
       if (forceReplace) {
         await _scheduleRepository.forceReplaceSchedule(cls);
@@ -328,27 +340,143 @@ class AdminCubit extends Cubit<AdminState> {
     }
   }
 
-  // Crear Tipo
   Future<void> createClassType(String name, String description) async {
     try {
+      if (state is AdminLoadedData) {
+        final currentData = state as AdminLoadedData;
+        final exists = currentData.classTypes.any(
+          (t) => t.name.toLowerCase().trim() == name.toLowerCase().trim()
+        );
+        
+        if (exists) {
+          emit(AdminError("Ya existe una clase con el nombre '$name'"));
+          emit(currentData);
+          return;
+        }
+      }
+
       emit(AdminLoading());
       final newType = ClassTypeModel(id: '', name: name, description: description, active: true);
       await _scheduleRepository.createClassType(newType);
+      
       emit(const AdminOperationSuccess("Clase creada exitosamente"));
       await loadFormData(silent: true); 
+      
     } catch (e) {
       emit(AdminError(e.toString().replaceAll('Exception: ', '')));
       await loadFormData(silent: true); 
     }
   }
 
-  // Reemplazar Clase (individual)
   Future<void> replaceConflictingClass(String oldClassId, ClassModel newClass) async {
     try {
       emit(AdminLoading());
       await _scheduleRepository.replaceClass(oldClassId: oldClassId, newClass: newClass);
       emit(const AdminOperationSuccess("Clase reemplazada exitosamente"));
       await loadFormData(silent: true);
+    } catch (e) {
+      emit(AdminError(e.toString().replaceAll('Exception: ', '')));
+      await loadFormData(silent: true);
+    }
+  }
+
+  Future<void> editClass({
+    required ClassModel originalClass,
+    required ClassModel updatedClass,
+    required ClassEditMode mode,
+  }) async {
+    try {
+      emit(AdminLoading());
+      final Map<String, dynamic> updates = {};
+      
+      if (originalClass.coachId != updatedClass.coachId) {
+        updates['coach_id'] = updatedClass.coachId;
+        updates['coach_name'] = updatedClass.coachName;
+      }
+      if (originalClass.maxCapacity != updatedClass.maxCapacity) {
+        updates['max_capacity'] = updatedClass.maxCapacity;
+      }
+      
+      switch (mode) {
+        case ClassEditMode.single:
+          await _scheduleRepository.updateClass(updatedClass);
+          break;
+
+        case ClassEditMode.similar:
+          await _scheduleRepository.updateClass(updatedClass);
+
+          final now = DateTime.now();
+          final futureClasses = await _scheduleRepository.getClasses(
+            fromDate: now, 
+            toDate: now.add(const Duration(days: 90))
+          );
+
+          final idsToUpdate = futureClasses.where((c) {
+            if (c.classTypeId != originalClass.classTypeId) return false;
+            if (c.startTime.weekday != originalClass.startTime.weekday) return false;
+            if (c.startTime.hour != originalClass.startTime.hour) return false;
+            if (c.startTime.minute != originalClass.startTime.minute) return false;
+            if (c.classId == originalClass.classId) return false;
+            return true;
+          }).map((c) => c.classId).toList();
+
+          if (idsToUpdate.isNotEmpty && updates.isNotEmpty) {
+            await _scheduleRepository.updateBatchClasses(idsToUpdate, updates);
+          }
+
+          if (updates.isNotEmpty) {
+             final patternUpdates = <String, dynamic>{};
+             if (updates.containsKey('coach_id')) patternUpdates['coach_id'] = updates['coach_id'];
+             if (updates.containsKey('max_capacity')) patternUpdates['capacity'] = updates['max_capacity'];
+             
+             if (patternUpdates.isNotEmpty) {
+               await _scheduleRepository.updateMatchingPatterns(
+                 classTypeId: originalClass.classTypeId,
+                 updates: patternUpdates,
+                 specificWeekday: originalClass.startTime.weekday,
+                 specificHour: originalClass.startTime.hour,
+                 specificMinute: originalClass.startTime.minute,
+               );
+             }
+          }
+          break;
+
+        case ClassEditMode.allType:
+          await _scheduleRepository.updateClass(updatedClass);
+
+          final now = DateTime.now();
+          final futureClasses = await _scheduleRepository.getClasses(
+            fromDate: now, 
+            toDate: now.add(const Duration(days: 90))
+          );
+
+          final idsToUpdate = futureClasses
+              .where((c) => c.classTypeId == originalClass.classTypeId && c.classId != originalClass.classId)
+              .map((c) => c.classId)
+              .toList();
+
+          if (idsToUpdate.isNotEmpty && updates.isNotEmpty) {
+             await _scheduleRepository.updateBatchClasses(idsToUpdate, updates);
+          }
+
+          if (updates.isNotEmpty) {
+             final patternUpdates = <String, dynamic>{};
+             if (updates.containsKey('coach_id')) patternUpdates['coach_id'] = updates['coach_id'];
+             if (updates.containsKey('max_capacity')) patternUpdates['capacity'] = updates['max_capacity'];
+             
+             if (patternUpdates.isNotEmpty) {
+               await _scheduleRepository.updateMatchingPatterns(
+                 classTypeId: originalClass.classTypeId,
+                 updates: patternUpdates,
+               );
+             }
+          }
+          break;
+      }
+
+      emit(const AdminOperationSuccess("Edición realizada correctamente"));
+      await loadFormData(silent: true);
+
     } catch (e) {
       emit(AdminError(e.toString().replaceAll('Exception: ', '')));
       await loadFormData(silent: true);

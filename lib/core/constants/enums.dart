@@ -32,3 +32,9 @@ enum ClassStatus {
   full,           // Clase llena
   waitlist
 }
+
+enum ClassEditMode {
+  single,   // solo esta clase
+  similar,  // todas las similares (mismo dia/hora/tipo)
+  allType   // todas las de este tipo
+}
