@@ -389,6 +389,7 @@ class AdminCubit extends Cubit<AdminState> {
       emit(AdminLoading());
       final Map<String, dynamic> updates = {};
       
+      // Detecta cambios
       if (originalClass.coachId != updatedClass.coachId) {
         updates['coach_id'] = updatedClass.coachId;
         updates['coach_name'] = updatedClass.coachName;
@@ -396,89 +397,118 @@ class AdminCubit extends Cubit<AdminState> {
       if (originalClass.maxCapacity != updatedClass.maxCapacity) {
         updates['max_capacity'] = updatedClass.maxCapacity;
       }
-      
+      // Cambios de Tipo de Clase
+      if (originalClass.classTypeId != updatedClass.classTypeId) {
+        updates['class_type_id'] = updatedClass.classTypeId;
+        updates['type'] = updatedClass.classType;
+      }
+      // Cambios de Horario
+      if (originalClass.startTime != updatedClass.startTime || originalClass.endTime != updatedClass.endTime) {
+        updates['start_time'] = updatedClass.startTime;
+        updates['end_time'] = updatedClass.endTime;
+      }
+
+      // Si no hay cambios reales, no hace nada
+      if (updates.isEmpty) {
+        emit(const AdminOperationSuccess("No se detectaron cambios"));
+        await loadFormData(silent: true);
+        return;
+      }
+
+      // Lógica de Modos
       switch (mode) {
         case ClassEditMode.single:
+          // updateClass completo para una sola
           await _scheduleRepository.updateClass(updatedClass);
           break;
 
         case ClassEditMode.similar:
+          // Actualiza la actual
           await _scheduleRepository.updateClass(updatedClass);
-
+          
+          // Busca similares a futuro
           final now = DateTime.now();
           final futureClasses = await _scheduleRepository.getClasses(
             fromDate: now, 
             toDate: now.add(const Duration(days: 90))
           );
 
+          // Filtro estricto: coincidir con la original
           final idsToUpdate = futureClasses.where((c) {
-            if (c.classTypeId != originalClass.classTypeId) return false;
-            if (c.startTime.weekday != originalClass.startTime.weekday) return false;
-            if (c.startTime.hour != originalClass.startTime.hour) return false;
-            if (c.startTime.minute != originalClass.startTime.minute) return false;
+            // No edita la que acaba de editar (por ID)
             if (c.classId == originalClass.classId) return false;
-            return true;
+            
+            return c.classTypeId == originalClass.classTypeId &&
+                   c.startTime.weekday == originalClass.startTime.weekday &&
+                   c.startTime.hour == originalClass.startTime.hour &&
+                   c.startTime.minute == originalClass.startTime.minute;
           }).map((c) => c.classId).toList();
 
-          if (idsToUpdate.isNotEmpty && updates.isNotEmpty) {
-            await _scheduleRepository.updateBatchClasses(idsToUpdate, updates);
-          }
-
-          if (updates.isNotEmpty) {
-             final patternUpdates = <String, dynamic>{};
-             if (updates.containsKey('coach_id')) patternUpdates['coach_id'] = updates['coach_id'];
-             if (updates.containsKey('max_capacity')) patternUpdates['capacity'] = updates['max_capacity'];
-             
-             if (patternUpdates.isNotEmpty) {
-               await _scheduleRepository.updateMatchingPatterns(
-                 classTypeId: originalClass.classTypeId,
-                 updates: patternUpdates,
-                 specificWeekday: originalClass.startTime.weekday,
-                 specificHour: originalClass.startTime.hour,
-                 specificMinute: originalClass.startTime.minute,
-               );
-             }
+          if (idsToUpdate.isNotEmpty) {            
+            final safeUpdates = Map<String, dynamic>.from(updates);
+            if (safeUpdates.containsKey('start_time')) {
+               safeUpdates.remove('start_time');
+               safeUpdates.remove('end_time');
+            }
+            
+            if (safeUpdates.isNotEmpty) {
+               await _scheduleRepository.updateBatchClasses(idsToUpdate, safeUpdates);
+            }
           }
           break;
 
         case ClassEditMode.allType:
           await _scheduleRepository.updateClass(updatedClass);
-
-          final now = DateTime.now();
-          final futureClasses = await _scheduleRepository.getClasses(
-            fromDate: now, 
-            toDate: now.add(const Duration(days: 90))
-          );
-
-          final idsToUpdate = futureClasses
-              .where((c) => c.classTypeId == originalClass.classTypeId && c.classId != originalClass.classId)
-              .map((c) => c.classId)
-              .toList();
-
-          if (idsToUpdate.isNotEmpty && updates.isNotEmpty) {
-             await _scheduleRepository.updateBatchClasses(idsToUpdate, updates);
-          }
-
-          if (updates.isNotEmpty) {
-             final patternUpdates = <String, dynamic>{};
-             if (updates.containsKey('coach_id')) patternUpdates['coach_id'] = updates['coach_id'];
-             if (updates.containsKey('max_capacity')) patternUpdates['capacity'] = updates['max_capacity'];
-             
-             if (patternUpdates.isNotEmpty) {
-               await _scheduleRepository.updateMatchingPatterns(
-                 classTypeId: originalClass.classTypeId,
-                 updates: patternUpdates,
-               );
-             }
-          }
           break;
       }
 
-      emit(const AdminOperationSuccess("Edición realizada correctamente"));
+      emit(const AdminOperationSuccess("Clase(s) actualizada(s)"));
       await loadFormData(silent: true);
 
     } catch (e) {
-      emit(AdminError(e.toString().replaceAll('Exception: ', '')));
+      emit(AdminError(e.toString()));
+      await loadFormData(silent: true);
+    }
+  }
+
+  // Eliminar Clases (Calendario)
+  Future<void> deleteClass({
+    required ClassModel classModel,
+    required ClassEditMode mode,
+  }) async {
+    try {
+      emit(AdminLoading());
+      await _scheduleRepository.deleteClasses(classModel: classModel, mode: mode);
+      emit(const AdminOperationSuccess("Clase(s) eliminada(s)"));
+      await loadFormData(silent: true);
+    } catch (e) {
+      emit(AdminError(e.toString()));
+      await loadFormData(silent: true);
+    }
+  }
+
+  // Actualizar Clase (Catálogo)
+  Future<void> updateClassType(ClassTypeModel type) async {
+    try {
+      emit(AdminLoading());
+      await _scheduleRepository.updateClassType(type);
+      emit(const AdminOperationSuccess("Catálogo actualizado"));
+      await loadFormData(silent: true);
+    } catch (e) {
+      emit(AdminError(e.toString()));
+      await loadFormData(silent: true);
+    }
+  }
+
+  // Eliminar Clase (Catálogo)
+  Future<void> deleteClassType(String id) async {
+    try {
+      emit(AdminLoading());
+      await _scheduleRepository.deleteClassType(id);
+      emit(const AdminOperationSuccess("Clase eliminada del catálogo"));
+      await loadFormData(silent: true);
+    } catch (e) {
+      emit(AdminError(e.toString()));
       await loadFormData(silent: true);
     }
   }

@@ -139,8 +139,98 @@ class _AdminTypesTabState extends State<AdminTypesTab> {
               ),
             ),
           ),
+          trailing: PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'edit') _showEditTypeDialog(context, type);
+              if (value == 'delete') _confirmDeleteType(context, type.id);
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit, size: 20), SizedBox(width: 10), Text("Editar")])),
+              const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete, color: Colors.red, size: 20), SizedBox(width: 10), Text("Eliminar", style: TextStyle(color: Colors.red))])),
+            ],
+          ),
         );
       },
+    );
+  }
+
+  void _confirmDeleteType(BuildContext context, String id) {
+    FocusScope.of(context).unfocus();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("¿Eliminar del catálogo?"),
+        content: const Text("Esto no borrará las clases ya agendadas, pero no podrás agendar nuevas con este nombre."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar")),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<AdminCubit>().deleteClassType(id);
+            }, 
+            child: const Text("Eliminar"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditTypeDialog(BuildContext context, dynamic type) {
+    FocusScope.of(context).unfocus();
+
+    final nameCtrl = TextEditingController(text: type.name);
+    final descCtrl = TextEditingController(text: type.description);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Editar Clase", style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Nombre
+            TextField(
+              controller: nameCtrl,
+              decoration: InputDecoration(
+                labelText: "Nombre",
+                filled: true,
+                fillColor: Colors.grey[100],
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Descripción
+            TextField(
+              controller: descCtrl,
+              maxLines: 2,
+              decoration: InputDecoration(
+                labelText: "Descripción",
+                filled: true,
+                fillColor: Colors.grey[100],
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar")),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<AdminCubit>().updateClassType(type.copyWith(
+                name: nameCtrl.text.trim(),
+                description: descCtrl.text.trim(),
+              ));
+            }, 
+            child: const Text("Guardar"),
+          ),
+        ],
+      ),
     );
   }
 }

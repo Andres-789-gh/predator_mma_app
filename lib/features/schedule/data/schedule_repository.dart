@@ -537,4 +537,97 @@ class ScheduleRepository {
       throw Exception('error actualizando patrones: $e');
     }
   }
+
+  // Actualizaciones tipo de clase
+  Future<void> updateClassType(ClassTypeModel type) async {
+    try {
+      await _firestore.collection('class_types').doc(type.id).update(ClassTypeMapper.toMap(type));
+    } catch (e) {
+      throw Exception('Error actualizando tipo: $e');
+    }
+  }
+
+  Future<void> deleteClassType(String id) async {
+    try {
+      await _firestore.collection('class_types').doc(id).update({'active': false});
+    } catch (e) {
+      throw Exception('Error eliminando tipo: $e');
+    }
+  }
+
+  // Eliminar clases
+  Future<void> deleteClasses({
+    required ClassModel classModel,
+    required ClassEditMode mode,
+  }) async {
+    try {
+      // Identifica qué clases borrar
+      List<String> idsToDelete = [];
+
+      if (mode == ClassEditMode.single) {
+        idsToDelete.add(classModel.classId);
+      } else {
+        final now = DateTime.now();
+        // Busca clases futuras para limpiar el calendario
+        final futureClasses = await getClasses(
+          fromDate: now, 
+          toDate: now.add(const Duration(days: 90))
+        );
+
+        if (mode == ClassEditMode.similar) {
+          idsToDelete = futureClasses.where((c) {
+            // mismo tipo, mismo día de semana, misma hora
+            return c.classTypeId == classModel.classTypeId &&
+                   c.startTime.weekday == classModel.startTime.weekday &&
+                   c.startTime.hour == classModel.startTime.hour &&
+                   c.startTime.minute == classModel.startTime.minute;
+          }).map((c) => c.classId).toList();
+        } else if (mode == ClassEditMode.allType) {
+          idsToDelete = futureClasses
+              .where((c) => c.classTypeId == classModel.classTypeId)
+              .map((c) => c.classId)
+              .toList();
+        }
+      }
+
+      // Ejecuta borrado de clases por lote (batch)
+      for (var i = 0; i < idsToDelete.length; i += 500) {
+        final chunkBatch = _firestore.batch();
+        final end = (i + 500 < idsToDelete.length) ? i + 500 : idsToDelete.length;
+        
+        for (var id in idsToDelete.sublist(i, end)) {
+          chunkBatch.delete(_firestore.collection('classes').doc(id));
+        }
+        await chunkBatch.commit();
+      }
+
+      // Actualizacion de patrones
+      
+      // Caso 1: Borra serie (similares), desactiva patrón padre específico
+      if (mode == ClassEditMode.similar && classModel.recurrenceId != null) {
+         await _firestore.collection('schedule_patterns')
+             .doc(classModel.recurrenceId)
+             .update({'active': false});
+      }
+
+      // Caso 2: Borra todo el tipo, desactiva todos los patrones de ese tipo
+      if (mode == ClassEditMode.allType) {
+         final patternsSnapshot = await _firestore.collection('schedule_patterns')
+             .where('class_type_id', isEqualTo: classModel.classTypeId)
+             .where('active', isEqualTo: true)
+             .get();
+
+         if (patternsSnapshot.docs.isNotEmpty) {
+           final patternBatch = _firestore.batch();
+           for (var doc in patternsSnapshot.docs) {
+             patternBatch.update(doc.reference, {'active': false});
+           }
+           await patternBatch.commit();
+         }
+      }
+
+    } catch (e) {
+      throw Exception('Error eliminando clases y patrones: $e');
+    }
+  }
 }
