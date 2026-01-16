@@ -9,9 +9,16 @@ class PlanRepository {
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
   Future<void> createPlan(PlanModel plan) async {
+    if (plan.scheduleRules.isEmpty) {
+      throw Exception('Error de integridad: El plan debe tener al menos una regla de horario.');
+    }
+
     try {
-      final docRef = _firestore.collection('plans').doc(); 
-      await docRef.set(PlanMapper.toMap(plan));
+      final docRef = _firestore.collection('plans').doc();
+      final planWithId = plan.copyWith(id: docRef.id);
+
+      await docRef.set(PlanMapper.toMap(planWithId));
+      
     } catch (e) {
       throw Exception('Error creando plan: $e');
     }
@@ -34,6 +41,10 @@ class PlanRepository {
   }
 
   Future<void> updatePlan(PlanModel plan) async {
+    if (plan.scheduleRules.isEmpty) {
+      throw Exception('Error de integridad: No se puede guardar un plan sin reglas.');
+    }
+
     try {
       await _firestore.collection('plans').doc(plan.id).update(PlanMapper.toMap(plan));
     } catch (e) {

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/plan_repository.dart';
 import '../cubit/plan_cubit.dart';
 import '../cubit/plan_state.dart';
+import 'plan_form_screen.dart';
 
 class PlansScreen extends StatelessWidget {
   const PlansScreen({super.key});
@@ -115,8 +116,19 @@ class PlansScreen extends StatelessWidget {
             return FloatingActionButton(
               child: const Icon(Icons.add),
               onPressed: () {
-                 debugPrint("Crear nuevo plan");
-                 context.read<PlanCubit>().loadPlans();
+                 final planCubit = context.read<PlanCubit>();
+
+                 Navigator.push(
+                   context, 
+                   MaterialPageRoute(
+                     builder: (_) => BlocProvider.value(
+                       value: planCubit, 
+                       child: const PlanFormScreen(),
+                     ),
+                   ),
+                 ).then((_) {
+                   planCubit.loadPlans();
+                 });
               },
             );
           },

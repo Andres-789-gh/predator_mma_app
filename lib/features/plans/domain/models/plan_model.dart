@@ -1,15 +1,41 @@
+import 'package:equatable/equatable.dart';
 import '../../../../core/constants/enums.dart';
 
-class PlanModel {
+class ScheduleRule extends Equatable { 
+  final List<int> allowedDays; 
+  final int startMinute; 
+  final int endMinute;   
+  final List<ClassCategory> allowedCategories;
+
+  const ScheduleRule({ 
+    required this.allowedDays,
+    required this.startMinute,
+    required this.endMinute,
+    required this.allowedCategories,
+  });
+
+  bool matchesClass(DateTime classDate, ClassCategory category) {
+    if (!allowedCategories.contains(category)) return false;
+    if (!allowedDays.contains(classDate.weekday)) return false;
+    final classMinute = classDate.hour * 60 + classDate.minute;
+    if (classMinute < startMinute || classMinute > endMinute) return false;
+    return true;
+  }
+
+  @override
+  List<Object?> get props => [allowedDays, startMinute, endMinute, allowedCategories];
+}
+
+class PlanModel extends Equatable { 
   final String id;
   final String name;
   final double price;
   final bool isActive; 
   final PlanConsumptionType consumptionType; 
-  final int? packClassesQuantity;
+  final int? packClassesQuantity; 
   final List<ScheduleRule> scheduleRules;
 
-  PlanModel({
+  const PlanModel({
     required this.id,
     required this.name,
     required this.price,
@@ -38,35 +64,7 @@ class PlanModel {
       scheduleRules: scheduleRules ?? this.scheduleRules,
     );
   }
-}
 
-class ScheduleRule {
-  final List<int> allowedDays; 
-  final int startMinute; 
-  final int endMinute;   
-
-  // Categorías permitidas
-  final List<ClassCategory> allowedCategories;
-
-  ScheduleRule({
-    required this.allowedDays,
-    required this.startMinute,
-    required this.endMinute,
-    required this.allowedCategories,
-  });
-
-  // ¿permite entrar a esta clase?
-  bool matchesClass(DateTime classDate, ClassCategory category) {
-    // Valida Categoría
-    if (!allowedCategories.contains(category)) return false;
-
-    // Valida Día de la semana
-    if (!allowedDays.contains(classDate.weekday)) return false;
-
-    // Valida Horario
-    final classMinute = classDate.hour * 60 + classDate.minute;
-    if (classMinute < startMinute || classMinute > endMinute) return false;
-
-    return true;
-  }
+  @override
+  List<Object?> get props => [id, name, price, isActive, consumptionType, packClassesQuantity, scheduleRules];
 }
