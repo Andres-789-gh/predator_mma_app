@@ -6,6 +6,7 @@ import 'admin_screen.dart';
 import '../../../auth/data/auth_repository.dart';
 import '../../../schedule/data/schedule_repository.dart';
 import '../cubit/admin_cubit.dart';
+import '../../../plans/presentation/screens/plans_screen.dart';
 
 class AdminHomeScreen extends StatelessWidget {
   const AdminHomeScreen({super.key});
@@ -85,9 +86,14 @@ class AdminHomeScreen extends StatelessWidget {
                     ),
                     _AdminMenuCard(
                       icon: Icons.monetization_on,
-                      title: "Planes\n(Próx.)",
-                      color: Colors.grey,
-                      onTap: () {},
+                      title: "Planes",
+                      color: Colors.redAccent,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const PlansScreen()),
+                        );
+                      },
                     ),
                     _AdminMenuCard(
                       icon: Icons.analytics,

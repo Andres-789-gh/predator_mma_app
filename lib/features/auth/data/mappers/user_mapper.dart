@@ -3,6 +3,7 @@ import '../../domain/models/user_model.dart';
 import '../../domain/models/access_exception_model.dart';
 import '../../../../core/constants/enums.dart';
 import 'access_exception_mapper.dart';
+import '../../../plans/data/mappers/plan_mapper.dart';
 
 class UserMapper {
   
@@ -94,10 +95,17 @@ class UserMapper {
 class _UserPlanMapper {
   static UserPlan fromMap(Map<String, dynamic> map) {
     return UserPlan(
-      type: PlanType.values.firstWhere(
-        (e) => e.name == (map['type'] ?? 'full'),
-        orElse: () => PlanType.full,
+
+      planId: map['plan_id'] ?? '',
+      name: map['name'] ?? '',
+      consumptionType: PlanConsumptionType.values.firstWhere(
+        (e) => e.name == (map['consumption_type'] ?? 'limitedDaily'),
+        orElse: () => PlanConsumptionType.limitedDaily,
       ),
+      scheduleRules: (map['schedule_rules'] as List<dynamic>?)
+          ?.map((x) => ScheduleRuleMapper.fromMap(x))
+          .toList() ?? [],
+
       startDate: (map['start_date'] as Timestamp).toDate(),
       endDate: (map['end_date'] as Timestamp).toDate(),
       remainingClasses: map['remaining_classes'] as int?,
@@ -109,7 +117,12 @@ class _UserPlanMapper {
 
   static Map<String, dynamic> toMap(UserPlan plan) {
     return {
-      'type': plan.type.name,
+      'plan_id': plan.planId,
+      'name': plan.name,
+      'consumption_type': plan.consumptionType.name,
+      'schedule_rules': plan.scheduleRules
+          .map((x) => ScheduleRuleMapper.toMap(x))
+          .toList(),
       'start_date': Timestamp.fromDate(plan.startDate),
       'end_date': Timestamp.fromDate(plan.endDate),
       'remaining_classes': plan.remainingClasses,

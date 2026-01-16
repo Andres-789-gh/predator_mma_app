@@ -216,7 +216,7 @@ class HomeScreen extends StatelessWidget {
                         if (hasActivePlan) ...[
                           // detalles plan activo
                           Text(
-                            user.activePlan!.type.name.toUpperCase(),
+                            user.activePlan!.name.toUpperCase(),
                             style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 5),
@@ -273,7 +273,7 @@ class HomeScreen extends StatelessWidget {
                                 const Icon(Icons.local_activity, color: Colors.amber, size: 16),
                                 const SizedBox(width: 8),
                                 Text(
-                                  '${t.validForPlan.name.toUpperCase()}: ${t.quantity}',
+                                  '${t.originalPlanName.toUpperCase()}: ${t.quantity}',
                                   style: TextStyle(color: ticketTextColor, fontWeight: FontWeight.bold),
                                 ),
                               ],

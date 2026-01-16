@@ -297,70 +297,31 @@ class ScheduleRepository {
   }
 
   // Validaciones privadas
-
   bool _isValidException(AccessExceptionModel exception, ClassModel classModel, DateTime now) {
     if (exception.quantity <= 0) return false;
     if (exception.validUntil != null && now.isAfter(exception.validUntil!)) return false;
 
-    final type = exception.validForPlan;
-
-    if (type == PlanType.wild) {
-      final minutes = classModel.startTime.hour * 60 + classModel.startTime.minute;
-      if (minutes > ScheduleRepository.cutOffTimeMinutes) return false; 
-    }
-    if (type == PlanType.kids) {
-      final className = classModel.classType.toLowerCase();
-      if (!className.contains('kids') && !className.contains('niños')) return false;
-    }
-    return true;
+    // Validación: El ticket verifica sus reglas copiadas
+    return exception.scheduleRules.any((rule) => 
+      rule.matchesClass(classModel.startTime, classModel.category)
+    );
   }
 
   // Validación para saber qué ticket devolver
   bool _isValidExceptionForRefund(AccessExceptionModel exception, ClassModel classModel) {
-    final type = exception.validForPlan;
-
-    // Si es Wild, devuelve si la clase cancelada era de mañana
-    if (type == PlanType.wild) {
-      final minutes = classModel.startTime.hour * 60 + classModel.startTime.minute;
-      if (minutes > ScheduleRepository.cutOffTimeMinutes) return false; 
-    }
-    // Si es Kids, devuelve si la clase cancelada era de niños
-    if (type == PlanType.kids) {
-      final className = classModel.classType.toLowerCase();
-      if (!className.contains('kids') && !className.contains('niños')) return false;
-    }
-    // Si es Weekend, devuelve si la clase era fin de semana
-    if (type == PlanType.weekends) {
-      final day = classModel.startTime.weekday;
-      if (day != 6 && day != 7) return false;
-    }
-
-    // Si el ticket es FULL, devuelve true siempre
-    return true;
+    // Si el ticket servía para entrar a esta clase, sirve pa' reembolso.
+    return exception.scheduleRules.any((rule) => 
+      rule.matchesClass(classModel.startTime, classModel.category)
+    );
   }
 
   bool _doesPlanAllowClass(UserModel user, ClassModel classModel) {
     final activePlan = user.activePlan;
     if (activePlan == null) return false;
-    
-    // Regla temporal
     if (!classModel.canReserveNow) return false;
-
-    final PlanType planType = activePlan.type;
-    
-    if (planType == PlanType.wild) {
-      final minutes = classModel.startTime.hour * 60 + classModel.startTime.minute;
-      if (minutes > ScheduleRepository.cutOffTimeMinutes) return false;
-    }
-    if (planType == PlanType.weekends) {
-      final day = classModel.startTime.weekday;
-      if (day != 6 && day != 7) return false;
-    }
-    if (planType == PlanType.kids) {
-      final type = classModel.classType.toLowerCase();
-      if (!type.contains('kids') && !type.contains('niños')) return false;
-    }
-    return true;
+    return activePlan.scheduleRules.any((rule) => 
+      rule.matchesClass(classModel.startTime, classModel.category)
+    );
   }
 
   Future<void> _assertBasePlanAsync(UserModel userModel, ClassModel classModel, DateTime now) async {
@@ -371,25 +332,22 @@ class ScheduleRepository {
        throw Exception('El tiempo de reserva ha finalizado o la clase es muy lejana.');
     }
 
-    final PlanType planType = activePlan.type;
-    
-    // Validaciones de reglas
-    if (planType == PlanType.wild) {
-      final minutes = classModel.startTime.hour * 60 + classModel.startTime.minute;
-      if (minutes > ScheduleRepository.cutOffTimeMinutes) throw Exception('Tu Plan WILD no permite clases en este horario.');
-    }
-    if (planType == PlanType.weekends) {
-      final day = classModel.startTime.weekday;
-      if (day != 6 && day != 7) throw Exception('Tu Plan WEEKENDS solo sirve sábados y domingos.');
-    }
-    if (planType == PlanType.kids) {
-      final type = classModel.classType.toLowerCase();
-      if (!type.contains('kids') && !type.contains('niños')) throw Exception('Tu Plan KIDS no permite esta clase.');
+    // Valida Reglas del Plan (Horario, Categoría, Días)
+    final bool isAllowed = activePlan.scheduleRules.any((rule) => 
+      rule.matchesClass(classModel.startTime, classModel.category)
+    );
+
+    if (!isAllowed) {
+      throw Exception('Tu plan ${activePlan.name} no permite clases en este horario o categoría.');
     }
 
     // Límite Diario
-    bool hasDailyLimit = (planType == PlanType.wild || planType == PlanType.full || planType == PlanType.fitness);
-    if (userModel.isLegacyUser || planType == PlanType.unlimited) hasDailyLimit = false;
+    bool hasDailyLimit = activePlan.consumptionType == PlanConsumptionType.limitedDaily;
+    
+    // Usuario Legacy o plan Ilimitado = apaga el límite diario
+    if (userModel.isLegacyUser || activePlan.consumptionType == PlanConsumptionType.unlimited) {
+      hasDailyLimit = false;
+    }
     
     if (hasDailyLimit) {
       final startOfClassDay = DateTime(classModel.startTime.year, classModel.startTime.month, classModel.startTime.day);
@@ -407,7 +365,7 @@ class ScheduleRepository {
     }
   }
 
-  // Guardar patron
+  // Guardar patron de horario
   Future<void> saveSchedulePattern(SchedulePatternModel pattern) async {
     try {
       await _firestore.collection('schedule_patterns').add(SchedulePatternMapper.toMap(pattern));

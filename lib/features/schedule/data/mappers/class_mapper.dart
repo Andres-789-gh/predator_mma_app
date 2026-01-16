@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/models/class_model.dart';
+import '../../../../core/constants/enums.dart';
 
 class ClassMapper {
   
@@ -31,6 +32,11 @@ class ClassMapper {
       endTime: endTs.toDate(),
       classTypeId: map['class_type_id'] ?? '',
       classType: map['type'] ?? 'General',
+      category: map['category'] != null
+          ? ClassCategory.values.firstWhere(
+              (e) => e.name == map['category'],
+              orElse: () => ClassCategory.combat)
+          : ClassCategory.combat,
       coachId: map['coach_id'] ?? '',
       coachName: map['coach_name'] ?? 'Instructor',
       maxCapacity: (map['max_capacity'] ?? 12).clamp(1, 100), 
@@ -47,6 +53,7 @@ class ClassMapper {
       'end_time': Timestamp.fromDate(model.endTime),
       'class_type_id': model.classTypeId,
       'type': model.classType,
+      'category': model.category.name,
       'coach_id': model.coachId,
       'coach_name': model.coachName,
       'max_capacity': model.maxCapacity,

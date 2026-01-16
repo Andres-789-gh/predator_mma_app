@@ -1,5 +1,6 @@
 import '../../../../core/constants/enums.dart';
 import 'access_exception_model.dart';
+import '../../../../features/plans/domain/models/plan_model.dart';
 
 class UserModel {
   final String userId;
@@ -74,7 +75,7 @@ class UserModel {
       address: address ?? this.address,
       birthDate: birthDate ?? this.birthDate,
       role: role ?? this.role,
-      isInstructor: isInstructor ?? this.isInstructor, // nuevo
+      isInstructor: isInstructor ?? this.isInstructor,
       isLegacyUser: isLegacyUser ?? this.isLegacyUser,
       notificationToken: notificationToken ?? this.notificationToken,
       isWaiverSigned: isWaiverSigned ?? this.isWaiverSigned,
@@ -88,14 +89,20 @@ class UserModel {
 }
 
 class UserPlan {
-  final PlanType type;
   final DateTime startDate;
   final DateTime endDate;
   final int? remainingClasses;
   final List<PlanPause> pauses;
+  final String planId; // ID del plan original en Firebase
+  final String name;
+  final PlanConsumptionType consumptionType; // Limitado o Ilimitado
+  final List<ScheduleRule> scheduleRules; // Copia de reglas
 
   const UserPlan({
-    required this.type,
+    required this.planId,
+    required this.name,
+    required this.consumptionType,
+    required this.scheduleRules,
     required this.startDate,
     required this.endDate,
     this.remainingClasses,
@@ -133,14 +140,20 @@ class UserPlan {
   }
 
   UserPlan copyWith({
-    PlanType? type,
+    String? planId,
+    String? name,
+    PlanConsumptionType? consumptionType,
+    List<ScheduleRule>? scheduleRules,
     DateTime? startDate,
     DateTime? endDate,
     int? remainingClasses,
     List<PlanPause>? pauses,
   }) {
     return UserPlan(
-      type: type ?? this.type,
+      planId: planId ?? this.planId,
+      name: name ?? this.name,
+      consumptionType: consumptionType ?? this.consumptionType,
+      scheduleRules: scheduleRules ?? this.scheduleRules,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       remainingClasses: remainingClasses ?? this.remainingClasses,

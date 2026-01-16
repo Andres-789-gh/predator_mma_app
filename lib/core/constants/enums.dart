@@ -5,16 +5,20 @@ enum UserRole {
   client    // Alumnos / Clientes (Reservan y ven su perfil)
 }
 
-// Tipos de Planes
-enum PlanType {
-  wild,           // Mañanas, 1 diaria
-  full,           // Todo horario, 1 diaria
-  unlimited,      // Todo horario, Ilimitado
-  fitness,        // Solo clases de Acondicionamiento
-  weekends,       // Sábados y Domingos
-  kids,           // Martes y Jueves (Niños)
-  personalized,   // Paquete de clases (4, 8, 12, 16)
-  virtual         // Clases virtuales
+// Categoria de clases (Etiquetas)
+enum ClassCategory {
+  combat,           
+  conditioning,
+  kids,
+  personalized,
+  virtual
+}
+
+// Consumo del plan
+enum PlanConsumptionType {
+  limitedDaily, // 1 ingreso diario
+  unlimited,    // ingresos ilimitados
+  pack          // paquete de clases (personalizadas)
 }
 
 // Estado de una reserva

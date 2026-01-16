@@ -1,5 +1,8 @@
+import '../../../../core/constants/enums.dart';
+
 class ClassModel {
   final String classId;
+  final ClassCategory category;
   final DateTime startTime;
   final DateTime endTime;
   final String classTypeId;
@@ -14,6 +17,7 @@ class ClassModel {
 
   ClassModel({
     required this.classId,
+    required this.category,
     required this.startTime,
     required this.endTime,
     required this.classTypeId,
@@ -43,6 +47,7 @@ class ClassModel {
 
   ClassModel copyWith({
     String? classId,
+    ClassCategory? category, 
     DateTime? startTime,
     DateTime? endTime,
     String? classTypeId,
@@ -58,6 +63,7 @@ class ClassModel {
   }) {
     return ClassModel(
       classId: classId ?? this.classId,
+      category: category ?? this.category,
       startTime: startTime ?? this.startTime,
       endTime: endTime ?? this.endTime,
       classTypeId: classTypeId ?? this.classTypeId,
