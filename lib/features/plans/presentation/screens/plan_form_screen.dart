@@ -23,7 +23,6 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
   late TextEditingController _priceCtrl;
   PlanConsumptionType _consumptionType = PlanConsumptionType.limitedDaily;
   
-  // Lista de Reglas
   List<ScheduleRule> _rules = [];
 
   @override
@@ -47,6 +46,7 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
   @override
   Widget build(BuildContext context) {
     final primaryColor = Colors.red[900]!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
@@ -58,27 +58,43 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
         ),
         bottomNavigationBar: Container(
           padding: const EdgeInsets.all(16),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 5, offset: Offset(0, -2))],
+          decoration: BoxDecoration(
+            color: isDark ? Colors.grey[900] : Colors.white,
+            boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 5, offset: const Offset(0, -2))],
           ),
           child: SizedBox(
             height: 50,
-            child: ElevatedButton(
-              onPressed: _savePlan,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              child: const Text('GUARDAR PLAN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            child: BlocBuilder<PlanCubit, PlanState>(
+              builder: (context, state) {
+                final isLoading = state is PlanLoading;
+
+                return ElevatedButton(
+                  onPressed: isLoading ? null : _savePlan,
+                  
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    disabledBackgroundColor: primaryColor.withOpacity(0.6),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Text('GUARDAR PLAN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                );
+              },
             ),
           ),
         ),
         body: BlocListener<PlanCubit, PlanState>(
           listener: (context, state) {
             if (state is PlanLoaded) {
-              Navigator.pop(context);
+              if (ModalRoute.of(context)?.isCurrent == true) {
+                Navigator.pop(context);
+              }
             } else if (state is PlanError) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(state.message), backgroundColor: Colors.red),
@@ -94,8 +110,7 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
                 children: [
                   const Text("Información Básica", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                   const SizedBox(height: 15),
-      
-                  // Nombre
+
                   TextFormField(
                     controller: _nameCtrl,
                     decoration: const InputDecoration(
@@ -107,8 +122,7 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
                     validator: (v) => v!.isEmpty ? 'Campo obligatorio' : null,
                   ),
                   const SizedBox(height: 15),
-      
-                  // Precio
+
                   TextFormField(
                     controller: _priceCtrl,
                     keyboardType: TextInputType.number,
@@ -124,8 +138,7 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
                     validator: (v) => v!.isEmpty ? 'Campo obligatorio' : null,
                   ),
                   const SizedBox(height: 15),
-      
-                  // Tipo de Ingreso (diario - ilimitado)
+
                   InputDecorator(
                     decoration: const InputDecoration(
                       labelText: 'Tipo de Ingreso',
@@ -140,17 +153,15 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
                         items: const [
                           DropdownMenuItem(
                             value: PlanConsumptionType.limitedDaily,
-                            child: Text('Diario (Una vez al día)'),
+                            child: Text('Diario (Un ingreso al día)'),
                           ),
                           DropdownMenuItem(
                             value: PlanConsumptionType.unlimited,
-                            child: Text('Ilimitado (Acceso libre)'),
+                            child: Text('Ilimitado (Sin límites diarios)'),
                           ),
                         ],
                         onChanged: (val) {
-                          if (val != null) {
-                            setState(() => _consumptionType = val);
-                          }
+                          if (val != null) setState(() => _consumptionType = val);
                         },
                       ),
                     ),
@@ -159,12 +170,11 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
                   const SizedBox(height: 30),
                   const Divider(),
                   const SizedBox(height: 10),
-      
-                  // Reglas
+
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Reglas de Horario', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const Text('Reglas del Plan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       IconButton.filled(
                         icon: const Icon(Icons.add),
                         style: IconButton.styleFrom(backgroundColor: primaryColor),
@@ -182,8 +192,8 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.orange.shade200),
                       ),
-                      child: const Row(
-                        children: [
+                      child: Row(
+                        children: const [
                           Icon(Icons.warning_amber_rounded, color: Colors.orange),
                           SizedBox(width: 10),
                           Expanded(
@@ -224,30 +234,53 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
                               ),
                             ],
                           ),
+                          // Fix: Diálogo de confirmación al borrar
                           trailing: IconButton(
                             icon: const Icon(Icons.delete_outline, color: Colors.red),
-                            onPressed: () => setState(() => _rules.removeAt(index)),
+                            onPressed: () => _confirmDeleteRule(index),
                           ),
                         ),
                       );
                     }),
-      
+
                   const SizedBox(height: 80),
                 ],
-              ), 
-            ), 
+              ),
+            ),
           ),
         ),
       ),
     );
   }
 
+  void _confirmDeleteRule(int index) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Eliminar Regla"),
+        content: const Text("¿Estás seguro de quitar esta restricción?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar")),
+          TextButton(
+            onPressed: () {
+              setState(() => _rules.removeAt(index));
+              Navigator.pop(ctx);
+            },
+            child: const Text("Eliminar", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _savePlan() {
+    if (context.read<PlanCubit>().state is PlanLoading) return;
     if (!_formKey.currentState!.validate()) return;
+    FocusScope.of(context).unfocus();
 
     if (_rules.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('⚠️ Debes agregar al menos una regla.'), backgroundColor: Colors.orange),
+        const SnackBar(content: Text('Debes agregar al menos una regla.'), backgroundColor: Colors.orange),
       );
       return;
     }
@@ -271,8 +304,15 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
     }
   }
 
-  void _showAddRuleDialog() {
-    showDialog(
+  Future<void> _showAddRuleDialog() async {
+    FocusScope.of(context).requestFocus(FocusNode());
+    SystemChannels.textInput.invokeMethod('TextInput.hide');
+
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    if (!mounted) return;
+
+    await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => _RuleEditorDialog(
@@ -281,6 +321,10 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
         },
       ),
     );
+
+    if (mounted) {
+      FocusScope.of(context).requestFocus(FocusNode());
+    }
   }
 
   String _formatTime(int minutes) {
@@ -301,7 +345,7 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
     if (cats.isEmpty) return 'Todo Tipo de Clase';
     final names = {
       ClassCategory.combat: 'Combate',
-      ClassCategory.conditioning: 'Acondicionamiento',
+      ClassCategory.conditioning: 'Físico',
       ClassCategory.kids: 'Niños',
       ClassCategory.virtual: 'Virtual',
       ClassCategory.personalized: 'Personalizado',
@@ -321,13 +365,14 @@ class _RuleEditorDialog extends StatefulWidget {
 class _RuleEditorDialogState extends State<_RuleEditorDialog> {
   final Set<int> _selectedDays = {}; 
   final Set<ClassCategory> _selectedCategories = {};
-  
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
+  String? _errorMessage;
 
   @override
   Widget build(BuildContext context) {
     final primaryColor = Colors.red[900]!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return AlertDialog(
       title: Row(
@@ -342,55 +387,70 @@ class _RuleEditorDialogState extends State<_RuleEditorDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Dias
             const Text('Días Habilitados:', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                _buildStaticChip("L", 1),
-                _buildStaticChip("M", 2),
-                _buildStaticChip("M", 3),
-                _buildStaticChip("J", 4),
-                _buildStaticChip("V", 5),
-                _buildStaticChip("S", 6),
-                _buildStaticChip("D", 7),
+                _buildStaticChip("L", 1, isDark),
+                _buildStaticChip("M", 2, isDark),
+                _buildStaticChip("M", 3, isDark),
+                _buildStaticChip("J", 4, isDark),
+                _buildStaticChip("V", 5, isDark),
+                _buildStaticChip("S", 6, isDark),
+                _buildStaticChip("D", 7, isDark),
               ],
             ),
             const SizedBox(height: 20),
 
-            // Horario
             const Text('Horario Permitido:', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Row(
               children: [
-                Expanded(
-                  child: _buildTimeBox("Desde", _startTime, (t) => setState(() => _startTime = t)),
-                ),
+                Expanded(child: _buildTimeBox("Desde", _startTime, (t) => setState(() => _startTime = t))),
                 const SizedBox(width: 10),
-                Expanded(
-                  child: _buildTimeBox("Hasta", _endTime, (t) => setState(() => _endTime = t)),
-                ),
+                Expanded(child: _buildTimeBox("Hasta", _endTime, (t) => setState(() => _endTime = t))),
               ],
             ),
 
             const SizedBox(height: 20),
 
-            // Categorias
-            const Text('Tipos de Clase:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text('Tipos de Clase(s):', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                _buildCategoryChip("COMBATE", ClassCategory.combat),
-                _buildCategoryChip("FITNESS", ClassCategory.conditioning),
-                _buildCategoryChip("KIDS", ClassCategory.kids),
-                _buildCategoryChip("PERSONALIZADO", ClassCategory.personalized),
-                _buildCategoryChip("VIRTUAL", ClassCategory.virtual),
+                _buildCategoryChip("COMBATE", ClassCategory.combat, isDark),
+                _buildCategoryChip("FÍSICO", ClassCategory.conditioning, isDark),
+                _buildCategoryChip("NIÑOS", ClassCategory.kids, isDark),
+                _buildCategoryChip("VIRTUAL", ClassCategory.virtual, isDark),
+                _buildCategoryChip("PERSONALIZADO", ClassCategory.personalized, isDark),
               ],
             ),
+
+            if (_errorMessage != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 15),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.red.withOpacity(0.5)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(_errorMessage!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -412,12 +472,14 @@ class _RuleEditorDialogState extends State<_RuleEditorDialog> {
   }
 
   void _submit() {
+    setState(() => _errorMessage = null);
+
     if (_selectedDays.isEmpty) {
-      _showSnack("Selecciona al menos un día");
+      setState(() => _errorMessage = "Selecciona al menos un día.");
       return;
     }
     if (_startTime == null || _endTime == null) {
-      _showSnack("Define hora de inicio y fin");
+      setState(() => _errorMessage = "Define hora de inicio y fin.");
       return;
     }
     
@@ -425,7 +487,7 @@ class _RuleEditorDialogState extends State<_RuleEditorDialog> {
     final endMin = _endTime!.hour * 60 + _endTime!.minute;
     
     if (endMin <= startMin) {
-      _showSnack("La hora final debe ser mayor a la inicial");
+      setState(() => _errorMessage = "La hora final debe ser mayor a la inicial.");
       return;
     }
 
@@ -438,10 +500,6 @@ class _RuleEditorDialogState extends State<_RuleEditorDialog> {
     
     widget.onSave(rule);
     Navigator.pop(context);
-  }
-
-  void _showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 1)));
   }
 
   Widget _buildTimeBox(String label, TimeOfDay? time, Function(TimeOfDay) onSelect) {
@@ -465,10 +523,14 @@ class _RuleEditorDialogState extends State<_RuleEditorDialog> {
     );
   }
 
-  Widget _buildStaticChip(String label, int dayIndex) {
+  Widget _buildStaticChip(String label, int dayIndex, bool isDark) {
     final isSelected = _selectedDays.contains(dayIndex);
     final color = Colors.red[900]!;
     
+    final textColor = isSelected 
+        ? color 
+        : (isDark ? Colors.white70 : Colors.black87);
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -480,14 +542,14 @@ class _RuleEditorDialogState extends State<_RuleEditorDialog> {
         height: 35,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: isSelected ? color.withValues(alpha: 0.1) : Colors.transparent,
-          border: Border.all(color: isSelected ? color : Colors.grey.shade400),
+          color: isSelected ? color.withOpacity(0.1) : Colors.transparent,
+          border: Border.all(color: isSelected ? color : (isDark ? Colors.white24 : Colors.grey.shade400)),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? color : Colors.black87,
+            color: textColor,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
@@ -495,9 +557,12 @@ class _RuleEditorDialogState extends State<_RuleEditorDialog> {
     );
   }
 
-  Widget _buildCategoryChip(String label, ClassCategory cat) {
+  Widget _buildCategoryChip(String label, ClassCategory cat, bool isDark) {
     final isSelected = _selectedCategories.contains(cat);
     final color = Colors.red[900]!;
+    
+    final borderColor = isSelected ? color : (isDark ? Colors.white24 : Colors.grey.shade400);
+    final textColor = isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87);
 
     return GestureDetector(
       onTap: () {
@@ -509,13 +574,13 @@ class _RuleEditorDialogState extends State<_RuleEditorDialog> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? color : Colors.transparent,
-          border: Border.all(color: isSelected ? color : Colors.grey.shade400),
+          border: Border.all(color: borderColor),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : Colors.black87,
+            color: textColor,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             fontSize: 12,
           ),
@@ -528,9 +593,7 @@ class _RuleEditorDialogState extends State<_RuleEditorDialog> {
 class _CurrencyInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    if (newValue.selection.baseOffset == 0) {
-      return newValue;
-    }
+    if (newValue.selection.baseOffset == 0) return newValue;
 
     double value = double.parse(newValue.text);
     final formatter = NumberFormat("#,###", "es_CO");

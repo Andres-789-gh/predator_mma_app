@@ -4,6 +4,9 @@ import '../../data/plan_repository.dart';
 import '../cubit/plan_cubit.dart';
 import '../cubit/plan_state.dart';
 import 'plan_form_screen.dart';
+import '../../../../core/constants/enums.dart';
+import 'package:intl/intl.dart';
+import '../../domain/models/plan_model.dart';
 
 class PlansScreen extends StatelessWidget {
   const PlansScreen({super.key});
@@ -44,12 +47,14 @@ class PlansScreen extends StatelessWidget {
             } 
             
             else if (state is PlanLoaded) {
-              final plans = state.plans;
+              final plans = List<PlanModel>.from(state.plans);
               
+              plans.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
               if (plans.isEmpty) {
                 return const Center(
                   child: Text(
-                    'No hay planes activos.\n¡Crea el primero usando el botón +!',
+                    'No hay planes activos.\nCrea un plan usando el botón "+"',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.grey),
                   ),
@@ -70,8 +75,20 @@ class PlansScreen extends StatelessWidget {
                         child: Text(plan.name.substring(0, 1).toUpperCase()),
                       ),
                       title: Text(plan.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text(
-                        '${plan.consumptionType.name} • \$${plan.price.toStringAsFixed(0)}',
+                      subtitle: Builder(
+                        builder: (context) {
+                          final formatter = NumberFormat("#,###", "es_CO");
+                          final priceStr = formatter.format(plan.price).replaceAll(',', '.');
+
+                          final typeStr = plan.consumptionType == PlanConsumptionType.limitedDaily
+                              ? 'Ingreso Diario'
+                              : 'Ingreso Ilimitado';
+
+                          return Text(
+                            '$typeStr • \$ $priceStr', 
+                            style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w500),
+                          );
+                        },
                       ),
                       trailing: IconButton(
                         icon: const Icon(Icons.delete, color: Colors.redAccent),
@@ -80,7 +97,7 @@ class PlansScreen extends StatelessWidget {
                             context: context,
                             builder: (_) => AlertDialog(
                               title: const Text('¿Eliminar Plan?'),
-                              content: Text('Vas a desactivar "${plan.name}".'),
+                              content: Text('Se eliminará el plan "${plan.name}".'),
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(context),
