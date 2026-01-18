@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/constants/enums.dart';
 import '../../domain/models/plan_model.dart';
 import '../cubit/plan_cubit.dart';
 import '../cubit/plan_state.dart';
 
 class PlanFormScreen extends StatefulWidget {
-  final PlanModel? plan; 
+  final PlanModel? plan;
 
   const PlanFormScreen({super.key, this.plan});
 
@@ -28,7 +30,14 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.plan?.name ?? '');
-    _priceCtrl = TextEditingController(text: widget.plan?.price.toStringAsFixed(0) ?? '');
+    
+    String initialPrice = '';
+    if (widget.plan != null) {
+      final formatter = NumberFormat("#,###", "es_CO");
+      initialPrice = formatter.format(widget.plan!.price).replaceAll(',', '.');
+    }
+    _priceCtrl = TextEditingController(text: initialPrice);
+
     _consumptionType = widget.plan?.consumptionType ?? PlanConsumptionType.limitedDaily;
     _rules = widget.plan?.scheduleRules != null 
         ? List.from(widget.plan!.scheduleRules) 
@@ -37,155 +46,222 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.plan == null ? 'Crear Plan' : 'Editar Plan'),
-      ),
-      body: BlocListener<PlanCubit, PlanState>(
-        listener: (context, state) {
-          if (state is PlanLoaded) {
-            Navigator.pop(context);
-          } else if (state is PlanError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message), backgroundColor: Colors.red),
-            );
-          }
-        },
-        child: SingleChildScrollView(
+    final primaryColor = Colors.red[900]!;
+
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(widget.plan == null ? 'Crear Plan' : 'Editar Plan'),
+          backgroundColor: primaryColor,
+          foregroundColor: Colors.white,
+        ),
+        bottomNavigationBar: Container(
           padding: const EdgeInsets.all(16),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Nombre
-                TextFormField(
-                  controller: _nameCtrl,
-                  decoration: const InputDecoration(labelText: 'Nombre del Plan (Ej: Wild)'),
-                  validator: (v) => v!.isEmpty ? 'Campo obligatorio' : null,
-                ),
-                const SizedBox(height: 15),
-
-                // Precio
-                TextFormField(
-                  controller: _priceCtrl,
-                  decoration: const InputDecoration(labelText: 'Precio'),
-                  keyboardType: TextInputType.number,
-                  validator: (v) => v!.isEmpty ? 'Campo obligatorio' : null,
-                ),
-                const SizedBox(height: 15),
-
-                // ipo de Consumo
-                DropdownButtonFormField<PlanConsumptionType>(
-                  value: _consumptionType,
-                  decoration: const InputDecoration(labelText: 'Tipo de Consumo'),
-                  items: const [
-                    DropdownMenuItem(
-                      value: PlanConsumptionType.limitedDaily,
-                      child: Text('Diario (1 vez al día - Ej: Wild, Full)'),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 5, offset: Offset(0, -2))],
+          ),
+          child: SizedBox(
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _savePlan,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('GUARDAR PLAN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ),
+        body: BlocListener<PlanCubit, PlanState>(
+          listener: (context, state) {
+            if (state is PlanLoaded) {
+              Navigator.pop(context);
+            } else if (state is PlanError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+              );
+            }
+          },
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("Información Básica", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                  const SizedBox(height: 15),
+      
+                  // Nombre
+                  TextFormField(
+                    controller: _nameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Nombre del Plan',
+                      hintText: 'Ej: Wild, Full, Morning',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.label_outline),
                     ),
-                    DropdownMenuItem(
-                      value: PlanConsumptionType.unlimited,
-                      child: Text('Ilimitado (Sin límites - Ej: Weekends)'),
+                    validator: (v) => v!.isEmpty ? 'Campo obligatorio' : null,
+                  ),
+                  const SizedBox(height: 15),
+      
+                  // Precio
+                  TextFormField(
+                    controller: _priceCtrl,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      _CurrencyInputFormatter(),
+                    ],
+                    decoration: const InputDecoration(
+                      labelText: 'Precio',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.attach_money),
                     ),
-                  ],
-                  onChanged: (val) => setState(() => _consumptionType = val!),
-                ),
-                
-                const Divider(height: 40, thickness: 2),
-
-                // Reglas
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Reglas de Horario', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    IconButton(
-                      icon: const Icon(Icons.add_circle, color: Colors.blue, size: 30),
-                      onPressed: _showAddRuleDialog,
+                    validator: (v) => v!.isEmpty ? 'Campo obligatorio' : null,
+                  ),
+                  const SizedBox(height: 15),
+      
+                  // Tipo de Ingreso (diario - ilimitado)
+                  InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Tipo de Ingreso',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.confirmation_number_outlined),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<PlanConsumptionType>(
+                        value: _consumptionType,
+                        isExpanded: true,
+                        items: const [
+                          DropdownMenuItem(
+                            value: PlanConsumptionType.limitedDaily,
+                            child: Text('Diario (Una vez al día)'),
+                          ),
+                          DropdownMenuItem(
+                            value: PlanConsumptionType.unlimited,
+                            child: Text('Ilimitado (Acceso libre)'),
+                          ),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() => _consumptionType = val);
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 30),
+                  const Divider(),
+                  const SizedBox(height: 10),
+      
+                  // Reglas
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Reglas de Horario', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      IconButton.filled(
+                        icon: const Icon(Icons.add),
+                        style: IconButton.styleFrom(backgroundColor: primaryColor),
+                        onPressed: _showAddRuleDialog,
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  
+                  if (_rules.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(15),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange.shade200),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              '¡Atención! Debes agregar al menos una regla para limitar a qué clases pueden entrar.',
+                              style: TextStyle(color: Colors.brown),
+                            ),
+                          ),
+                        ],
+                      ),
                     )
-                  ],
-                ),
-                const SizedBox(height: 10),
-                
-                if (_rules.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(15),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange.shade200),
-                    ),
-                    child: Row(
-                      children: const [
-                        Icon(Icons.warning_amber_rounded, color: Colors.orange),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'Agrega al menos una regla para limitar las categorías.',
-                            style: TextStyle(color: Colors.brown),
+                  else
+                    ..._rules.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final rule = entry.value;
+                      return Card(
+                        elevation: 2,
+                        margin: const EdgeInsets.only(bottom: 10),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          title: Text(
+                            _formatDays(rule.allowedDays),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 4),
+                              Row(children: [
+                                const Icon(Icons.access_time, size: 14, color: Colors.grey),
+                                const SizedBox(width: 4),
+                                Text('${_formatTime(rule.startMinute)} - ${_formatTime(rule.endMinute)}'),
+                              ]),
+                              const SizedBox(height: 4),
+                              Text(
+                                _formatCategories(rule.allowedCategories),
+                                style: TextStyle(color: primaryColor, fontWeight: FontWeight.w500),
+                              ),
+                            ],
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.red),
+                            onPressed: () => setState(() => _rules.removeAt(index)),
                           ),
                         ),
-                      ],
-                    ),
-                  )
-                else
-                  ..._rules.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final rule = entry.value;
-                    return Card(
-                      color: Colors.blue.shade50,
-                      margin: const EdgeInsets.only(bottom: 10),
-                      child: ListTile(
-                        title: Text(_formatDays(rule.allowedDays)),
-                        subtitle: Text('${_formatTime(rule.startMinute)} - ${_formatTime(rule.endMinute)}\nCategorías: ${_formatCategories(rule.allowedCategories)}'),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => setState(() => _rules.removeAt(index)),
-                        ),
-                      ),
-                    );
-                  }),
-
-                const SizedBox(height: 30),
-
-                // btn save
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _savePlan,
-                    child: const Text('GUARDAR PLAN'),
-                  ),
-                ),
-              ],
-            ),
+                      );
+                    }),
+      
+                  const SizedBox(height: 80),
+                ],
+              ), 
+            ), 
           ),
         ),
       ),
     );
   }
 
-  // Log. guardado
   void _savePlan() {
     if (!_formKey.currentState!.validate()) return;
 
     if (_rules.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Debes agregar al menos una regla de horario.'),
-          backgroundColor: Colors.orange,
-        ),
+        const SnackBar(content: Text('⚠️ Debes agregar al menos una regla.'), backgroundColor: Colors.orange),
       );
-      return; 
+      return;
     }
 
+    final cleanPrice = _priceCtrl.text.replaceAll('.', '').replaceAll(',', '');
+
     final newPlan = PlanModel(
-      id: widget.plan?.id ?? '', 
+      id: widget.plan?.id ?? '',
       name: _nameCtrl.text.trim(),
-      price: double.tryParse(_priceCtrl.text) ?? 0,
+      price: double.tryParse(cleanPrice) ?? 0,
       consumptionType: _consumptionType,
       scheduleRules: _rules, 
       isActive: true,
+      packClassesQuantity: widget.plan?.packClassesQuantity,
     );
 
     if (widget.plan == null) {
@@ -198,6 +274,7 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
   void _showAddRuleDialog() {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (_) => _RuleEditorDialog(
         onSave: (rule) {
           setState(() => _rules.add(rule));
@@ -209,9 +286,9 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
   String _formatTime(int minutes) {
     final h = minutes ~/ 60;
     final m = minutes % 60;
-    final suffix = h >= 12 ? 'PM' : 'AM';
-    final h12 = h > 12 ? h - 12 : (h == 0 ? 12 : h);
-    return '$h12:${m.toString().padLeft(2, '0')} $suffix';
+    final now = DateTime.now();
+    final dt = DateTime(now.year, now.month, now.day, h, m);
+    return DateFormat('h:mm a').format(dt);
   }
 
   String _formatDays(List<int> days) {
@@ -221,8 +298,15 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
   }
 
   String _formatCategories(List<ClassCategory> cats) {
-    if (cats.isEmpty) return 'Todas';
-    return cats.map((c) => c.name.toUpperCase()).join(', ');
+    if (cats.isEmpty) return 'Todo Tipo de Clase';
+    final names = {
+      ClassCategory.combat: 'Combate',
+      ClassCategory.conditioning: 'Acondicionamiento',
+      ClassCategory.kids: 'Niños',
+      ClassCategory.virtual: 'Virtual',
+      ClassCategory.personalized: 'Personalizado',
+    };
+    return cats.map((c) => names[c] ?? c.name).join(', ');
   }
 }
 
@@ -235,99 +319,226 @@ class _RuleEditorDialog extends StatefulWidget {
 }
 
 class _RuleEditorDialogState extends State<_RuleEditorDialog> {
-  // Días seleccionados
-  final Set<int> _selectedDays = {1, 2, 3, 4, 5}; 
-  // Horas
-  TimeOfDay _start = const TimeOfDay(hour: 6, minute: 0);
-  TimeOfDay _end = const TimeOfDay(hour: 22, minute: 0);
-  // Categorías
-  final Set<ClassCategory> _selectedCategories = {...ClassCategory.values};
+  final Set<int> _selectedDays = {}; 
+  final Set<ClassCategory> _selectedCategories = {};
+  
+  TimeOfDay? _startTime;
+  TimeOfDay? _endTime;
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Colors.red[900]!;
+
     return AlertDialog(
-      title: const Text('Nueva Regla'),
+      title: Row(
+        children: [
+          Icon(Icons.rule, color: primaryColor),
+          const SizedBox(width: 10),
+          const Text('Nueva Regla'),
+        ],
+      ),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Días:', style: TextStyle(fontWeight: FontWeight.bold)),
+            // Dias
+            const Text('Días Habilitados:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
             Wrap(
-              spacing: 5,
-              children: List.generate(7, (index) {
-                final day = index + 1;
-                final isSelected = _selectedDays.contains(day);
-                return FilterChip(
-                  label: Text(['L','M','X','J','V','S','D'][index]),
-                  selected: isSelected,
-                  onSelected: (val) {
-                    setState(() {
-                      val ? _selectedDays.add(day) : _selectedDays.remove(day);
-                    });
-                  },
-                );
-              }),
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildStaticChip("L", 1),
+                _buildStaticChip("M", 2),
+                _buildStaticChip("M", 3),
+                _buildStaticChip("J", 4),
+                _buildStaticChip("V", 5),
+                _buildStaticChip("S", 6),
+                _buildStaticChip("D", 7),
+              ],
             ),
-            const SizedBox(height: 10),
-            const Text('Horario:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+
+            // Horario
+            const Text('Horario Permitido:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
             Row(
               children: [
-                TextButton(
-                  onPressed: () async {
-                    final t = await showTimePicker(context: context, initialTime: _start);
-                    if (t != null) setState(() => _start = t);
-                  },
-                  child: Text('De: ${_start.format(context)}'),
+                Expanded(
+                  child: _buildTimeBox("Desde", _startTime, (t) => setState(() => _startTime = t)),
                 ),
-                const Text('-'),
-                TextButton(
-                  onPressed: () async {
-                    final t = await showTimePicker(context: context, initialTime: _end);
-                    if (t != null) setState(() => _end = t);
-                  },
-                  child: Text('Hasta: ${_end.format(context)}'),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildTimeBox("Hasta", _endTime, (t) => setState(() => _endTime = t)),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            const Text('Categorías Permitidas:', style: TextStyle(fontWeight: FontWeight.bold)),
+
+            const SizedBox(height: 20),
+
+            // Categorias
+            const Text('Tipos de Clase:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
             Wrap(
-              spacing: 5,
-              children: ClassCategory.values.map((cat) {
-                final isSelected = _selectedCategories.contains(cat);
-                return FilterChip(
-                  label: Text(cat.name.toUpperCase()),
-                  selected: isSelected,
-                  onSelected: (val) {
-                    setState(() {
-                      val ? _selectedCategories.add(cat) : _selectedCategories.remove(cat);
-                    });
-                  },
-                );
-              }).toList(),
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildCategoryChip("COMBATE", ClassCategory.combat),
+                _buildCategoryChip("FITNESS", ClassCategory.conditioning),
+                _buildCategoryChip("KIDS", ClassCategory.kids),
+                _buildCategoryChip("PERSONALIZADO", ClassCategory.personalized),
+                _buildCategoryChip("VIRTUAL", ClassCategory.virtual),
+              ],
             ),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+        ),
         ElevatedButton(
-          onPressed: () {
-            if (_selectedDays.isEmpty) return;
-            
-            final rule = ScheduleRule(
-              allowedDays: _selectedDays.toList()..sort(),
-              startMinute: _start.hour * 60 + _start.minute,
-              endMinute: _end.hour * 60 + _end.minute,
-              allowedCategories: _selectedCategories.toList(),
-            );
-            widget.onSave(rule);
-            Navigator.pop(context);
-          },
-          child: const Text('Agregar'),
+          onPressed: _submit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: primaryColor,
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('AGREGAR REGLA'),
         ),
       ],
+    );
+  }
+
+  void _submit() {
+    if (_selectedDays.isEmpty) {
+      _showSnack("Selecciona al menos un día");
+      return;
+    }
+    if (_startTime == null || _endTime == null) {
+      _showSnack("Define hora de inicio y fin");
+      return;
+    }
+    
+    final startMin = _startTime!.hour * 60 + _startTime!.minute;
+    final endMin = _endTime!.hour * 60 + _endTime!.minute;
+    
+    if (endMin <= startMin) {
+      _showSnack("La hora final debe ser mayor a la inicial");
+      return;
+    }
+
+    final rule = ScheduleRule(
+      allowedDays: _selectedDays.toList()..sort(),
+      startMinute: startMin,
+      endMinute: endMin,
+      allowedCategories: _selectedCategories.toList(),
+    );
+    
+    widget.onSave(rule);
+    Navigator.pop(context);
+  }
+
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 1)));
+  }
+
+  Widget _buildTimeBox(String label, TimeOfDay? time, Function(TimeOfDay) onSelect) {
+    return InkWell(
+      onTap: () async {
+        final t = await showTimePicker(context: context, initialTime: time ?? const TimeOfDay(hour: 8, minute: 0));
+        if (t != null) onSelect(t);
+      },
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        ),
+        child: Text(
+          time == null ? "--:--" : time.format(context),
+          style: const TextStyle(fontSize: 16),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStaticChip(String label, int dayIndex) {
+    final isSelected = _selectedDays.contains(dayIndex);
+    final color = Colors.red[900]!;
+    
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          isSelected ? _selectedDays.remove(dayIndex) : _selectedDays.add(dayIndex);
+        });
+      },
+      child: Container(
+        width: 35,
+        height: 35,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isSelected ? color.withValues(alpha: 0.1) : Colors.transparent,
+          border: Border.all(color: isSelected ? color : Colors.grey.shade400),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? color : Colors.black87,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryChip(String label, ClassCategory cat) {
+    final isSelected = _selectedCategories.contains(cat);
+    final color = Colors.red[900]!;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          isSelected ? _selectedCategories.remove(cat) : _selectedCategories.add(cat);
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? color : Colors.transparent,
+          border: Border.all(color: isSelected ? color : Colors.grey.shade400),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.black87,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            fontSize: 12,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CurrencyInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    if (newValue.selection.baseOffset == 0) {
+      return newValue;
+    }
+
+    double value = double.parse(newValue.text);
+    final formatter = NumberFormat("#,###", "es_CO");
+    String newText = formatter.format(value).replaceAll(',', '.');
+
+    return newValue.copyWith(
+      text: newText,
+      selection: TextSelection.collapsed(offset: newText.length),
     );
   }
 }
