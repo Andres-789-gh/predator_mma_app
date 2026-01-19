@@ -7,7 +7,6 @@ import '../../../schedule/presentation/cubit/schedule_cubit.dart';
 import '../../../schedule/data/schedule_repository.dart';
 import '../../../schedule/presentation/screens/schedule_screen.dart';
 import '../../../auth/presentation/screens/waiver_screen.dart';
-import '../../../auth/presentation/screens/login_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -18,14 +17,7 @@ class HomeScreen extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final textColor = theme.colorScheme.onSurface;
 
-    return BlocConsumer<AuthCubit, AuthState>(
-      listener: (context, state) {
-        if (state is AuthUnauthenticated) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
-          );
-        }
-      },
+    return BlocBuilder<AuthCubit, AuthState>(
       builder: (context, state) {
         if (state is AuthLoading) {
           return const Scaffold(
