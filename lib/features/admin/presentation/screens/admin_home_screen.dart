@@ -44,7 +44,7 @@ class AdminHomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Hola, ${user.firstName}",
+                "Bienvenido, ${user.firstName}",
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -52,7 +52,7 @@ class AdminHomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 5),
               Text(
-                "Administrador General",
+                "Administrador",
                 style: TextStyle(
                   color: isDark ? Colors.grey[400] : Colors.grey[700],
                 ),

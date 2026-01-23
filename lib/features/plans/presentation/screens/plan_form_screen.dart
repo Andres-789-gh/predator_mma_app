@@ -21,6 +21,7 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
 
   late TextEditingController _nameCtrl;
   late TextEditingController _priceCtrl;
+  late TextEditingController _packCtrl; 
   PlanConsumptionType _consumptionType = PlanConsumptionType.limitedDaily;
   
   List<ScheduleRule> _rules = [];
@@ -36,6 +37,8 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
       initialPrice = formatter.format(widget.plan!.price).replaceAll(',', '.');
     }
     _priceCtrl = TextEditingController(text: initialPrice);
+
+    _packCtrl = TextEditingController(text: widget.plan?.packClassesQuantity?.toString() ?? '');
 
     _consumptionType = widget.plan?.consumptionType ?? PlanConsumptionType.limitedDaily;
     _rules = widget.plan?.scheduleRules != null 
@@ -159,6 +162,10 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
                             value: PlanConsumptionType.unlimited,
                             child: Text('Ilimitado (Sin límites diarios)'),
                           ),
+                          DropdownMenuItem(
+                            value: PlanConsumptionType.pack,
+                            child: Text('Paquete de Clases'),
+                          ),
                         ],
                         onChanged: (val) {
                           if (val != null) setState(() => _consumptionType = val);
@@ -166,6 +173,26 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
                       ),
                     ),
                   ),
+
+                  // campo cantidad clases
+                  if (_consumptionType == PlanConsumptionType.pack) ...[
+                    const SizedBox(height: 15),
+                    TextFormField(
+                      controller: _packCtrl,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      decoration: const InputDecoration(
+                        labelText: 'Cantidad de Clases',
+                        hintText: 'Ej: 12',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.layers_outlined),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Debes indicar la cantidad de clases';
+                        return null;
+                      },
+                    ),
+                  ],
                   
                   const SizedBox(height: 30),
                   const Divider(),
@@ -294,7 +321,9 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
       consumptionType: _consumptionType,
       scheduleRules: _rules, 
       isActive: true,
-      packClassesQuantity: widget.plan?.packClassesQuantity,
+      packClassesQuantity: _consumptionType == PlanConsumptionType.pack 
+          ? int.tryParse(_packCtrl.text) 
+          : null,
     );
 
     if (widget.plan == null) {

@@ -80,12 +80,21 @@ class PlansScreen extends StatelessWidget {
                           final formatter = NumberFormat("#,###", "es_CO");
                           final priceStr = formatter.format(plan.price).replaceAll(',', '.');
 
-                          final typeStr = plan.consumptionType == PlanConsumptionType.limitedDaily
-                              ? 'Ingreso Diario'
-                              : 'Ingreso Ilimitado';
+                          String typeStr;
+                          switch (plan.consumptionType) {
+                            case PlanConsumptionType.pack:
+                              typeStr = 'Paquete de Clases (${plan.packClassesQuantity ?? 0})';
+                              break;
+                            case PlanConsumptionType.limitedDaily:
+                              typeStr = 'Mensualidad (Ingreso Diario)';
+                              break;
+                            case PlanConsumptionType.unlimited:
+                              typeStr = 'Mensualidad (Ingreso Ilimitado)';
+                              break;
+                          }
 
                           return Text(
-                            '$typeStr • \$ $priceStr', 
+                            '$typeStr • \$ $priceStr',
                             style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w500),
                           );
                         },
@@ -116,7 +125,19 @@ class PlansScreen extends StatelessWidget {
                         },
                       ),
                       onTap: () {
-                         debugPrint("Editar plan: ${plan.name}");
+                        final planCubit = context.read<PlanCubit>();
+
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => BlocProvider.value(
+                              value: planCubit,
+                              child: PlanFormScreen(plan: plan), 
+                            ),
+                          ),
+                        ).then((_) {
+                          planCubit.loadPlans();
+                        });
                       },
                     ),
                   );
