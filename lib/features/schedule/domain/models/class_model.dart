@@ -29,14 +29,12 @@ class ClassModel {
     required List<String> waitlist,
     this.isCancelled = false,
     this.recurrenceId,
-  }) : 
-    attendees = List.unmodifiable(attendees),
-    waitlist = List.unmodifiable(waitlist) {
-    
+  }) : attendees = List.unmodifiable(attendees),
+       waitlist = List.unmodifiable(waitlist) {
     if (endTime.isBefore(startTime)) {
       throw ArgumentError('Error: La clase termina antes de empezar.');
     }
-    
+
     if (maxCapacity <= 0) {
       throw ArgumentError('Error: La capacidad debe ser mayor a 0.');
     }
@@ -47,7 +45,7 @@ class ClassModel {
 
   ClassModel copyWith({
     String? classId,
-    ClassCategory? category, 
+    ClassCategory? category,
     DateTime? startTime,
     DateTime? endTime,
     String? classTypeId,
@@ -71,10 +69,23 @@ class ClassModel {
       coachId: coachId ?? this.coachId,
       coachName: coachName ?? this.coachName,
       maxCapacity: maxCapacity ?? this.maxCapacity,
-      attendees: attendees != null ? List<String>.from(attendees) : this.attendees,
+      attendees: attendees != null
+          ? List<String>.from(attendees)
+          : this.attendees,
       waitlist: waitlist != null ? List<String>.from(waitlist) : this.waitlist,
       isCancelled: isCancelled ?? this.isCancelled,
-      recurrenceId: clearRecurrenceId ? null : (recurrenceId ?? this.recurrenceId),
+      recurrenceId: clearRecurrenceId
+          ? null
+          : (recurrenceId ?? this.recurrenceId),
     );
+  }
+
+  bool isUserConfirmed(String userId) => attendees.contains(userId);
+  bool isUserOnWaitlist(String userId) => waitlist.contains(userId);
+  int get availableSlots => maxCapacity - attendees.length;
+  bool get hasFinished => DateTime.now().isAfter(endTime);
+  bool get canReserveNow {
+    final now = DateTime.now();
+    return now.isBefore(startTime) && !isCancelled;
   }
 }

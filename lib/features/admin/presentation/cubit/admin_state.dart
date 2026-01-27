@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 import '../../../auth/domain/models/user_model.dart';
 import '../../../schedule/domain/models/class_type_model.dart';
-import '../../../schedule/domain/models/class_model.dart'; 
+import '../../../schedule/domain/models/class_model.dart';
 
 abstract class AdminState extends Equatable {
   const AdminState();
@@ -18,10 +18,7 @@ class AdminLoadedData extends AdminState {
   final List<UserModel> instructors;
   final List<ClassTypeModel> classTypes;
 
-  const AdminLoadedData({
-    required this.instructors,
-    required this.classTypes,
-  });
+  const AdminLoadedData({required this.instructors, required this.classTypes});
 
   @override
   List<Object> get props => [instructors, classTypes];
@@ -46,14 +43,21 @@ class AdminError extends AdminState {
 class AdminConflictDetected extends AdminState {
   final ClassModel newClass;
   final List<ClassModel> conflictingClasses;
-  final AdminLoadedData originalData; 
+  final AdminLoadedData originalData;
+  final String conflictMessage;
 
   const AdminConflictDetected({
-    required this.newClass, 
+    required this.newClass,
     required this.conflictingClasses,
     required this.originalData,
+    required this.conflictMessage,
   });
 
   @override
-  List<Object> get props => [newClass, conflictingClasses, originalData];
+  List<Object> get props => [
+    newClass,
+    conflictingClasses,
+    originalData,
+    conflictMessage,
+  ];
 }
