@@ -33,8 +33,17 @@ class ClassCard extends StatelessWidget {
     bool isDestructive = false;
 
     // determina estado visual
-    if (isExpired) {
-       // clase finalizada
+    if (classModel.isCancelled) {
+      statusColor = Colors.red;
+      buttonText = 'CANCELADA';
+      statusIcon = Icons.cancel_outlined;
+      isButtonEnabled = false;
+
+      if (isExpired) {
+        statusColor = Colors.grey;
+        buttonText = 'CANCELADA (FIN)';
+      }
+    } else if (isExpired) {
        statusColor = isDark ? Colors.grey[700]! : Colors.grey;
        buttonText = 'FINALIZADA';
        statusIcon = Icons.history;
@@ -99,6 +108,7 @@ class ClassCard extends StatelessWidget {
     final timeFormat = DateFormat('h:mm a');
     final startTime = timeFormat.format(classModel.startTime);
     final endTime = timeFormat.format(classModel.endTime);
+    final textDecoration = classModel.isCancelled ? TextDecoration.lineThrough : null;
     
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -124,8 +134,17 @@ class ClassCard extends StatelessWidget {
               children: [
                 Column(
                   children: [
-                    Text(startTime, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
-                    Text(endTime, style: TextStyle(fontSize: 12, color: isDark ? Colors.grey : Colors.grey[600])),
+                    Text(startTime, style: TextStyle(
+                      fontSize: 16, 
+                      fontWeight: FontWeight.bold, 
+                      color: isDark ? Colors.white : Colors.black87,
+                      decoration: textDecoration,
+                    )),
+                    Text(endTime, style: TextStyle(
+                      fontSize: 12, 
+                      color: isDark ? Colors.grey : Colors.grey[600],
+                      decoration: textDecoration,
+                    )),
                   ],
                 ),
                 const SizedBox(width: 16),
@@ -141,7 +160,8 @@ class ClassCard extends StatelessWidget {
                           fontSize: 16, 
                           fontWeight: FontWeight.w900, 
                           fontStyle: FontStyle.italic, 
-                          color: isDark ? Colors.white : Colors.black87
+                          color: isDark ? Colors.white : Colors.black87,
+                          decoration: textDecoration,
                         )
                       ),
                       

@@ -476,6 +476,10 @@ class ScheduleRepository {
     bool force = false,
   }) async {
     try {
+      if (updatedClass.hasFinished) {
+         throw Exception('no se puede editar una clase que ya finalizó');
+      }
+
       await _validateConflictOrThrow(
         updatedClass,
         excludeClassId: updatedClass.classId,

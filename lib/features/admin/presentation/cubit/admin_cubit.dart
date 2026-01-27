@@ -385,7 +385,11 @@ class AdminCubit extends Cubit<AdminState> {
     }
   }
 
-  Future<void> createClassType(String name, String description) async {
+  Future<void> createClassType(
+    String name, 
+    String description, 
+    ClassCategory category
+  ) async {
     try {
       if (state is AdminLoadedData) {
         final currentData = state as AdminLoadedData;
@@ -406,6 +410,7 @@ class AdminCubit extends Cubit<AdminState> {
         name: name,
         description: description,
         active: true,
+        category: category,
       );
       await _scheduleRepository.createClassType(newType);
 

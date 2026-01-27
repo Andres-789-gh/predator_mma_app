@@ -32,6 +32,7 @@ class _EditClassDialogState extends State<EditClassDialog> {
 
   String? _selectedTypeId;
   ClassEditMode _selectedMode = ClassEditMode.single;
+  late bool _isCancelled;
 
   @override
   void initState() {
@@ -59,6 +60,7 @@ class _EditClassDialogState extends State<EditClassDialog> {
     );
 
     _selectedTypeId = widget.classModel.classTypeId;
+    _isCancelled = widget.classModel.isCancelled;
   }
 
   @override
@@ -84,10 +86,11 @@ class _EditClassDialogState extends State<EditClassDialog> {
     if (_selectedTypeId != null &&
         _selectedTypeId != widget.classModel.classTypeId) {
       List<ClassTypeModel> types = [];
-      if (state is AdminLoadedData)
+      if (state is AdminLoadedData) {
         types = state.classTypes;
-      else if (state is AdminConflictDetected)
+      } else if (state is AdminConflictDetected) {
         types = state.originalData.classTypes;
+      }
 
       if (types.isNotEmpty) {
         try {
@@ -114,6 +117,7 @@ class _EditClassDialogState extends State<EditClassDialog> {
       classType: typeName,
       startTime: newStart,
       endTime: newEnd,
+      isCancelled: _isCancelled,
     );
   }
 
@@ -133,8 +137,9 @@ class _EditClassDialogState extends State<EditClassDialog> {
     }
 
     if (classTypes.isNotEmpty && _selectedTypeId != null) {
-      if (!classTypes.any((t) => t.id == _selectedTypeId))
+      if (!classTypes.any((t) => t.id == _selectedTypeId)) {
         _selectedTypeId = null;
+      }
     }
 
     final hrs = int.tryParse(_hoursController.text) ?? 0;
@@ -288,7 +293,6 @@ class _EditClassDialogState extends State<EditClassDialog> {
               ),
             const SizedBox(height: 15),
 
-            // Selector de Hora
             Row(
               children: [
                 Expanded(
@@ -374,8 +378,9 @@ class _EditClassDialogState extends State<EditClassDialog> {
                         onChanged: isHistory
                             ? null
                             : (val) {
-                                if (val != null)
+                                if (val != null) {
                                   setState(() => _selectedCoach = val);
+                                }
                               },
                       ),
                     ),
@@ -417,16 +422,7 @@ class _EditClassDialogState extends State<EditClassDialog> {
                     "Similares",
                     Icons.copy,
                   ),
-                  //const SizedBox(width: 8),
-                  //_buildScopeOption(ClassEditMode.allType, "Todas", Icons.all_inclusive, isWarning: true),
                 ],
-              ),
-              const SizedBox(height: 20),
-              TextButton.icon(
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                onPressed: _confirmDelete,
-                icon: const Icon(Icons.delete_outline),
-                label: const Text("Eliminar"),
               ),
             ] else ...[
               const Padding(
@@ -443,25 +439,37 @@ class _EditClassDialogState extends State<EditClassDialog> {
           ],
         ),
         actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("Volver"),
+        ),
+
+        if (!isHistory) ...[
           TextButton(
-            onPressed: _isSaving ? null : () => Navigator.pop(context),
-            child: Text(isHistory ? "Volver" : "Cancelar"),
+            onPressed: _confirmDelete,
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text("Eliminar"),
           ),
-          if (!isHistory)
-            FilledButton(
-              onPressed: _isSaving ? null : _submitEdit,
-              child: _isSaving
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text("Guardar"),
+
+          TextButton(
+            onPressed: () => _toggleCancelStatus(context),
+            child: Text(
+              _isCancelled ? "Habilitar" : "Cancelar Clase",
+              style: TextStyle(
+                color: _isCancelled ? Colors.green : Colors.orange[800],
+                fontWeight: FontWeight.bold,
+              ),
             ),
+          ),
+
+          FilledButton(
+            onPressed: _isSaving ? null : _submitEdit,
+            child: _isSaving
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                : const Text("Guardar"),
+          ),
         ],
+      ],
       ),
     );
   }
@@ -625,6 +633,36 @@ class _EditClassDialogState extends State<EditClassDialog> {
         originalClass: widget.classModel,
         updatedClass: updated,
         mode: _selectedMode,
+      );
+    }
+  }
+
+  void _toggleCancelStatus(BuildContext ctx) {
+    if (widget.classModel.isCancelled) {
+      setState(() => _isCancelled = false);
+      ScaffoldMessenger.of(ctx).showSnackBar(
+        const SnackBar(content: Text('Clase habilitada. Recuerda dar "Guardar".')),
+      );
+    } else {
+      showDialog(
+        context: ctx,
+        builder: (c) => AlertDialog(
+          title: const Text("¿Cancelar esta clase?"),
+          content: const Text(
+            "Nadie podrá reservar y aparecerá tachada en la agenda.\n\n¿Estás seguro?",
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(c), child: const Text("Volver")),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red[700]),
+              onPressed: () {
+                Navigator.pop(c);
+                setState(() => _isCancelled = true);
+              },
+              child: const Text("Sí, Cancelar"),
+            ),
+          ],
+        ),
       );
     }
   }

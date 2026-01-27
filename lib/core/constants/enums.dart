@@ -42,3 +42,20 @@ enum ClassEditMode {
   similar,  // todas las similares (mismo dia/hora/tipo)
   allType   // todas las de este tipo
 }
+
+extension ClassCategoryExtension on ClassCategory {
+  String get label {
+    switch (this) {
+      case ClassCategory.combat:
+        return 'COMBATE';
+      case ClassCategory.conditioning:
+        return 'FÍSICO';
+      case ClassCategory.kids:
+        return 'KIDS';
+      case ClassCategory.personalized:
+        return 'PERSONALIZADO';
+      case ClassCategory.virtual:
+        return 'VIRTUAL';
+    }
+  }
+}

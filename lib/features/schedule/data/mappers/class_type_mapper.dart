@@ -1,4 +1,5 @@
 import '../../domain/models/class_type_model.dart';
+import '../../../../core/constants/enums.dart';
 
 class ClassTypeMapper {
   
@@ -8,12 +9,19 @@ class ClassTypeMapper {
     final safeName = (rawName is String && rawName.isNotEmpty)
         ? rawName
         : 'Actividad sin nombre'; 
+        
+    final catString = map['category'] as String? ?? 'combat';
+    final category = ClassCategory.values.firstWhere(
+      (e) => e.name == catString,
+      orElse: () => ClassCategory.combat,
+    );
 
     return ClassTypeModel(
       id: docId,
       name: safeName,
       description: map['description'] ?? '',
       active: map['active'] ?? true, 
+      category: category,
     );
   }
 
@@ -22,6 +30,7 @@ class ClassTypeMapper {
       'name': type.name,
       'description': type.description,
       'active': type.active,
+      'category': type.category.name,
     };
   }
 }

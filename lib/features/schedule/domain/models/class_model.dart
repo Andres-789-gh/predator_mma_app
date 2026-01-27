@@ -42,6 +42,7 @@ class ClassModel {
 
   bool get isFull => attendees.length >= maxCapacity;
   int get availableSpots => maxCapacity - attendees.length;
+  bool get canBeModified => DateTime.now().isBefore(endTime);
 
   ClassModel copyWith({
     String? classId,

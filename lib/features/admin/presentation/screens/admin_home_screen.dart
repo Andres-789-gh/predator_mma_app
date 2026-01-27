@@ -67,7 +67,7 @@ class AdminHomeScreen extends StatelessWidget {
                   children: [
                     _AdminMenuCard(
                       icon: Icons.calendar_month,
-                      title: "Gestionar\nHorarios",
+                      title: "Gestionar\nHorarios/Clases",
                       color: Colors.redAccent,
                       onTap: () {
                         Navigator.push(

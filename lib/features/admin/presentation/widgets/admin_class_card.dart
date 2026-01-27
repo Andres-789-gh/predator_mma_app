@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../schedule/domain/models/class_model.dart';
+import '../../../../core/constants/enums.dart';
 
 class AdminClassCard extends StatelessWidget {
   final ClassModel classModel;
@@ -14,26 +15,32 @@ class AdminClassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // control de tema
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final timeFormat = DateFormat('h:mm a');
     final startTime = timeFormat.format(classModel.startTime);
     final endTime = timeFormat.format(classModel.endTime);
 
-    // calculo de ocupacion real
+    final isCancelled = classModel.isCancelled;
+    final isExpired = classModel.hasFinished;
     final enrolledCount = classModel.attendees.length;
     final maxCap = classModel.maxCapacity;
     final isFull = enrolledCount >= maxCap;
     
-    // define color segun ocupacion
     final occupationColor = isFull ? Colors.red : (enrolledCount > 0 ? Colors.green : Colors.grey);
+    
+    final cardColor = isCancelled 
+        ? Colors.red.withValues(alpha: 0.05)
+        : (isExpired ? Colors.grey.withValues(alpha: 0.1) : (isDark ? const Color(0xFF1E1E1E) : Colors.white));
+        
+    final textColor = isCancelled || isExpired ? Colors.grey : (isDark ? Colors.white : Colors.black87);
+    final decoration = isCancelled ? TextDecoration.lineThrough : null;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          color: cardColor,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -49,11 +56,28 @@ class AdminClassCard extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  // columna hora
+                  // Columna Hora
                   Column(
                     children: [
-                      Text(startTime, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
-                      Text(endTime, style: TextStyle(fontSize: 12, color: isDark ? Colors.grey : Colors.grey[600])),
+                      Text(
+                        startTime, 
+                        style: TextStyle(
+                          fontSize: 16, 
+                          fontWeight: FontWeight.bold, 
+                          color: textColor,
+                          decoration: decoration,
+                        )
+                      ),
+                      Text(
+                        endTime, 
+                        style: TextStyle(
+                          fontSize: 12, 
+                          color: isDark ? Colors.grey : Colors.grey[600],
+                          decoration: decoration,
+                        )
+                      ),
+                      if (isCancelled)
+                        const Text("CANCELADA", style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold)),
                     ],
                   ),
                   const SizedBox(width: 16),
@@ -61,20 +85,46 @@ class AdminClassCard extends StatelessWidget {
                   Container(height: 40, width: 2, color: occupationColor.withValues(alpha: 0.3)),
                   const SizedBox(width: 16),
                   
-                  // detalles clase
+                  // Detalles clase
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          classModel.classType.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 16, 
-                            fontWeight: FontWeight.w900, 
-                            fontStyle: FontStyle.italic, 
-                            color: isDark ? Colors.white : Colors.black87
-                          )
+                        Row(
+                          children: [
+                            Text(
+                              classModel.classType.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 16, 
+                                fontWeight: FontWeight.w900, 
+                                fontStyle: FontStyle.italic, 
+                                color: textColor,
+                                decoration: decoration,
+                              )
+                            ),
+                            const SizedBox(width: 8),
+                            // Categoría
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: isCancelled ? Colors.red.withValues(alpha: 0.1) : Colors.blue.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: isCancelled ? Colors.red.withValues(alpha: 0.3) : Colors.blue.withValues(alpha: 0.3)
+                                ),
+                              ),
+                              child: Text(
+                                classModel.category.label.toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 9, 
+                                  fontWeight: FontWeight.bold,
+                                  color: isCancelled ? Colors.red : Colors.blue,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
+                        
                         const SizedBox(height: 4),
                         Row(
                           children: [
@@ -88,7 +138,6 @@ class AdminClassCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 6),
                         
-                        // badge de ocupacion
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
