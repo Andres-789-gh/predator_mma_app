@@ -7,16 +7,20 @@ class PlanMapper {
       id: id,
       name: map['name'] ?? '',
       price: (map['price'] ?? 0).toDouble(),
-      isActive: map['is_active'] ?? true, 
-      
+      isActive: map['is_active'] ?? true,
+
       consumptionType: PlanConsumptionType.values.firstWhere(
         (e) => e.name == (map['consumption_type'] ?? 'limitedDaily'),
         orElse: () => PlanConsumptionType.limitedDaily,
       ),
+
+      dailyLimit: map['daily_limit'] as int?,
       packClassesQuantity: map['pack_quantity'],
-      scheduleRules: (map['schedule_rules'] as List<dynamic>?)
-          ?.map((x) => ScheduleRuleMapper.fromMap(x))
-          .toList() ?? [],
+      scheduleRules:
+          (map['schedule_rules'] as List<dynamic>?)
+              ?.map((x) => ScheduleRuleMapper.fromMap(x))
+              .toList() ??
+          [],
     );
   }
 
@@ -24,9 +28,9 @@ class PlanMapper {
     return {
       'name': plan.name,
       'price': plan.price,
-      'is_active': plan.isActive, 
-      
+      'is_active': plan.isActive,
       'consumption_type': plan.consumptionType.name,
+      'daily_limit': plan.dailyLimit,
       'pack_quantity': plan.packClassesQuantity,
       'schedule_rules': plan.scheduleRules
           .map((x) => ScheduleRuleMapper.toMap(x))
@@ -40,12 +44,17 @@ class ScheduleRuleMapper {
     return ScheduleRule(
       allowedDays: List<int>.from(map['days'] ?? []),
       startMinute: map['start_minute'] ?? 0,
-      endMinute: map['end_minute'] ?? 1440, 
-      allowedCategories: (map['categories'] as List<dynamic>?)
-          ?.map((e) => ClassCategory.values.firstWhere(
-              (c) => c.name == e, 
-              orElse: () => ClassCategory.combat)) 
-          .toList() ?? [],
+      endMinute: map['end_minute'] ?? 1440,
+      allowedCategories:
+          (map['categories'] as List<dynamic>?)
+              ?.map(
+                (e) => ClassCategory.values.firstWhere(
+                  (c) => c.name == e,
+                  orElse: () => ClassCategory.combat,
+                ),
+              )
+              .toList() ??
+          [],
     );
   }
 

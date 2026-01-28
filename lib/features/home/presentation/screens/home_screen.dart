@@ -33,16 +33,6 @@ class HomeScreen extends StatelessWidget {
           final bool isWaiverSigned = user.isWaiverSigned;
           final bool hasTickets = user.accessExceptions.any((t) => t.quantity > 0);
           final bool canReserve = hasActivePlan || hasTickets;
-          
-          // Calcular edad
-          final today = DateTime.now();
-          int age = today.year - user.birthDate.year;
-          if (today.month < user.birthDate.month ||
-              (today.month == user.birthDate.month && today.day < user.birthDate.day)) {
-            age--;
-          }
-
-          final bool isMinor = age < 18;
 
           return Scaffold(
             backgroundColor: theme.scaffoldBackgroundColor,

@@ -44,7 +44,7 @@ class UserModel {
   }) : accessExceptions = List.unmodifiable(accessExceptions);
 
   String get fullName => '$firstName $lastName';
-  
+
   UserModel copyWith({
     String? userId,
     String? email,
@@ -93,10 +93,11 @@ class UserPlan {
   final DateTime endDate;
   final int? remainingClasses;
   final List<PlanPause> pauses;
-  final String planId; // ID del plan original en Firebase
+  final String planId;
   final String name;
-  final PlanConsumptionType consumptionType; // Limitado o Ilimitado
-  final List<ScheduleRule> scheduleRules; // Copia de reglas
+  final PlanConsumptionType consumptionType;
+  final List<ScheduleRule> scheduleRules;
+  final int? dailyLimit;
 
   const UserPlan({
     required this.planId,
@@ -107,17 +108,18 @@ class UserPlan {
     required this.endDate,
     this.remainingClasses,
     this.pauses = const [],
+    this.dailyLimit,
   });
 
   DateTime get effectiveEndDate {
     if (pauses.isEmpty) return endDate;
-    
+
     int totalPausedDays = 0;
     for (final pause in pauses) {
       final days = pause.endDate.difference(pause.startDate).inDays;
-      totalPausedDays += (days > 0 ? days : 0); 
+      totalPausedDays += (days > 0 ? days : 0);
     }
-    
+
     return endDate.add(Duration(days: totalPausedDays));
   }
 
@@ -148,6 +150,7 @@ class UserPlan {
     DateTime? endDate,
     int? remainingClasses,
     List<PlanPause>? pauses,
+    int? dailyLimit,
   }) {
     return UserPlan(
       planId: planId ?? this.planId,
@@ -158,6 +161,7 @@ class UserPlan {
       endDate: endDate ?? this.endDate,
       remainingClasses: remainingClasses ?? this.remainingClasses,
       pauses: pauses ?? this.pauses,
+      dailyLimit: dailyLimit ?? this.dailyLimit,
     );
   }
 }

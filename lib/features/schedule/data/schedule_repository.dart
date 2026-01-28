@@ -117,15 +117,19 @@ class ScheduleRepository {
         );
         final now = DateTime.now();
 
-        if (!userModel.isWaiverSigned)
+        if (!userModel.isWaiverSigned) {
           throw Exception('Debes firmar la exoneración antes de reservar.');
-        if (classModel.isCancelled)
+        }
+        if (classModel.isCancelled) {
           throw Exception('La clase ha sido cancelada');
+        }
 
-        if (classModel.isUserConfirmed(userId))
+        if (classModel.isUserConfirmed(userId)) {
           throw Exception('Ya estás inscrito en esta clase');
-        if (classModel.isUserOnWaitlist(userId))
+        }
+        if (classModel.isUserOnWaitlist(userId)) {
           throw Exception('Ya estás en lista de espera');
+        }
 
         if (classModel.hasFinished) throw Exception('La clase ya finalizó');
 
@@ -222,8 +226,9 @@ class ScheduleRepository {
         final bool isInAttendees = classModel.isUserConfirmed(userId);
         final bool isInWaitlist = classModel.isUserOnWaitlist(userId);
 
-        if (!isInAttendees && !isInWaitlist)
+        if (!isInAttendees && !isInWaitlist) {
           throw Exception('No estás inscrito en esta clase');
+        }
 
         // Logica reembolso
         if (isInAttendees) {
@@ -477,7 +482,7 @@ class ScheduleRepository {
   }) async {
     try {
       if (updatedClass.hasFinished) {
-         throw Exception('no se puede editar una clase que ya finalizó');
+        throw Exception('no se puede editar una clase que ya finalizó');
       }
 
       await _validateConflictOrThrow(
@@ -677,8 +682,9 @@ class ScheduleRepository {
     DateTime now,
   ) {
     if (exception.quantity <= 0) return false;
-    if (exception.validUntil != null && now.isAfter(exception.validUntil!))
+    if (exception.validUntil != null && now.isAfter(exception.validUntil!)) {
       return false;
+    }
 
     return exception.scheduleRules.any(
       (rule) => rule.matchesClass(classModel.startTime, classModel.category),
@@ -753,8 +759,10 @@ class ScheduleRepository {
           .where('attendees', arrayContains: userModel.userId)
           .get();
 
-      if (existingBookings.docs.isNotEmpty) {
-        throw Exception('Tu plan base ya usó su cupo diario.');
+      final int limit = activePlan.dailyLimit ?? 1;
+
+      if (existingBookings.docs.length >= limit) {
+        throw Exception('Has alcanzado tu límite diario de $limit clase(s).');
       }
     }
   }
