@@ -103,35 +103,31 @@ class HomeScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            isMinor
-                                ? 'Al ser menor de edad ($age años), tu acudiente debe firmar presencialmente.'
-                                : 'Debes firmar la exoneración para poder reservar clases.',
+                            'Debes firmar la exoneración para poder reservar clases.',
                             textAlign: TextAlign.center,
                             style: TextStyle(color: textColor.withValues(alpha: 0.8), fontSize: 14),
                           ),
-
-                          if (!isMinor) ...[
-                            const SizedBox(height: 15),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 45,
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red,
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                ),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (_) => const WaiverScreen()),
-                                  );
-                                },
-                                child: const Text('FIRMAR AHORA', style: TextStyle(fontWeight: FontWeight.bold)),
+                          
+                          const SizedBox(height: 15),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 45,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                               ),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const WaiverScreen()),
+                                );
+                              },
+                              child: const Text('FIRMAR AHORA', style: TextStyle(fontWeight: FontWeight.bold)),
                             ),
-                          ]
+                          ),
                         ],
                       ),
                     ),

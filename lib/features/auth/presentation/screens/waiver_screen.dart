@@ -458,8 +458,11 @@ class _WaiverScreenState extends State<WaiverScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           ValueListenableBuilder(
-                            valueListenable: _nameController,
-                            builder: (context, value, child) => Text("Nombre: ${value.text.toUpperCase()}", style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
+                            valueListenable: _isGuardian ? _minorNameController : _nameController,
+                            builder: (context, value, child) => Text(
+                              "Nombre: ${value.text.toUpperCase()}", 
+                              style: TextStyle(color: textColor, fontWeight: FontWeight.bold)
+                            ),
                           ),
                           const SizedBox(height: 5),
                           ValueListenableBuilder(
