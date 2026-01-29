@@ -8,12 +8,13 @@ import 'features/auth/presentation/cubit/auth_state.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/schedule/data/schedule_repository.dart';
 import 'features/auth/data/auth_repository.dart';
+import 'features/plans/data/plan_repository.dart';
 import 'core/widgets/role_dispatcher.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  await di.init(); 
+  await di.init();
   await initializeDateFormatting('es', null);
 
   runApp(
@@ -24,6 +25,9 @@ void main() async {
         ),
         RepositoryProvider<ScheduleRepository>(
           create: (context) => ScheduleRepository(),
+        ),
+        RepositoryProvider<PlanRepository>(
+          create: (context) => PlanRepository(),
         ),
       ],
       child: const MyApp(),
@@ -41,7 +45,7 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Predator',
         debugShowCheckedModeBanner: false,
-        themeMode: ThemeMode.system, 
+        themeMode: ThemeMode.system,
 
         theme: ThemeData(
           brightness: Brightness.light,

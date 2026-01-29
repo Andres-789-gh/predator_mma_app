@@ -7,6 +7,7 @@ import '../cubit/admin_state.dart';
 import '../tabs/admin_calendar_tab.dart';
 import '../tabs/admin_generator_tab.dart';
 import '../tabs/admin_types_tab.dart';
+import '../../../plans/data/plan_repository.dart';
 
 class AdminScreen extends StatelessWidget {
   const AdminScreen({super.key});
@@ -17,7 +18,8 @@ class AdminScreen extends StatelessWidget {
       create: (context) => AdminCubit(
         authRepository: context.read<AuthRepository>(),
         scheduleRepository: context.read<ScheduleRepository>(),
-      )..loadFormData(),
+        planRepository: context.read<PlanRepository>(),
+      )..loadFormData(checkSchedule: true),
       child: const _AdminView(),
     );
   }

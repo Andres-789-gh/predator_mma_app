@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import '../../../auth/domain/models/user_model.dart';
 import '../../../schedule/domain/models/class_type_model.dart';
 import '../../../schedule/domain/models/class_model.dart';
+import '../../../plans/domain/models/plan_model.dart';
 
 abstract class AdminState extends Equatable {
   const AdminState();
@@ -60,4 +61,14 @@ class AdminConflictDetected extends AdminState {
     originalData,
     conflictMessage,
   ];
+}
+
+class AdminUsersLoaded extends AdminState {
+  final List<UserModel> users;
+  final List<PlanModel> availablePlans;
+
+  const AdminUsersLoaded({required this.users, required this.availablePlans});
+
+  @override
+  List<Object?> get props => [users, availablePlans];
 }

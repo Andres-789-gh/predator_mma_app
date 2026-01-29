@@ -7,6 +7,8 @@ import '../../../auth/data/auth_repository.dart';
 import '../../../schedule/data/schedule_repository.dart';
 import '../cubit/admin_cubit.dart';
 import '../../../plans/presentation/screens/plans_screen.dart';
+import '../../../plans/data/plan_repository.dart';
+import 'admin_users_screen.dart';
 
 class AdminHomeScreen extends StatelessWidget {
   const AdminHomeScreen({super.key});
@@ -26,87 +28,115 @@ class AdminHomeScreen extends StatelessWidget {
       create: (context) => AdminCubit(
         authRepository: context.read<AuthRepository>(),
         scheduleRepository: context.read<ScheduleRepository>(),
+        planRepository: context.read<PlanRepository>(),
       )..loadFormData(checkSchedule: true, silent: true),
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text("Panel de Control"),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.logout),
-              tooltip: "Cerrar Sesión",
-              onPressed: () => _showLogoutDialog(context),
+      // CORRECCIÓN: Usamos Builder para obtener un contexto hijo que "vea" al AdminCubit
+      child: Builder(
+        builder: (context) {
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text("Panel de Control"),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.logout),
+                  tooltip: "Cerrar Sesión",
+                  onPressed: () => _showLogoutDialog(context),
+                ),
+              ],
             ),
-          ],
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Bienvenido, ${user.firstName}",
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                "Administrador",
-                style: TextStyle(
-                  color: isDark ? Colors.grey[400] : Colors.grey[700],
-                ),
-              ),
-              const SizedBox(height: 30),
+            body: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Bienvenido, ${user.firstName}",
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    "Administrador",
+                    style: TextStyle(
+                      color: isDark ? Colors.grey[400] : Colors.grey[700],
+                    ),
+                  ),
+                  const SizedBox(height: 30),
 
-              Expanded(
-                child: GridView.count(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 15,
-                  mainAxisSpacing: 15,
-                  children: [
-                    _AdminMenuCard(
-                      icon: Icons.calendar_month,
-                      title: "Gestionar\nHorarios/Clases",
-                      color: Colors.redAccent,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const AdminScreen(),
-                          ),
-                        );
-                      },
+                  Expanded(
+                    child: GridView.count(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 15,
+                      mainAxisSpacing: 15,
+                      children: [
+                        _AdminMenuCard(
+                          icon: Icons.calendar_month,
+                          title: "Gestionar\nHorarios/Clases",
+                          color: Colors.redAccent,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                // Aquí usamos el 'context' del Builder, que SÍ tiene el Cubit
+                                builder: (_) => BlocProvider.value(
+                                  value: context.read<AdminCubit>(),
+                                  child: const AdminScreen(),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        _AdminMenuCard(
+                          icon: Icons.people,
+                          title: "Usuarios",
+                          color: Colors.blue,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                // Aquí también usamos el 'context' del Builder
+                                builder: (_) => BlocProvider.value(
+                                  value: context.read<AdminCubit>(),
+                                  child: const AdminUsersScreen(),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        // ... resto de las tarjetas (Planes, Reportes)
+                        _AdminMenuCard(
+                          icon: Icons.monetization_on,
+                          title: "Planes",
+                          color: Colors.redAccent,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const PlansScreen()),
+                            );
+                          },
+                        ),
+                        _AdminMenuCard(
+                          icon: Icons.analytics,
+                          title: "Reportes\n(Próx.)",
+                          color: Colors.grey,
+                          onTap: () {},
+                        ),
+                        _AdminMenuCard(
+                          icon: Icons.analytics,
+                          title: "Inventario\n(Próx.)",
+                          color: Colors.grey,
+                          onTap: () {},
+                        ),
+                      ],
                     ),
-                    _AdminMenuCard(
-                      icon: Icons.people,
-                      title: "Usuarios\n(Próx.)",
-                      color: Colors.grey,
-                      onTap: () {},
-                    ),
-                    _AdminMenuCard(
-                      icon: Icons.monetization_on,
-                      title: "Planes",
-                      color: Colors.redAccent,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const PlansScreen()),
-                        );
-                      },
-                    ),
-                    _AdminMenuCard(
-                      icon: Icons.analytics,
-                      title: "Reportes\n(Próx.)",
-                      color: Colors.grey,
-                      onTap: () {},
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }

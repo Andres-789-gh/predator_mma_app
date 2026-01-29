@@ -8,6 +8,8 @@ import '../../../schedule/domain/models/class_type_model.dart';
 import 'admin_state.dart';
 import '../../../schedule/domain/models/schedule_pattern_model.dart';
 import '../../../../core/constants/enums.dart';
+import '../../../plans/data/plan_repository.dart';
+import '../../../plans/domain/models/plan_model.dart';
 
 class TimeSlot {
   final TimeOfDay time;
@@ -18,12 +20,15 @@ class TimeSlot {
 class AdminCubit extends Cubit<AdminState> {
   final AuthRepository _authRepository;
   final ScheduleRepository _scheduleRepository;
+  final PlanRepository _planRepository;
 
   AdminCubit({
     required AuthRepository authRepository,
     required ScheduleRepository scheduleRepository,
+    required PlanRepository planRepository,
   }) : _authRepository = authRepository,
        _scheduleRepository = scheduleRepository,
+       _planRepository = planRepository,
        super(AdminInitial());
 
   Future<void> loadFormData({
@@ -386,9 +391,9 @@ class AdminCubit extends Cubit<AdminState> {
   }
 
   Future<void> createClassType(
-    String name, 
-    String description, 
-    ClassCategory category
+    String name,
+    String description,
+    ClassCategory category,
   ) async {
     try {
       if (state is AdminLoadedData) {
@@ -571,6 +576,64 @@ class AdminCubit extends Cubit<AdminState> {
     } catch (e) {
       emit(AdminError(e.toString()));
       await loadFormData(silent: true);
+    }
+  }
+
+  // GESTIÓN DE USUARIOS:
+  // Cargar lista de usuarios y planes disponibles
+  Future<void> loadUsersManagement() async {
+    try {
+      emit(AdminLoading());
+
+      final results = await Future.wait([
+        _authRepository.getAllUsers(),
+        _planRepository.getActivePlans(),
+      ]);
+
+      final users = results[0] as List<UserModel>;
+      final plans = results[1] as List<PlanModel>;
+
+      // Reutilizamos AdminLoadedData, pero deberíamos agregar campos allí.
+      // Por simplicidad, emitiremos un estado genérico o modificaremos AdminLoadedData.
+      // ESTRATEGIA: Vamos a emitir AdminUsersLoaded (Nuevo estado) o
+      // si prefieres mantenerlo simple, usaremos un truco:
+      // Vamos a emitir 'AdminLoadedData' pero agregando estos datos si modificas el estado.
+      // COMO NO QUIERO QUE MODIFIQUES EL ESTADO COMPLEJO,
+      // Usaremos un Callback o simplemente devolveremos los datos a la UI.
+      // PERO LO CORRECTO es tener un estado.
+
+      // Asumiré que agregas esto a AdminState.dart (ver paso 2.1 abajo)
+      emit(AdminUsersLoaded(users: users, availablePlans: plans));
+    } catch (e) {
+      emit(AdminError(e.toString()));
+    }
+  }
+
+  Future<void> updateUserProfile(UserModel user) async {
+    try {
+      emit(AdminLoading());
+      await _authRepository.updateUser(user);
+      emit(const AdminOperationSuccess("Usuario actualizado correctamente"));
+      await loadUsersManagement();
+    } catch (e) {
+      emit(AdminError(e.toString()));
+      await loadUsersManagement();
+    }
+  }
+
+  Future<void> applyMassivePause(DateTime start, DateTime end) async {
+    try {
+      emit(AdminLoading());
+      final count = await _authRepository.applyGlobalPause(
+        startDate: start,
+        endDate: end,
+        adminName: "Admin",
+      );
+      emit(AdminOperationSuccess("Se pausaron $count planes activos."));
+      await loadUsersManagement();
+    } catch (e) {
+      emit(AdminError(e.toString()));
+      await loadUsersManagement();
     }
   }
 }
