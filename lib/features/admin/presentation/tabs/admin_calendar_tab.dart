@@ -26,15 +26,19 @@ class _AdminCalendarTabState extends State<AdminCalendarTab> {
     _fetchClassesForDate(_selectedDate);
   }
 
-  // carga clases manualmente desde el repositorio
   Future<void> _fetchClassesForDate(DateTime date) async {
     setState(() => _isLoadingClasses = true);
     try {
       final start = DateTime(date.year, date.month, date.day);
-      final end = start.add(const Duration(days: 1)).subtract(const Duration(seconds: 1));
-      
-      final classes = await context.read<ScheduleRepository>().getClasses(fromDate: start, toDate: end);
-      
+      final end = start
+          .add(const Duration(days: 1))
+          .subtract(const Duration(seconds: 1));
+
+      final classes = await context.read<ScheduleRepository>().getClasses(
+        fromDate: start,
+        toDate: end,
+      );
+
       if (mounted) {
         setState(() {
           _dayClasses = classes;
@@ -48,11 +52,10 @@ class _AdminCalendarTabState extends State<AdminCalendarTab> {
 
   @override
   Widget build(BuildContext context) {
-    // escucha cambios del cubit pa refrescar despues de editar
     return BlocListener<AdminCubit, AdminState>(
       listener: (context, state) {
         if (state is AdminOperationSuccess) {
-           _fetchClassesForDate(_selectedDate);
+          _fetchClassesForDate(_selectedDate);
         }
       },
       child: Column(
@@ -65,26 +68,28 @@ class _AdminCalendarTabState extends State<AdminCalendarTab> {
               _fetchClassesForDate(date);
             },
           ),
-          
+
           const SizedBox(height: 10),
-          
+
           // lista de clases del dia
           Expanded(
-            child: _isLoadingClasses 
-                ? const Center(child: CircularProgressIndicator(color: Colors.red))
-                : _dayClasses.isEmpty 
-                    ? _buildEmptyState()
-                    : ListView.builder(
-                        itemCount: _dayClasses.length,
-                        padding: const EdgeInsets.only(bottom: 80),
-                        itemBuilder: (context, index) {
-                          final cls = _dayClasses[index];
-                          return AdminClassCard(
-                            classModel: cls,
-                            onTap: () => _showEditDialog(cls),
-                          );
-                        },
-                      ),
+            child: _isLoadingClasses
+                ? const Center(
+                    child: CircularProgressIndicator(color: Colors.red),
+                  )
+                : _dayClasses.isEmpty
+                ? _buildEmptyState()
+                : ListView.builder(
+                    itemCount: _dayClasses.length,
+                    padding: const EdgeInsets.only(bottom: 80),
+                    itemBuilder: (context, index) {
+                      final cls = _dayClasses[index];
+                      return AdminClassCard(
+                        classModel: cls,
+                        onTap: () => _showEditDialog(cls),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -96,7 +101,11 @@ class _AdminCalendarTabState extends State<AdminCalendarTab> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.event_busy, size: 50, color: Colors.grey.withValues(alpha: 0.3)),
+          Icon(
+            Icons.event_busy,
+            size: 50,
+            color: Colors.grey.withValues(alpha: 0.3),
+          ),
           const SizedBox(height: 10),
           Text(
             "No hay clases programadas",
@@ -107,7 +116,7 @@ class _AdminCalendarTabState extends State<AdminCalendarTab> {
     );
   }
 
-  // abre dialogo de edicion
+  // dialogo de edicion
   void _showEditDialog(ClassModel cls) {
     final state = context.read<AdminCubit>().state;
     if (state is AdminLoadedData) {

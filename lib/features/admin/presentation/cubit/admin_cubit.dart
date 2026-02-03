@@ -10,6 +10,7 @@ import '../../../schedule/domain/models/schedule_pattern_model.dart';
 import '../../../../core/constants/enums.dart';
 import '../../../plans/data/plan_repository.dart';
 import '../../../plans/domain/models/plan_model.dart';
+import 'package:intl/intl.dart';
 
 class TimeSlot {
   final TimeOfDay time;
@@ -289,7 +290,7 @@ class AdminCubit extends Cubit<AdminState> {
             classId: '',
             classTypeId: type.id,
             classType: type.name,
-            category: ClassCategory.combat,
+            category: type.category,
             coachId: coach.userId,
             coachName: "${coach.firstName} ${coach.lastName}",
             startTime: startDateTime,
@@ -356,7 +357,7 @@ class AdminCubit extends Cubit<AdminState> {
               classId: '',
               classTypeId: type.id,
               classType: type.name,
-              category: ClassCategory.combat,
+              category: type.category,
               coachId: coach.userId,
               coachName: '',
               startTime: DateTime.now(),
@@ -593,16 +594,6 @@ class AdminCubit extends Cubit<AdminState> {
       final users = results[0] as List<UserModel>;
       final plans = results[1] as List<PlanModel>;
 
-      // Reutilizamos AdminLoadedData, pero deberíamos agregar campos allí.
-      // Por simplicidad, emitiremos un estado genérico o modificaremos AdminLoadedData.
-      // ESTRATEGIA: Vamos a emitir AdminUsersLoaded (Nuevo estado) o
-      // si prefieres mantenerlo simple, usaremos un truco:
-      // Vamos a emitir 'AdminLoadedData' pero agregando estos datos si modificas el estado.
-      // COMO NO QUIERO QUE MODIFIQUES EL ESTADO COMPLEJO,
-      // Usaremos un Callback o simplemente devolveremos los datos a la UI.
-      // PERO LO CORRECTO es tener un estado.
-
-      // Asumiré que agregas esto a AdminState.dart (ver paso 2.1 abajo)
       emit(AdminUsersLoaded(users: users, availablePlans: plans));
     } catch (e) {
       emit(AdminError(e.toString()));
@@ -621,19 +612,93 @@ class AdminCubit extends Cubit<AdminState> {
     }
   }
 
-  Future<void> applyMassivePause(DateTime start, DateTime end) async {
+  // Pausas masivas
+  Future<void> applyMassivePause(
+    DateTime startDate,
+    DateTime endDate,
+    String adminName,
+  ) async {
+    emit(AdminLoading());
     try {
-      emit(AdminLoading());
-      final count = await _authRepository.applyGlobalPause(
-        startDate: start,
-        endDate: end,
-        adminName: "Admin",
-      );
-      emit(AdminOperationSuccess("Se pausaron $count planes activos."));
+      final String pauseTag = "MASIVA_${DateFormat('yyyyMMdd').format(startDate)}";
+      final String auditLabel = "$pauseTag (por $adminName)";
+      List<UserModel> usersToUpdate = [];
+      
+      if (state is AdminUsersLoaded) {
+        usersToUpdate = (state as AdminUsersLoaded).users;
+      } else {
+        return; 
+      }
+
+      int updatedCount = 0;
+
+      for (final user in usersToUpdate) {
+        if (user.activePlan == null) continue;
+        
+        final currentPlan = user.activePlan!;
+
+        // Proteccion duplicados
+        final alreadyHasThisPause = currentPlan.pauses.any((p) => 
+            p.createdBy.startsWith(pauseTag) &&
+            p.startDate.isAtSameMomentAs(startDate) && 
+            p.endDate.isAtSameMomentAs(endDate)
+        );
+
+        if (alreadyHasThisPause) continue; 
+
+        // Crear pausa
+        final newPause = PlanPause(
+          startDate: startDate,
+          endDate: endDate,
+          createdBy: auditLabel,
+        );
+
+        final updatedPauses = List<PlanPause>.from(currentPlan.pauses)
+          ..add(newPause);
+
+        final updatedUser = user.copyWith(
+          activePlan: currentPlan.copyWith(pauses: updatedPauses),
+        );
+
+        await _authRepository.updateUser(updatedUser); 
+        
+        updatedCount++;
+      }
+
+      await loadUsersManagement();
+      
+      print("Se aplicó pausa masiva a $updatedCount usuarios.");
+
+    } catch (e) {
+      emit(AdminError("Error aplicando pausa masiva: $e"));
+    }
+  }
+
+  // Deshacer pausas masivas
+  Future<void> undoMassivePause(DateTime originalStartDate) async {
+    emit(AdminLoading());
+    try {
+      final String targetTag = "MASIVA_${DateFormat('yyyyMMdd').format(originalStartDate)}";
+      final users = (state as AdminUsersLoaded).users;
+      
+      for (final user in users) {
+        if (user.activePlan == null) continue;
+        final currentPlan = user.activePlan!;
+        final filteredPauses = currentPlan.pauses.where((p) {
+          return !p.createdBy.startsWith(targetTag);
+        }).toList();
+
+        if (filteredPauses.length != currentPlan.pauses.length) {
+          final updatedUser = user.copyWith(
+            activePlan: currentPlan.copyWith(pauses: filteredPauses),
+          );
+          await _authRepository.updateUser(updatedUser);
+        }
+      }
+
       await loadUsersManagement();
     } catch (e) {
-      emit(AdminError(e.toString()));
-      await loadUsersManagement();
+      emit(AdminError("Error deshaciendo pausa: $e"));
     }
   }
 }

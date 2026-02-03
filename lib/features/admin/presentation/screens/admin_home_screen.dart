@@ -30,7 +30,6 @@ class AdminHomeScreen extends StatelessWidget {
         scheduleRepository: context.read<ScheduleRepository>(),
         planRepository: context.read<PlanRepository>(),
       )..loadFormData(checkSchedule: true, silent: true),
-      // CORRECCIÓN: Usamos Builder para obtener un contexto hijo que "vea" al AdminCubit
       child: Builder(
         builder: (context) {
           return Scaffold(
@@ -79,7 +78,6 @@ class AdminHomeScreen extends StatelessWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                // Aquí usamos el 'context' del Builder, que SÍ tiene el Cubit
                                 builder: (_) => BlocProvider.value(
                                   value: context.read<AdminCubit>(),
                                   child: const AdminScreen(),
@@ -91,12 +89,11 @@ class AdminHomeScreen extends StatelessWidget {
                         _AdminMenuCard(
                           icon: Icons.people,
                           title: "Usuarios",
-                          color: Colors.blue,
+                          color: Colors.redAccent,
                           onTap: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                // Aquí también usamos el 'context' del Builder
                                 builder: (_) => BlocProvider.value(
                                   value: context.read<AdminCubit>(),
                                   child: const AdminUsersScreen(),
@@ -105,7 +102,6 @@ class AdminHomeScreen extends StatelessWidget {
                             );
                           },
                         ),
-                        // ... resto de las tarjetas (Planes, Reportes)
                         _AdminMenuCard(
                           icon: Icons.monetization_on,
                           title: "Planes",
@@ -113,7 +109,9 @@ class AdminHomeScreen extends StatelessWidget {
                           onTap: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => const PlansScreen()),
+                              MaterialPageRoute(
+                                builder: (_) => const PlansScreen(),
+                              ),
                             );
                           },
                         ),
@@ -124,7 +122,7 @@ class AdminHomeScreen extends StatelessWidget {
                           onTap: () {},
                         ),
                         _AdminMenuCard(
-                          icon: Icons.analytics,
+                          icon: Icons.inventory_2,
                           title: "Inventario\n(Próx.)",
                           color: Colors.grey,
                           onTap: () {},

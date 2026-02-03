@@ -226,7 +226,7 @@ class _EditClassDialogState extends State<EditClassDialog> {
                             style: TextButton.styleFrom(
                               foregroundColor: Colors.grey[700],
                             ),
-                            child: const Text("Volver"),
+                            child: const Text("Cancelar"),
                           ),
                           const SizedBox(width: 8),
                           FilledButton(

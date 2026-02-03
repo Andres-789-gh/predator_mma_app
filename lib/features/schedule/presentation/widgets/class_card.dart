@@ -61,7 +61,7 @@ class ClassCard extends StatelessWidget {
           } else {
             // estado disponible
             statusColor = status == ClassStatus.availableWithTicket ? Colors.amber : const Color(0xFF4CAF50);
-            buttonText = status == ClassStatus.availableWithTicket ? 'USAR TICKET' : 'RESERVAR';
+            buttonText = status == ClassStatus.availableWithTicket ? 'USAR INGRESO EXTRA' : 'RESERVAR';
             statusIcon = status == ClassStatus.availableWithTicket ? Icons.confirmation_number_outlined : Icons.add_circle_outline;
           }
           break;

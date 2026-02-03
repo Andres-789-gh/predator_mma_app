@@ -38,103 +38,100 @@ class _AdminTypesTabState extends State<AdminTypesTab> {
       },
       child: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Text(
-                      "Crear Nueva Clase",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.only(
+            bottom: 50,
+          ), 
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        "Crear Nueva Clase",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    TextField(
-                      controller: _typeNameController,
-                      decoration: const InputDecoration(
-                        labelText: "Nombre (Ej: Combate)",
-                        border: OutlineInputBorder(),
+                      const SizedBox(height: 20),
+                      TextField(
+                        controller: _typeNameController,
+                        decoration: const InputDecoration(
+                          labelText: "Nombre (Ej: Combate)",
+                          border: OutlineInputBorder(),
+                        ),
                       ),
-                    ),
-
-                    const SizedBox(height: 15),
-
-                    TextField(
-                      controller: _typeDescController,
-                      maxLines: 2,
-                      decoration: const InputDecoration(
-                        labelText: "Descripción (Opcional)",
-                        border: OutlineInputBorder(),
+                      const SizedBox(height: 15),
+                      TextField(
+                        controller: _typeDescController,
+                        decoration: const InputDecoration(
+                          labelText: "Descripción (Opcional)",
+                          border: OutlineInputBorder(),
+                        ),
                       ),
-                    ),
-
-                    const SizedBox(height: 15),
-
-                    DropdownButtonFormField<ClassCategory>(
-                      value: _selectedCategory,
-                      decoration: const InputDecoration(
-                        labelText: "Categoría",
-                        border: OutlineInputBorder(),
+                      const SizedBox(height: 15),
+                      DropdownButtonFormField<ClassCategory>(
+                        value: _selectedCategory,
+                        decoration: const InputDecoration(
+                          labelText: "Categoría",
+                          border: OutlineInputBorder(),
+                        ),
+                        hint: const Text("Seleccione una categoría"),
+                        items: ClassCategory.values.map((cat) {
+                          return DropdownMenuItem(
+                            value: cat,
+                            child: Text(cat.label.toUpperCase()),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          setState(() => _selectedCategory = val);
+                        },
+                        validator: (val) =>
+                            val == null ? 'Selecciona una opción' : null,
                       ),
-                      hint: const Text("Seleccione una categoría"),
-                      items: ClassCategory.values.map((cat) {
-                        return DropdownMenuItem(
-                          value: cat,
-                          child: Text(cat.label.toUpperCase()),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        setState(() => _selectedCategory = val);
-                      },
-                      validator: (val) =>
-                          val == null ? 'Selecciona una opción' : null,
-                    ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () {
+                          FocusScope.of(context).unfocus();
+                          if (!_formKey.currentState!.validate()) return;
+                          if (_typeNameController.text.isEmpty) return;
 
-                    const SizedBox(height: 20),
-
-                    ElevatedButton(
-                      onPressed: () {
-                        FocusScope.of(context).unfocus();
-                        if (!_formKey.currentState!.validate()) return;
-                        if (_typeNameController.text.isEmpty) return;
-
-                        context.read<AdminCubit>().createClassType(
-                          _typeNameController.text.trim(),
-                          _typeDescController.text.trim(),
-                          _selectedCategory!,
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red[800],
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 15),
+                          context.read<AdminCubit>().createClassType(
+                            _typeNameController.text.trim(),
+                            _typeDescController.text.trim(),
+                            _selectedCategory!,
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red[800],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                        ),
+                        child: const Text("GUARDAR"),
                       ),
-                      child: const Text("GUARDAR"),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
 
-              const Divider(height: 3, thickness: 1),
+                const Divider(height: 3, thickness: 1),
 
-              const Padding(
-                padding: EdgeInsets.all(20),
-                child: Text(
-                  "Catálogo de Clases",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Text(
+                    "Catálogo de Clases",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                 ),
-              ),
 
-              Expanded(child: _buildClassList()),
-            ],
+                _buildClassList(),
+              ],
+            ),
           ),
         ),
       ),
@@ -146,28 +143,33 @@ class _AdminTypesTabState extends State<AdminTypesTab> {
 
     if (types.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.class_outlined,
-              size: 50,
-              color: Colors.grey.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              "No hay clases registradas",
-              style: TextStyle(
-                color: Colors.grey.withValues(alpha: 0.8),
-                fontSize: 16,
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.class_outlined,
+                size: 50,
+                color: Colors.grey.withValues(alpha: 0.5),
               ),
-            ),
-          ],
+              const SizedBox(height: 10),
+              Text(
+                "No hay clases registradas",
+                style: TextStyle(
+                  color: Colors.grey.withValues(alpha: 0.8),
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 80),
       itemCount: types.length,
       separatorBuilder: (_, __) => const Divider(),

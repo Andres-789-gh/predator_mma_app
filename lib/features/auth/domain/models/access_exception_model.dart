@@ -2,7 +2,7 @@ import '../../../../features/plans/domain/models/plan_model.dart';
 
 class AccessExceptionModel {
   final String id;
-  final String? reason; 
+  final String? reason;
   final DateTime grantedAt; // fecha
   final String grantedBy; // id admin
   final int quantity; // cantidad ingresos
@@ -16,21 +16,21 @@ class AccessExceptionModel {
     this.reason,
     required this.grantedAt,
     required this.grantedBy,
-    required this.scheduleRules, 
+    required this.scheduleRules,
     required this.originalPlanName,
     required this.quantity,
     required this.price,
     this.validUntil,
   });
-  
+
   AccessExceptionModel copyWith({
     String? id,
     String? reason,
     DateTime? grantedAt,
     String? grantedBy,
-    List<ScheduleRule>? scheduleRules, 
+    List<ScheduleRule>? scheduleRules,
     String? originalPlanName,
-    
+
     int? quantity,
     double? price,
     DateTime? validUntil,

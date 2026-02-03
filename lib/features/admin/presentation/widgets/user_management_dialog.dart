@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../auth/domain/models/user_model.dart';
 import '../../../plans/domain/models/plan_model.dart';
-import '../../../../core/constants/enums.dart';
 
 class UserManagementDialog extends StatefulWidget {
   final UserModel user;
@@ -24,8 +23,8 @@ class _UserManagementDialogState extends State<UserManagementDialog> {
   late bool _isLegacyUser;
   PlanModel? _selectedNewPlan;
   
-  // Para asignar plan nuevo
-  DateTime _startDate = DateTime.now();
+  // asignar plan nuevo
+  final DateTime _startDate = DateTime.now();
   int _monthsDuration = 1;
 
   @override
@@ -46,7 +45,6 @@ class _UserManagementDialogState extends State<UserManagementDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 1. SWITCH USUARIO ANTIGUO [cite: 123]
           SwitchListTile(
             title: const Text("Usuario Antiguo (Legacy)"),
             subtitle: const Text("Puede entrar a múltiples clases sin plan Unlimited."),
@@ -55,19 +53,18 @@ class _UserManagementDialogState extends State<UserManagementDialog> {
           ),
           const Divider(),
 
-          // 2. PLAN ACTUAL Y PAUSA INDIVIDUAL [cite: 184]
           if (hasActivePlan) ...[
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
+                color: Colors.green..withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.green),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Plan Actual: ${activePlan!.name}", style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text("Plan Actual: ${activePlan.name}", style: const TextStyle(fontWeight: FontWeight.bold)),
                   Text("Vence: ${DateFormat('dd/MM/yyyy').format(activePlan.effectiveEndDate)}"),
                   if (activePlan.dailyLimit != null)
                     Text("Límite Diario: ${activePlan.dailyLimit} clases"),
@@ -91,7 +88,6 @@ class _UserManagementDialogState extends State<UserManagementDialog> {
             const Text("Asignar Nuevo Plan:", style: TextStyle(fontWeight: FontWeight.bold)),
           ],
 
-          // 3. ASIGNACIÓN DE PLAN (MANUAL) [cite: 23]
           const SizedBox(height: 10),
           DropdownButtonFormField<PlanModel>(
             decoration: const InputDecoration(
@@ -138,7 +134,6 @@ class _UserManagementDialogState extends State<UserManagementDialog> {
     UserModel updatedUser = widget.user.copyWith(isLegacyUser: _isLegacyUser);
 
     if (_selectedNewPlan != null) {
-      // Crear el UserPlan a partir del PlanModel seleccionado
       final endDate = DateTime(
         _startDate.year,
         _startDate.month + _monthsDuration,
@@ -152,7 +147,7 @@ class _UserManagementDialogState extends State<UserManagementDialog> {
         scheduleRules: _selectedNewPlan!.scheduleRules,
         startDate: _startDate,
         endDate: endDate,
-        dailyLimit: _selectedNewPlan!.dailyLimit, // IMPORTANTE: Se copia el límite aquí
+        dailyLimit: _selectedNewPlan!.dailyLimit, 
         remainingClasses: _selectedNewPlan!.packClassesQuantity,
         pauses: [],
       );
@@ -173,7 +168,6 @@ class _UserManagementDialogState extends State<UserManagementDialog> {
     );
 
     if (picked != null) {
-      // Aplicar pausa inmediatamente al objeto local y guardar
       final newPause = PlanPause(
         startDate: picked.start,
         endDate: picked.end,
@@ -186,9 +180,8 @@ class _UserManagementDialogState extends State<UserManagementDialog> {
       
       final userWithPause = widget.user.copyWith(activePlan: updatedPlan);
       
-      // Guardar directamente y cerrar dialogos
       widget.onSave(userWithPause);
-      if (mounted) Navigator.pop(context); // Cerrar dialogo principal
+      if (mounted) Navigator.pop(context);
     }
   }
 }

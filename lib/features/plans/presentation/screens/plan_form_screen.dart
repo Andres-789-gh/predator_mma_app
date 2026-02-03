@@ -470,7 +470,7 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
     final names = {
       ClassCategory.combat: 'Combate',
       ClassCategory.conditioning: 'Físico',
-      ClassCategory.kids: 'Niños',
+      ClassCategory.kids: 'Kids',
       ClassCategory.virtual: 'Virtual',
       ClassCategory.personalized: 'Personalizado',
     };
@@ -573,7 +573,7 @@ class _RuleEditorDialogState extends State<_RuleEditorDialog> {
                   ClassCategory.conditioning,
                   isDark,
                 ),
-                _buildCategoryChip("NIÑOS", ClassCategory.kids, isDark),
+                _buildCategoryChip("KIDS", ClassCategory.kids, isDark),
                 _buildCategoryChip("VIRTUAL", ClassCategory.virtual, isDark),
                 _buildCategoryChip(
                   "PERSONALIZADO",

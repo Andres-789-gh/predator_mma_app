@@ -25,14 +25,20 @@ class AdminClassCard extends StatelessWidget {
     final enrolledCount = classModel.attendees.length;
     final maxCap = classModel.maxCapacity;
     final isFull = enrolledCount >= maxCap;
-    
-    final occupationColor = isFull ? Colors.red : (enrolledCount > 0 ? Colors.green : Colors.grey);
-    
-    final cardColor = isCancelled 
+
+    final occupationColor = isFull
+        ? Colors.red
+        : (enrolledCount > 0 ? Colors.green : Colors.grey);
+
+    final cardColor = isCancelled
         ? Colors.red.withValues(alpha: 0.05)
-        : (isExpired ? Colors.grey.withValues(alpha: 0.1) : (isDark ? const Color(0xFF1E1E1E) : Colors.white));
-        
-    final textColor = isCancelled || isExpired ? Colors.grey : (isDark ? Colors.white : Colors.black87);
+        : (isExpired
+              ? Colors.grey.withValues(alpha: 0.1)
+              : (isDark ? const Color(0xFF1E1E1E) : Colors.white));
+
+    final textColor = isCancelled || isExpired
+        ? Colors.grey
+        : (isDark ? Colors.white : Colors.black87);
     final decoration = isCancelled ? TextDecoration.lineThrough : null;
 
     return GestureDetector(
@@ -60,31 +66,42 @@ class AdminClassCard extends StatelessWidget {
                   Column(
                     children: [
                       Text(
-                        startTime, 
+                        startTime,
                         style: TextStyle(
-                          fontSize: 16, 
-                          fontWeight: FontWeight.bold, 
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                           color: textColor,
                           decoration: decoration,
-                        )
+                        ),
                       ),
                       Text(
-                        endTime, 
+                        endTime,
                         style: TextStyle(
-                          fontSize: 12, 
+                          fontSize: 12,
                           color: isDark ? Colors.grey : Colors.grey[600],
                           decoration: decoration,
-                        )
+                        ),
                       ),
                       if (isCancelled)
-                        const Text("CANCELADA", style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold)),
+                        const Text(
+                          "CANCELADA",
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                     ],
                   ),
                   const SizedBox(width: 16),
-                  
-                  Container(height: 40, width: 2, color: occupationColor.withValues(alpha: 0.3)),
+
+                  Container(
+                    height: 40,
+                    width: 2,
+                    color: occupationColor.withValues(alpha: 0.3),
+                  ),
                   const SizedBox(width: 16),
-                  
+
                   // Detalles clase
                   Expanded(
                     child: Column(
@@ -92,72 +109,97 @@ class AdminClassCard extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            Text(
-                              classModel.classType.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 16, 
-                                fontWeight: FontWeight.w900, 
-                                fontStyle: FontStyle.italic, 
-                                color: textColor,
-                                decoration: decoration,
-                              )
+                            Flexible(
+                              child: Text(
+                                classModel.classType.toUpperCase(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  fontStyle: FontStyle.italic,
+                                  color: textColor,
+                                  decoration: decoration,
+                                ),
+                              ),
                             ),
                             const SizedBox(width: 8),
                             // Categoría
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
-                                color: isCancelled ? Colors.red.withValues(alpha: 0.1) : Colors.blue.withValues(alpha: 0.1),
+                                color: isCancelled
+                                    ? Colors.red.withValues(alpha: 0.1)
+                                    : Colors.grey.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(4),
                                 border: Border.all(
-                                  color: isCancelled ? Colors.red.withValues(alpha: 0.3) : Colors.blue.withValues(alpha: 0.3)
+                                  color: isCancelled
+                                      ? Colors.red.withValues(alpha: 0.3)
+                                      : Colors.grey.withValues(alpha: 0.5),
                                 ),
                               ),
                               child: Text(
                                 classModel.category.label.toUpperCase(),
                                 style: TextStyle(
-                                  fontSize: 9, 
+                                  fontSize: 9,
                                   fontWeight: FontWeight.bold,
-                                  color: isCancelled ? Colors.red : Colors.blue,
+                                  color: isCancelled
+                                      ? Colors.red
+                                      : Colors.grey[700],
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        
+
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(Icons.person, size: 14, color: isDark ? Colors.grey : Colors.grey[600]),
+                            Icon(
+                              Icons.person,
+                              size: 14,
+                              color: isDark ? Colors.grey : Colors.grey[600],
+                            ),
                             const SizedBox(width: 4),
                             Text(
-                              classModel.coachName, 
-                              style: TextStyle(fontSize: 13, color: isDark ? Colors.grey : Colors.grey[700])
+                              classModel.coachName,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isDark ? Colors.grey : Colors.grey[700],
+                              ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 6),
-                        
+
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: occupationColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: occupationColor.withValues(alpha: 0.3)),
+                            border: Border.all(
+                              color: occupationColor.withValues(alpha: 0.3),
+                            ),
                           ),
                           child: Text(
                             '$enrolledCount / $maxCap INSCRITOS',
                             style: TextStyle(
-                              fontSize: 10, 
+                              fontSize: 10,
                               color: occupationColor,
-                              fontWeight: FontWeight.bold
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  
+
                   Icon(Icons.edit, color: Colors.grey[400], size: 20),
                 ],
               ),
