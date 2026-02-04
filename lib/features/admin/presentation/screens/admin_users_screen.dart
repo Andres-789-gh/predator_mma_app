@@ -301,7 +301,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: const [
                       BoxShadow(blurRadius: 4, color: Colors.black26),
@@ -336,7 +336,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: const [
                       BoxShadow(blurRadius: 4, color: Colors.black26),

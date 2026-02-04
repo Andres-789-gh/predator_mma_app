@@ -202,6 +202,7 @@ class UserSubscriptionsTab extends StatelessWidget {
                         child: FilledButton.icon(
                           style: FilledButton.styleFrom(
                             backgroundColor: Theme.of(context).primaryColor,
+                            foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
                           icon: const Icon(Icons.autorenew),

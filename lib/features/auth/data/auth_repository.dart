@@ -15,7 +15,7 @@ class AuthRepository {
   Future<UserModel?> getCurrentUser() async {
     final user = _firebaseAuth.currentUser;
     if (user != null) {
-      return await _getUserData(user.uid);
+      return await getUserData(user.uid);
     }
     return null;
   }
@@ -32,7 +32,7 @@ class AuthRepository {
     );
 
     // Buscar datos en Firestore
-    final userData = await _getUserData(userCredential.user!.uid);
+    final userData = await getUserData(userCredential.user!.uid);
 
     if (userData == null) {
       throw Exception(
@@ -105,7 +105,7 @@ class AuthRepository {
   }
 
   // Helper privado
-  Future<UserModel?> _getUserData(String uid) async {
+  Future<UserModel?> getUserData(String uid) async {
     final doc = await _firestore.collection('users').doc(uid).get();
     if (doc.exists && doc.data() != null) {
       return UserMapper.fromMap(doc.data()!, doc.id);

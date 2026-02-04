@@ -155,8 +155,6 @@ class _AssignPlanDialogState extends State<AssignPlanDialog> {
                     decoration: const InputDecoration(
                       labelText: "Vence el",
                       border: OutlineInputBorder(),
-                      filled: true,
-                      fillColor: Color(0xFFF5F5F5),
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: 10,
                         vertical: 8,

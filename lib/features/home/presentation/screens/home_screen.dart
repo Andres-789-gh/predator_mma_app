@@ -28,11 +28,22 @@ class HomeScreen extends StatelessWidget {
 
         if (state is AuthAuthenticated) {
           final user = state.user;
-
-          final bool hasActivePlan = user.activePlan != null;
+          final plan = user.activePlan;
+          final now = DateTime.now();
+          // Estados
+          final bool hasPlanObject = plan != null;
+          // vencido
+          final bool isPlanExpired = hasPlanObject && plan.endDate.isBefore(now);
+          // pausado
+          final bool isPlanPaused = hasPlanObject && !isPlanExpired && plan.pauses.any((p) {
+             return now.isAfter(p.startDate.subtract(const Duration(seconds: 1))) && 
+                    now.isBefore(p.endDate.add(const Duration(seconds: 1)));
+          });
+          // activo
+          final bool isPlanActiveVisual = hasPlanObject && !isPlanExpired && !isPlanPaused;
           final bool isWaiverSigned = user.isWaiverSigned;
           final bool hasTickets = user.accessExceptions.any((t) => t.quantity > 0);
-          final bool canReserve = hasActivePlan || hasTickets;
+          final bool canReserve = isPlanActiveVisual || hasTickets;
 
           return Scaffold(
             backgroundColor: theme.scaffoldBackgroundColor,
@@ -136,13 +147,13 @@ class HomeScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: hasActivePlan
+                        colors: isPlanActiveVisual 
                             ? (isDark
                                 ? [const Color(0xFF1E1E1E), const Color(0xFF2C2C2C)]
                                 : [Colors.white, const Color(0xFFF5F5F5)])
-                            : [
-                                isDark ? const Color(0xFF1E1E1E) : Colors.grey[300]!,
-                                isDark ? const Color(0xFF252525) : Colors.grey[200]!
+                            : [ 
+                                isDark ? const Color(0xFF251818) : Colors.red[50]!,
+                                isDark ? const Color(0xFF1E1E1E) : Colors.white
                               ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
@@ -150,15 +161,19 @@ class HomeScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+                          color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
                           blurRadius: 10,
                           offset: const Offset(0, 5),
                         ),
                       ],
                       border: Border.all(
-                        color: hasActivePlan
-                            ? Colors.green.withValues(alpha: 0.5)
-                            : (isDark ? Colors.white10 : Colors.grey[400]!),
+                        color: isPlanExpired 
+                            ? Colors.red.withOpacity(0.3)
+                            : isPlanPaused
+                                ? Colors.orange.withOpacity(0.3)
+                                : (isPlanActiveVisual
+                                    ? Colors.green.withOpacity(0.5)
+                                    : (isDark ? Colors.white10 : Colors.grey[400]!)),
                         width: 1,
                       ),
                     ),
@@ -170,19 +185,39 @@ class HomeScreen extends StatelessWidget {
                           children: [
                             Icon(
                               Icons.card_membership,
-                              color: hasActivePlan && !isDark ? Colors.black87 : Colors.white,
+                              color: isPlanActiveVisual && !isDark 
+                                  ? Colors.black87 
+                                  : (isPlanExpired 
+                                      ? Colors.red 
+                                      : (isPlanPaused ? Colors.orange : Colors.white)),
                               size: 30,
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
-                                color: hasActivePlan ? Colors.green.withValues(alpha: 0.2) : Colors.grey.withValues(alpha: 0.2),
+                                color: isPlanExpired
+                                    ? Colors.red.withOpacity(0.1) 
+                                    : isPlanPaused
+                                        ? Colors.orange.withOpacity(0.1)
+                                        : (isPlanActiveVisual 
+                                            ? Colors.green.withOpacity(0.2) 
+                                            : Colors.grey.withOpacity(0.2)),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
-                                hasActivePlan ? 'ACTIVO' : 'INACTIVO',
+                                isPlanExpired 
+                                    ? 'VENCIDO' 
+                                    : isPlanPaused
+                                        ? 'PAUSADO'
+                                        : (hasPlanObject ? 'ACTIVO' : 'INACTIVO'),
                                 style: TextStyle(
-                                  color: hasActivePlan ? Colors.green : (isDark ? Colors.grey : Colors.grey[700]),
+                                  color: isPlanExpired 
+                                      ? Colors.red 
+                                      : isPlanPaused
+                                          ? Colors.orange
+                                          : (isPlanActiveVisual 
+                                              ? Colors.green 
+                                              : (isDark ? Colors.grey : Colors.grey[700])),
                                   fontWeight: FontWeight.bold,
                                   fontSize: 12,
                                 ),
@@ -190,9 +225,10 @@ class HomeScreen extends StatelessWidget {
                             ),
                           ],
                         ),
+                        
                         const SizedBox(height: 20),
 
-                        if (hasActivePlan) ...[
+                        if (hasPlanObject) ...[ 
                           Text(
                             user.activePlan!.name.toUpperCase(),
                             style: TextStyle(
@@ -222,9 +258,17 @@ class HomeScreen extends StatelessWidget {
                               style: TextStyle(color: !isDark ? Colors.grey[800] : Colors.white70),
                             ),
                           ] else ...[
-                            if (user.activePlan!.consumptionType == PlanConsumptionType.limitedDaily)
+                            if (user.isLegacyUser)
                               Text(
-                                'Ingreso Diario', 
+                                'Ingreso Ilimitado (Usuario Antiguo)', 
+                                style: TextStyle(
+                                  color: Colors.amber[700],
+                                  fontWeight: FontWeight.bold
+                                )
+                              )
+                            else if (user.activePlan!.consumptionType == PlanConsumptionType.limitedDaily)
+                              Text(
+                                'Límite: ${user.activePlan!.dailyLimit ?? 1} clase(s) por día', 
                                 style: TextStyle(color: !isDark ? Colors.grey[800] : Colors.white70)
                               )
                             else
@@ -244,13 +288,106 @@ class HomeScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 5),
                           Text(
-                            'Consulta con tu entrenador para adquirir tu plan y comenzar a reservar clases.',
+                            'Adquiere un plan para comenzar a reservar clases.',
                             style: TextStyle(color: !isDark ? Colors.grey[700] : Colors.white54),
                           ),
                         ],
                       ],
                     ),
                   ),
+
+                  // Ingresos extra
+                  if (hasTickets) ...[
+                    const SizedBox(height: 30),
+                    Row(
+                      children: [
+                        Icon(Icons.confirmation_number_outlined, 
+                          color: textColor.withOpacity(0.6), size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          'INGRESOS EXTRA DISPONIBLES',
+                          style: TextStyle(
+                            color: textColor.withOpacity(0.6),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
+                    SizedBox(
+                      height: 100,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: user.accessExceptions.where((t) => t.quantity > 0).length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 15),
+                        itemBuilder: (context, index) {
+                          final ticket = user.accessExceptions.where((t) => t.quantity > 0).toList()[index];
+                          return Container(
+                            width: 200,
+                            padding: const EdgeInsets.all(15),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+                              borderRadius: BorderRadius.circular(15),
+                              border: Border.all(color: Colors.amber.withOpacity(0.5)),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.amber.withOpacity(0.1),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                )
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.amber.withOpacity(0.2),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Text(
+                                        '${ticket.quantity}',
+                                        style: const TextStyle(
+                                          color: Colors.amber, 
+                                          fontWeight: FontWeight.bold
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        ticket.originalPlanName.isEmpty 
+                                            ? 'Ticket General' 
+                                            : ticket.originalPlanName,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: textColor,
+                                          overflow: TextOverflow.ellipsis
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (ticket.validUntil != null) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Vence: ${ticket.validUntil!.day}/${ticket.validUntil!.month}',
+                                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                                  ),
+                                ]
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
 
                   const SizedBox(height: 40),
                   

@@ -702,8 +702,13 @@ class ScheduleRepository {
 
   bool _doesPlanAllowClass(UserModel user, ClassModel classModel) {
     final activePlan = user.activePlan;
+
     if (activePlan == null) return false;
     if (!classModel.canReserveNow) return false;
+    final now = DateTime.now();
+    if (activePlan.endDate.isBefore(now)) return false;
+    if (activePlan.isPaused(now)) return false;
+
     return activePlan.scheduleRules.any(
       (rule) => rule.matchesClass(classModel.startTime, classModel.category),
     );

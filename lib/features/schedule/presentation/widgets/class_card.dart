@@ -21,8 +21,8 @@ class ClassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isExpired = classModel.hasFinished; 
-    
+    final isExpired = classModel.hasFinished;
+
     // verifica permiso
     bool isButtonEnabled = true;
 
@@ -44,10 +44,10 @@ class ClassCard extends StatelessWidget {
         buttonText = 'CANCELADA (FIN)';
       }
     } else if (isExpired) {
-       statusColor = isDark ? Colors.grey[700]! : Colors.grey;
-       buttonText = 'FINALIZADA';
-       statusIcon = Icons.history;
-       isButtonEnabled = false;
+      statusColor = isDark ? Colors.grey[700]! : Colors.grey;
+      buttonText = 'FINALIZADA';
+      statusIcon = Icons.history;
+      isButtonEnabled = false;
     } else {
       switch (status) {
         case ClassStatus.available:
@@ -60,9 +60,15 @@ class ClassCard extends StatelessWidget {
             isButtonEnabled = false;
           } else {
             // estado disponible
-            statusColor = status == ClassStatus.availableWithTicket ? Colors.amber : const Color(0xFF4CAF50);
-            buttonText = status == ClassStatus.availableWithTicket ? 'USAR INGRESO EXTRA' : 'RESERVAR';
-            statusIcon = status == ClassStatus.availableWithTicket ? Icons.confirmation_number_outlined : Icons.add_circle_outline;
+            statusColor = status == ClassStatus.availableWithTicket
+                ? Colors.amber
+                : const Color(0xFF4CAF50);
+            buttonText = status == ClassStatus.availableWithTicket
+                ? 'USAR INGRESO EXTRA'
+                : 'RESERVAR';
+            statusIcon = status == ClassStatus.availableWithTicket
+                ? Icons.confirmation_number_outlined
+                : Icons.add_circle_outline;
           }
           break;
 
@@ -108,15 +114,17 @@ class ClassCard extends StatelessWidget {
     final timeFormat = DateFormat('h:mm a');
     final startTime = timeFormat.format(classModel.startTime);
     final endTime = timeFormat.format(classModel.endTime);
-    final textDecoration = classModel.isCancelled ? TextDecoration.lineThrough : null;
-    
+    final textDecoration = classModel.isCancelled
+        ? TextDecoration.lineThrough
+        : null;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: status == ClassStatus.reserved 
-            ? Border.all(color: statusColor.withValues(alpha: 0.5), width: 1.5) 
+        border: status == ClassStatus.reserved
+            ? Border.all(color: statusColor.withValues(alpha: 0.5), width: 1.5)
             : null,
         boxShadow: [
           BoxShadow(
@@ -134,21 +142,31 @@ class ClassCard extends StatelessWidget {
               children: [
                 Column(
                   children: [
-                    Text(startTime, style: TextStyle(
-                      fontSize: 16, 
-                      fontWeight: FontWeight.bold, 
-                      color: isDark ? Colors.white : Colors.black87,
-                      decoration: textDecoration,
-                    )),
-                    Text(endTime, style: TextStyle(
-                      fontSize: 12, 
-                      color: isDark ? Colors.grey : Colors.grey[600],
-                      decoration: textDecoration,
-                    )),
+                    Text(
+                      startTime,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black87,
+                        decoration: textDecoration,
+                      ),
+                    ),
+                    Text(
+                      endTime,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.grey : Colors.grey[600],
+                        decoration: textDecoration,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(width: 16),
-                Container(height: 40, width: 2, color: statusColor.withValues(alpha: 0.3)),
+                Container(
+                  height: 40,
+                  width: 2,
+                  color: statusColor.withValues(alpha: 0.3),
+                ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
@@ -157,54 +175,72 @@ class ClassCard extends StatelessWidget {
                       Text(
                         classModel.classType.toUpperCase(),
                         style: TextStyle(
-                          fontSize: 16, 
-                          fontWeight: FontWeight.w900, 
-                          fontStyle: FontStyle.italic, 
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          fontStyle: FontStyle.italic,
                           color: isDark ? Colors.white : Colors.black87,
                           decoration: textDecoration,
-                        )
+                        ),
                       ),
-                      
+
                       const SizedBox(height: 4),
-                      
+
                       Row(
                         children: [
-                          Icon(Icons.person, size: 14, color: isDark ? Colors.grey : Colors.grey[600]),
+                          Icon(
+                            Icons.person,
+                            size: 14,
+                            color: isDark ? Colors.grey : Colors.grey[600],
+                          ),
                           const SizedBox(width: 4),
                           Text(
-                            classModel.coachName, 
-                            style: TextStyle(fontSize: 13, color: isDark ? Colors.grey : Colors.grey[700])
+                            classModel.coachName,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isDark ? Colors.grey : Colors.grey[700],
+                            ),
                           ),
                         ],
                       ),
-                      
+
                       const SizedBox(height: 6),
-                      
+
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
-                              border: Border.all(color: isDark ? Colors.white24 : Colors.grey[300]!),
+                              border: Border.all(
+                                color: isDark
+                                    ? Colors.white24
+                                    : Colors.grey[300]!,
+                              ),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               'MÁX. ${classModel.maxCapacity}',
                               style: TextStyle(
-                                fontSize: 10, 
+                                fontSize: 10,
                                 color: isDark ? Colors.grey : Colors.grey[600],
-                                fontWeight: FontWeight.bold
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
 
                           if (status == ClassStatus.full) ...[
-                             const SizedBox(width: 8),
-                             const Text(
-                               'SIN CUPOS',
-                               style: TextStyle(fontSize: 10, color: Colors.red, fontWeight: FontWeight.bold),
-                             ),
-                          ]
+                            const SizedBox(width: 8),
+                            const Text(
+                              'SIN CUPOS',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ],
@@ -221,9 +257,11 @@ class ClassCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: !isButtonEnabled 
+                color: !isButtonEnabled
                     ? (isDark ? Colors.white10 : Colors.grey[200])
-                    : (isDestructive ? Colors.red.withValues(alpha: 0.1) : statusColor.withValues(alpha: 0.1)),
+                    : (isDestructive
+                          ? Colors.red.withValues(alpha: 0.1)
+                          : statusColor.withValues(alpha: 0.1)),
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(16),
                   bottomRight: Radius.circular(16),
@@ -231,16 +269,31 @@ class ClassCard extends StatelessWidget {
               ),
               child: Center(
                 child: isLoading
-                    ? SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: statusColor))
+                    ? SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: statusColor,
+                        ),
+                      )
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(statusIcon, size: 16, color: !isButtonEnabled ? Colors.grey : (isDestructive ? Colors.red : statusColor)),
+                          Icon(
+                            statusIcon,
+                            size: 16,
+                            color: !isButtonEnabled
+                                ? Colors.grey
+                                : (isDestructive ? Colors.red : statusColor),
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             buttonText,
                             style: TextStyle(
-                              color: !isButtonEnabled ? Colors.grey : (isDestructive ? Colors.red : statusColor),
+                              color: !isButtonEnabled
+                                  ? Colors.grey
+                                  : (isDestructive ? Colors.red : statusColor),
                               fontWeight: FontWeight.bold,
                               fontSize: 12,
                               letterSpacing: 1,

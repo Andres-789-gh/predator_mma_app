@@ -618,18 +618,19 @@ class AdminCubit extends Cubit<AdminState> {
     DateTime endDate,
     String adminName,
   ) async {
-    emit(AdminLoading());
+    List<UserModel> usersToUpdate = [];
+    if (state is AdminUsersLoaded) {
+      usersToUpdate = (state as AdminUsersLoaded).users;
+    } else {
+      return; 
+    }
+
+    emit(AdminLoading()); 
+
     try {
       final String pauseTag = "MASIVA_${DateFormat('yyyyMMdd').format(startDate)}";
       final String auditLabel = "$pauseTag (por $adminName)";
-      List<UserModel> usersToUpdate = [];
       
-      if (state is AdminUsersLoaded) {
-        usersToUpdate = (state as AdminUsersLoaded).users;
-      } else {
-        return; 
-      }
-
       int updatedCount = 0;
 
       for (final user in usersToUpdate) {
@@ -665,9 +666,9 @@ class AdminCubit extends Cubit<AdminState> {
         updatedCount++;
       }
 
-      await loadUsersManagement();
-      
       print("Se aplicó pausa masiva a $updatedCount usuarios.");
+      
+      await loadUsersManagement();
 
     } catch (e) {
       emit(AdminError("Error aplicando pausa masiva: $e"));
@@ -676,14 +677,23 @@ class AdminCubit extends Cubit<AdminState> {
 
   // Deshacer pausas masivas
   Future<void> undoMassivePause(DateTime originalStartDate) async {
+    List<UserModel> users = [];
+    if (state is AdminUsersLoaded) {
+      users = (state as AdminUsersLoaded).users;
+    } else {
+      return;
+    }
+
     emit(AdminLoading());
+
     try {
       final String targetTag = "MASIVA_${DateFormat('yyyyMMdd').format(originalStartDate)}";
-      final users = (state as AdminUsersLoaded).users;
       
       for (final user in users) {
         if (user.activePlan == null) continue;
+        
         final currentPlan = user.activePlan!;
+        
         final filteredPauses = currentPlan.pauses.where((p) {
           return !p.createdBy.startsWith(targetTag);
         }).toList();
@@ -699,6 +709,7 @@ class AdminCubit extends Cubit<AdminState> {
       await loadUsersManagement();
     } catch (e) {
       emit(AdminError("Error deshaciendo pausa: $e"));
+      await loadUsersManagement(); 
     }
   }
 }

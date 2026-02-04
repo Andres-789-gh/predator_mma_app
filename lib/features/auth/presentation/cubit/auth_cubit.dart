@@ -124,6 +124,23 @@ class AuthCubit extends Cubit<AuthState> {
     await _authRepository.signOut();
     emit(const AuthUnauthenticated());
   }
+
+  // recarga de datos del usuario
+  Future<void> refreshUser() async {
+    try {
+      final firebaseUser = FirebaseAuth.instance.currentUser;
+
+      if (firebaseUser != null) {
+        final freshUserData = await _authRepository.getUserData(firebaseUser.uid);
+
+        if (freshUserData != null) {
+          emit(AuthAuthenticated(freshUserData));
+        }
+      }
+    } catch (e) {
+      debugPrint("Error refrescando usuario: $e");
+    }
+  }
 }
 
 class InvalidAccessKeyException implements Exception {}
