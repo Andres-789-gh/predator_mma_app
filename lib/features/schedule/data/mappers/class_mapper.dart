@@ -48,6 +48,12 @@ class ClassMapper {
       waitlist: safeWaitlist,
       isCancelled: map['is_cancelled'] ?? false,
       recurrenceId: map['recurrence_id'],
+      attendeePlans: map['attendee_plans'] != null
+          ? Map<String, String>.from(map['attendee_plans'])
+          : {},
+      waitlistPlans: map['waitlist_plans'] != null
+          ? Map<String, String>.from(map['waitlist_plans'])
+          : {},
     );
   }
 
@@ -65,6 +71,8 @@ class ClassMapper {
       'waitlist': model.waitlist,
       'is_cancelled': model.isCancelled,
       'recurrence_id': model.recurrenceId,
+      'attendee_plans': model.attendeePlans,
+      'waitlist_plans': model.waitlistPlans,
     };
   }
 }

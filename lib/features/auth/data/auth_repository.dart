@@ -176,39 +176,44 @@ class AuthRepository {
   }) async {
     try {
       final snapshot = await _firestore.collection('users').get();
-
       final batch = _firestore.batch();
       int count = 0;
 
       for (var doc in snapshot.docs) {
         final userData = UserMapper.fromMap(doc.data(), doc.id);
+        
+        // valida si tiene planes para pausar
+        if (userData.activePlans.isNotEmpty) {
+          bool userModified = false;
+          
+          // itera sobre cada plan del usuario
+          final updatedPlans = userData.activePlans.map((plan) {
+            if (plan.isActive(DateTime.now())) {
+              userModified = true;
+              final newPause = PlanPause(
+                startDate: startDate,
+                endDate: endDate,
+                createdBy: 'Global: $adminName',
+              );
+              
+              final updatedPauses = List<PlanPause>.from(plan.pauses)..add(newPause);
+              return plan.copyWith(pauses: updatedPauses);
+            }
+            return plan;
+          }).toList();
 
-        if (userData.activePlan != null &&
-            userData.activePlan!.isActive(DateTime.now())) {
-          final newPause = PlanPause(
-            startDate: startDate,
-            endDate: endDate,
-            createdBy: 'Global: $adminName',
-          );
-
-          final updatedPauses = List<PlanPause>.from(
-            userData.activePlan!.pauses,
-          )..add(newPause);
-
-          final updatedPlan = userData.activePlan!.copyWith(
-            pauses: updatedPauses,
-          );
-          final updatedUser = userData.copyWith(activePlan: updatedPlan);
-
-          batch.update(doc.reference, UserMapper.toMap(updatedUser));
-          count++;
+          if (userModified) {
+            final updatedUser = userData.copyWith(activePlans: updatedPlans);
+            batch.update(doc.reference, UserMapper.toMap(updatedUser));
+            count++;
+          }
         }
       }
 
       if (count > 0) await batch.commit();
       return count;
     } catch (e) {
-      throw Exception('Error en pausa masiva: $e');
+      throw Exception('error en pausa masiva: $e');
     }
   }
 }

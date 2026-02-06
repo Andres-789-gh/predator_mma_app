@@ -46,22 +46,29 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
     final u1 = widget.user;
     final u2 = _editedUser;
 
-    bool planChanged = false;
-    if (u1.activePlan == null && u2.activePlan != null) planChanged = true;
-    if (u1.activePlan != null && u2.activePlan == null) planChanged = true;
-    if (u1.activePlan != null && u2.activePlan != null) {
-      planChanged = u1.activePlan!.planId != u2.activePlan!.planId ||
-          u1.activePlan!.effectiveEndDate != u2.activePlan!.effectiveEndDate ||
-          u1.activePlan!.pauses.length != u2.activePlan!.pauses.length;
+    if (u1.activePlans.length != u2.activePlans.length) return true;
+
+    bool plansContentChanged = false;
+    for (int i = 0; i < u1.activePlans.length; i++) {
+      final p1 = u1.activePlans[i];
+      final p2 = u2.activePlans[i];
+
+      if (p1.planId != p2.planId ||
+          p1.effectiveEndDate != p2.effectiveEndDate ||
+          p1.pauses.length != p2.pauses.length) {
+        plansContentChanged = true;
+        break;
+      }
     }
+
+    if (plansContentChanged) return true;
 
     return u1.firstName != u2.firstName ||
         u1.lastName != u2.lastName ||
         u1.documentId != u2.documentId ||
         u1.phoneNumber != u2.phoneNumber ||
         u1.accessExceptions.length != u2.accessExceptions.length ||
-        u1.isLegacyUser != u2.isLegacyUser ||
-        planChanged;
+        u1.isLegacyUser != u2.isLegacyUser;
   }
 
   @override
@@ -89,8 +96,9 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
                 ),
                 style: TextButton.styleFrom(
                   foregroundColor: _hasChanges ? Colors.blue : Colors.grey,
-                  backgroundColor:
-                      _hasChanges ? Colors.blue.withValues(alpha: 0.1) : null,
+                  backgroundColor: _hasChanges
+                      ? Colors.blue.withValues(alpha: 0.1)
+                      : null,
                 ),
               ),
             ),
@@ -126,11 +134,11 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
                 children: [
                   // tab de suscripciones
                   UserSubscriptionsTab(
-                    activePlan: _editedUser.activePlan,
+                    activePlans: _editedUser.activePlans,
                     onAssignNewPlan: _showAssignPlanDialog,
-                    onResumePlan: _resumePlan,
-                    onPausePlan: _showPauseDialog,
-                    onCancelPlan: _showCancelPlanDialog,
+                    onResumePlan: (plan) => _resumePlan(plan),
+                    onPausePlan: (plan) => _showPauseDialog(plan),
+                    onCancelPlan: (plan) => _showCancelPlanDialog(plan),
                   ),
                   // tab de tickets
                   UserTicketsTab(
@@ -159,7 +167,6 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
   }
 
   // funciones logicas de plan
-
   void _showAssignPlanDialog() {
     showDialog(
       context: context,
@@ -167,16 +174,17 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
         availablePlans: widget.availablePlans,
         onPlanAssigned: (UserPlan newPlan) {
           setState(() {
-            _editedUser = _editedUser.copyWith(
-              activePlan: newPlan,
-            );
+            final updatedPlans = List<UserPlan>.from(_editedUser.activePlans)
+              ..add(newPlan);
+
+            _editedUser = _editedUser.copyWith(activePlans: updatedPlans);
           });
         },
       ),
     );
   }
 
-  void _showPauseDialog() {
+  void _showPauseDialog(UserPlan targetPlan) {
     final authState = context.read<AuthCubit>().state;
     final String currentAdminName = (authState is AuthAuthenticated)
         ? authState.user.fullName
@@ -187,29 +195,31 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
       builder: (ctx) => PausePlanDialog(
         currentAdminName: currentAdminName,
         onPauseConfirmed: (PlanPause newPause) {
-          if (_editedUser.activePlan == null) return;
-          final currentPlan = _editedUser.activePlan!;
-          final updatedPauses = List<PlanPause>.from(currentPlan.pauses)
+          final updatedPauses = List<PlanPause>.from(targetPlan.pauses)
             ..add(newPause);
+          final updatedPlan = targetPlan.copyWith(pauses: updatedPauses);
+
+          final updatedList = _editedUser.activePlans.map((p) {
+            return p.subscriptionId == targetPlan.subscriptionId
+                ? updatedPlan
+                : p;
+          }).toList();
 
           setState(() {
-            _editedUser = _editedUser.copyWith(
-              activePlan: currentPlan.copyWith(pauses: updatedPauses),
-            );
+            _editedUser = _editedUser.copyWith(activePlans: updatedList);
           });
         },
       ),
     );
   }
 
-  void _resumePlan() async {
+  // actualiza _resumePlan para recibir el plan
+  void _resumePlan(UserPlan targetPlan) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text("¿Reanudar Plan?"),
-        content: const Text(
-          "Esto eliminará la pausa actual y el plan volverá a estar activo.",
-        ),
+        content: Text("Se reactivará el plan '${targetPlan.name}'."),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -217,38 +227,36 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text("Reanudar Plan"),
+            child: const Text("Reanudar"),
           ),
         ],
       ),
     );
 
     if (confirm == true) {
-      if (_editedUser.activePlan == null) return;
-      final activePlan = _editedUser.activePlan!;
       final now = DateTime.now();
-
-      final updatedPauses = activePlan.pauses.where((p) {
+      final updatedPauses = targetPlan.pauses.where((p) {
         final isCurrent = now.isAfter(p.startDate) && now.isBefore(p.endDate);
         return !isCurrent;
       }).toList();
 
+      final updatedPlan = targetPlan.copyWith(pauses: updatedPauses);
+
+      final updatedList = _editedUser.activePlans.map((p) {
+        return p.subscriptionId == targetPlan.subscriptionId ? updatedPlan : p;
+      }).toList();
+
       setState(() {
-        _editedUser = _editedUser.copyWith(
-          activePlan: activePlan.copyWith(pauses: updatedPauses),
-        );
+        _editedUser = _editedUser.copyWith(activePlans: updatedList);
       });
     }
   }
 
-  // cancela plan expirando la fecha
-  Future<void> _showCancelPlanDialog() async {
-    if (_editedUser.activePlan == null) return;
-
+  Future<void> _showCancelPlanDialog(UserPlan targetPlan) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("¿Cancelar Plan Actual?"),
+        title: Text("¿Cancelar '${targetPlan.name}'?"),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -269,7 +277,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text("Sí, Cancelar Plan"),
+            child: const Text("Sí, Cancelar"),
           ),
         ],
       ),
@@ -277,17 +285,22 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
 
     if (confirm == true) {
       setState(() {
-        // expira el plan a ayer
-        final expiredPlan = _editedUser.activePlan!.copyWith(
+        final expiredPlan = targetPlan.copyWith(
           endDate: DateTime.now().subtract(const Duration(days: 1)),
         );
-        _editedUser = _editedUser.copyWith(activePlan: expiredPlan);
+
+        final updatedList = _editedUser.activePlans.map((p) {
+          return p.subscriptionId == targetPlan.subscriptionId
+              ? expiredPlan
+              : p;
+        }).toList();
+
+        _editedUser = _editedUser.copyWith(activePlans: updatedList);
       });
     }
   }
 
   // funciones logicas de tickets
-
   void _showAddTicketDialog() {
     final authState = context.read<AuthCubit>().state;
     final String currentAdminName = (authState is AuthAuthenticated)
@@ -305,9 +318,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
               _editedUser.accessExceptions,
             )..add(newTicket);
 
-            _editedUser = _editedUser.copyWith(
-              accessExceptions: newList,
-            );
+            _editedUser = _editedUser.copyWith(accessExceptions: newList);
           });
         },
       ),
@@ -322,7 +333,6 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
   }
 
   // funciones de guardado
-
   Future<void> _showExitConfirmation() async {
     final shouldSave = await showDialog<bool>(
       context: context,
@@ -335,10 +345,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
               Navigator.pop(ctx, false);
               Navigator.of(context).pop();
             },
-            child: const Text(
-              "Descartar",
-              style: TextStyle(color: Colors.red),
-            ),
+            child: const Text("Descartar", style: TextStyle(color: Colors.red)),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),

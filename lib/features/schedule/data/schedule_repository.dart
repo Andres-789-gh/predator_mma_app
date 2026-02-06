@@ -20,7 +20,7 @@ class ScheduleRepository {
   ScheduleRepository({FirebaseFirestore? firestore})
     : _firestore = firestore ?? FirebaseFirestore.instance;
 
-  // Lectura
+  // lectura de clases por rango de fechas
   Future<List<ClassModel>> getClasses({
     required DateTime fromDate,
     required DateTime toDate,
@@ -40,10 +40,11 @@ class ScheduleRepository {
           .map((doc) => ClassMapper.fromMap(doc.data(), doc.id))
           .toList();
     } catch (e) {
-      throw Exception('Error al cargar horario: $e');
+      throw Exception('error al cargar horario: $e');
     }
   }
 
+  // verifica conflictos de horario
   Future<ClassModel?> checkConflict(ClassModel newClass) async {
     try {
       final startOfDay = DateTime(
@@ -54,6 +55,7 @@ class ScheduleRepository {
       final endOfDay = startOfDay
           .add(const Duration(days: 1))
           .subtract(const Duration(seconds: 1));
+
       final existingClasses = await getClasses(
         fromDate: startOfDay,
         toDate: endOfDay,
@@ -61,11 +63,14 @@ class ScheduleRepository {
 
       return ScheduleLogic.findConflict(newClass, existingClasses);
     } catch (e) {
-      throw Exception('Error verificando conflictos: $e');
+      throw Exception('error verificando conflictos: $e');
     }
   }
 
-  ClassStatus getClassStatus(UserModel user, ClassModel classModel) {
+  Future<ClassStatus> getClassStatus(
+    UserModel user,
+    ClassModel classModel,
+  ) async {
     if (classModel.isUserConfirmed(user.userId) ||
         classModel.isUserOnWaitlist(user.userId)) {
       return ClassStatus.reserved;
@@ -75,11 +80,13 @@ class ScheduleRepository {
       return ClassStatus.full;
     }
 
-    if (_doesPlanAllowClass(user, classModel)) {
+    // verifica plan reservar
+    final validPlan = await _findValidPlanForClass(user, classModel);
+    if (validPlan != null) {
       return ClassStatus.available;
     }
 
-    // Validación Ticket Extra
+    // validacion ticket
     final hasValidTicket = user.accessExceptions.any(
       (exc) => _isValidException(exc, classModel, DateTime.now()),
     );
@@ -91,10 +98,11 @@ class ScheduleRepository {
     return ClassStatus.blockedByPlan;
   }
 
-  // Escritura
+  // reserva
   Future<BookingStatus> reserveClass({
     required String classId,
     required String userId,
+    String? planId,
   }) async {
     final classRef = _firestore.collection('classes').doc(classId);
     final userRef = _firestore.collection('users').doc(userId);
@@ -123,43 +131,44 @@ class ScheduleRepository {
         if (classModel.isCancelled) {
           throw Exception('La clase ha sido cancelada');
         }
-
         if (classModel.isUserConfirmed(userId)) {
           throw Exception('Ya estás inscrito en esta clase');
         }
         if (classModel.isUserOnWaitlist(userId)) {
           throw Exception('Ya estás en lista de espera');
         }
+        if (classModel.hasFinished) throw Exception('la clase ya finalizo');
 
-        if (classModel.hasFinished) throw Exception('La clase ya finalizó');
-
-        if (userModel.activePlan != null &&
-            userModel.activePlan!.isPaused(now)) {
-          throw Exception(
-            'Tu plan está pausado actualmente, no puedes reservar',
-          );
-        }
-
-        // Lógica de Reserva
         bool useException = false;
         String? exceptionIdToConsume;
-        String planError = '';
+        UserPlan? selectedPlan;
 
-        try {
-          await _assertBasePlanAsync(userModel, classModel, now);
-        } catch (e) {
-          planError = e.toString().replaceAll('Exception: ', '');
+        if (planId != null) {
+          selectedPlan = await _validateSpecificPlan(
+            userModel,
+            classModel,
+            planId,
+          );
+          if (selectedPlan == null) {
+            throw Exception(
+              'El plan seleccionado no es válido para esta clase o ya cumplió su límite.',
+            );
+          }
+        } else {
+          selectedPlan = await _findValidPlanForClass(userModel, classModel);
+        }
 
+        if (selectedPlan == null) {
           final validException = userModel.accessExceptions.firstWhere(
             (exc) => _isValidException(exc, classModel, now),
-            orElse: () => throw Exception(planError),
+            orElse: () => throw Exception(
+              'No tienes plan activo o ingresos extras válidos para esta clase',
+            ),
           );
-
           useException = true;
           exceptionIdToConsume = validException.id;
         }
 
-        // Consumo Ticket
         if (useException && exceptionIdToConsume != null) {
           final updatedExceptions = userModel.accessExceptions.map((exc) {
             if (exc.id == exceptionIdToConsume) {
@@ -175,15 +184,34 @@ class ScheduleRepository {
           });
         }
 
-        // Asignación Cupo
         if (classModel.availableSlots > 0) {
+          final newAttendees = List<String>.from(classModel.attendees)
+            ..add(userId);
+          final newAttendeePlans = Map<String, String>.from(
+            classModel.attendeePlans,
+          );
+
+          if (selectedPlan != null) {
+            newAttendeePlans[userId] = selectedPlan.planId;
+          }
+
           transaction.update(classRef, {
-            'attendees': FieldValue.arrayUnion([userId]),
+            'attendees': newAttendees,
+            'attendee_plans': newAttendeePlans,
           });
           return BookingStatus.confirmed;
         } else {
+          final newWaitlistPlans = Map<String, String>.from(
+            classModel.waitlistPlans,
+          );
+
+          if (selectedPlan != null) {
+            newWaitlistPlans[userId] = selectedPlan.planId;
+          }
+
           transaction.update(classRef, {
             'waitlist': FieldValue.arrayUnion([userId]),
+            'waitlist_plans': newWaitlistPlans,
           });
           return BookingStatus.waitlist;
         }
@@ -194,6 +222,7 @@ class ScheduleRepository {
     }
   }
 
+  // cancelacion de reserva
   Future<void> cancelReservation({
     required String classId,
     required String userId,
@@ -230,18 +259,16 @@ class ScheduleRepository {
           throw Exception('No estás inscrito en esta clase');
         }
 
-        // Logica reembolso
+        // logica de reembolso
         if (isInAttendees) {
-          bool coveredByPlan = _doesPlanAllowClass(userModel, classModel);
-
-          if (!coveredByPlan) {
+          final planUsedId = classModel.getPlanUsedByUser(userId);
+          if (planUsedId == null) {
             bool ticketRefunded = false;
-
             final updatedExceptions = userModel.accessExceptions.map((exc) {
               if (!ticketRefunded &&
                   _isValidExceptionForRefund(exc, classModel)) {
                 ticketRefunded = true;
-                return exc.copyWith(quantity: exc.quantity + 1); // +1 💰
+                return exc.copyWith(quantity: exc.quantity + 1);
               }
               return exc;
             }).toList();
@@ -256,24 +283,52 @@ class ScheduleRepository {
           }
         }
 
-        // Sacar de listas
+        // retiro de lista de espera
         if (isInWaitlist) {
+          final newWaitlistPlans = Map<String, String>.from(
+            classModel.waitlistPlans,
+          )..remove(userId);
+
           transaction.update(classRef, {
             'waitlist': FieldValue.arrayRemove([userId]),
+            'waitlist_plans': newWaitlistPlans,
           });
           return;
         }
 
         if (isInAttendees) {
-          transaction.update(classRef, {
-            'attendees': FieldValue.arrayRemove([userId]),
-          });
+          final newAttendees = List<String>.from(classModel.attendees)
+            ..remove(userId);
+          final newAttendeePlans = Map<String, String>.from(
+            classModel.attendeePlans,
+          )..remove(userId);
+
+          final newWaitlistPlans = Map<String, String>.from(
+            classModel.waitlistPlans,
+          );
 
           if (classModel.waitlist.isNotEmpty) {
             final nextUser = classModel.waitlist.first;
+            newAttendees.add(nextUser);
+
+            if (newWaitlistPlans.containsKey(nextUser)) {
+              final nextUserPlanId = newWaitlistPlans[nextUser];
+              if (nextUserPlanId != null) {
+                newAttendeePlans[nextUser] = nextUserPlanId;
+              }
+              newWaitlistPlans.remove(nextUser);
+            }
+
             transaction.update(classRef, {
-              'attendees': FieldValue.arrayUnion([nextUser]),
+              'attendees': newAttendees,
+              'attendee_plans': newAttendeePlans,
               'waitlist': FieldValue.arrayRemove([nextUser]),
+              'waitlist_plans': newWaitlistPlans,
+            });
+          } else {
+            transaction.update(classRef, {
+              'attendees': newAttendees,
+              'attendee_plans': newAttendeePlans,
             });
           }
         }
@@ -284,16 +339,17 @@ class ScheduleRepository {
     }
   }
 
-  // Metodos admin
+  // crea tipo de clase
   Future<void> createClassType(ClassTypeModel classType) async {
     try {
       final docRef = _firestore.collection('class_types').doc();
       await docRef.set(ClassTypeMapper.toMap(classType));
     } catch (e) {
-      throw Exception('Error creando tipo de clase: $e');
+      throw Exception('error creando tipo de clase: $e');
     }
   }
 
+  // obtiene tipos de clase activos
   Future<List<ClassTypeModel>> getClassTypes() async {
     try {
       final snapshot = await _firestore
@@ -305,24 +361,26 @@ class ScheduleRepository {
           .map((doc) => ClassTypeMapper.fromMap(doc.data(), doc.id))
           .toList();
     } catch (e) {
-      throw Exception('Error cargando tipos de clase: $e');
+      throw Exception('error cargando tipos de clase: $e');
     }
   }
 
+  // agenda una clase individual
   Future<void> createScheduleClass(ClassModel classModel) async {
     try {
       final docRef = _firestore.collection('classes').doc();
       await docRef.set(ClassMapper.toMap(classModel));
     } catch (e) {
-      throw Exception('Error agendando clase: $e');
+      throw Exception('error agendando clase: $e');
     }
   }
 
+  // genera id para nuevo patron
   String generateNewPatternId() {
     return _firestore.collection('schedule_patterns').doc().id;
   }
 
-  // Guardar patron de horario
+  // guarda patron de horario
   Future<void> saveSchedulePattern(SchedulePatternModel pattern) async {
     try {
       await _firestore
@@ -334,7 +392,7 @@ class ScheduleRepository {
     }
   }
 
-  // Leer patron
+  // obtiene patrones activos
   Future<List<SchedulePatternModel>> getSchedulePatterns() async {
     try {
       final snapshot = await _firestore
@@ -349,6 +407,7 @@ class ScheduleRepository {
     }
   }
 
+  // actualiza tipo de clase
   Future<void> updateClassType(ClassTypeModel type) async {
     try {
       await _firestore
@@ -360,16 +419,18 @@ class ScheduleRepository {
     }
   }
 
+  // elimina tipo de clase
   Future<void> deleteClassType(String id) async {
     try {
       await _firestore.collection('class_types').doc(id).update({
         'active': false,
       });
     } catch (e) {
-      throw Exception('Error eliminando tipo: $e');
+      throw Exception('error eliminando tipo: $e');
     }
   }
 
+  // actualiza patrones coincidentes
   Future<void> updateMatchingPatterns({
     required String classTypeId,
     required Map<String, dynamic> updates,
@@ -419,7 +480,7 @@ class ScheduleRepository {
     }
   }
 
-  // Validación de conflictos
+  // validacion interna de conflictos
   Future<void> _validateConflictOrThrow(
     ClassModel classModel, {
     String? excludeClassId,
@@ -475,14 +536,14 @@ class ScheduleRepository {
     }
   }
 
-  // Edición Solo esta
+  // edita clase unica
   Future<void> editClassSingle(
     ClassModel updatedClass, {
     bool force = false,
   }) async {
     try {
       if (updatedClass.hasFinished) {
-        throw Exception('no se puede editar una clase que ya finalizó');
+        throw Exception('No se puede editar una clase que ya finalizó');
       }
 
       await _validateConflictOrThrow(
@@ -500,7 +561,7 @@ class ScheduleRepository {
     }
   }
 
-  // Edición Similares
+  // edita clases similares
   Future<void> editClassSimilar({
     required ClassModel originalClass,
     required ClassModel updatedClass,
@@ -546,7 +607,7 @@ class ScheduleRepository {
     }
   }
 
-  // Edición Todas
+  // edita todas las clases
   Future<void> editClassAll(ClassModel updatedClass) async {
     return editClassSimilar(
       originalClass: updatedClass,
@@ -554,6 +615,7 @@ class ScheduleRepository {
     );
   }
 
+  // regenera clases futuras tras edicion de patron
   Future<void> _regenerateAtomicPattern(
     String patternId,
     ClassModel sourceClass,
@@ -571,7 +633,6 @@ class ScheduleRepository {
       batch.delete(doc.reference);
     }
 
-    // Obtiene datos actualizados del patrón
     final patternSnap = await _firestore
         .collection('schedule_patterns')
         .doc(patternId)
@@ -583,7 +644,6 @@ class ScheduleRepository {
       patternSnap.id,
     );
 
-    // Genera nuevas clases
     final endDate = now.add(const Duration(days: 90));
 
     if (pData.weekDays.isEmpty || pData.timeSlots.isEmpty) return;
@@ -635,25 +695,21 @@ class ScheduleRepository {
     await batch.commit();
   }
 
-  // Eliminación
+  // elimina clases segun modo
   Future<void> deleteClasses({
     required ClassModel classModel,
     required ClassEditMode mode,
   }) async {
     try {
       if (mode == ClassEditMode.single) {
-        // Borrado simple
         await _firestore.collection('classes').doc(classModel.classId).delete();
       } else {
-        // Borrado de serie
         if (classModel.recurrenceId != null) {
-          // Desactiva patrón
           await _firestore
               .collection('schedule_patterns')
               .doc(classModel.recurrenceId)
               .update({'active': false});
 
-          // Borra clases futuras vinculadas
           final now = DateTime.now();
           final snapshot = await _firestore
               .collection('classes')
@@ -676,6 +732,7 @@ class ScheduleRepository {
     }
   }
 
+  // validacion de ticket
   bool _isValidException(
     AccessExceptionModel exception,
     ClassModel classModel,
@@ -691,6 +748,7 @@ class ScheduleRepository {
     );
   }
 
+  // validacion ticket reembolso
   bool _isValidExceptionForRefund(
     AccessExceptionModel exception,
     ClassModel classModel,
@@ -700,53 +758,101 @@ class ScheduleRepository {
     );
   }
 
-  bool _doesPlanAllowClass(UserModel user, ClassModel classModel) {
-    final activePlan = user.activePlan;
+  Future<UserPlan?> _findValidPlanForClass(
+    UserModel user,
+    ClassModel classModel,
+  ) async {
+    if (user.activePlans.isEmpty) return null;
+    if (!classModel.canReserveNow) return null;
 
-    if (activePlan == null) return false;
-    if (!classModel.canReserveNow) return false;
     final now = DateTime.now();
-    if (activePlan.endDate.isBefore(now)) return false;
-    if (activePlan.isPaused(now)) return false;
 
-    return activePlan.scheduleRules.any(
-      (rule) => rule.matchesClass(classModel.startTime, classModel.category),
-    );
+    final candidatePlans = user.activePlans.where((plan) {
+      if (plan.endDate.isBefore(now)) return false;
+      if (plan.isPaused(now)) return false;
+      return plan.scheduleRules.any(
+        (rule) => rule.matchesClass(classModel.startTime, classModel.category),
+      );
+    }).toList();
+
+    if (candidatePlans.isEmpty) return null;
+
+    // validar limites
+    for (final plan in candidatePlans) {
+      // ilimitado/legacy
+      if (user.isLegacyUser ||
+          plan.consumptionType == PlanConsumptionType.unlimited) {
+        return plan;
+      }
+
+      // limite diario por plan especifico
+      if (plan.consumptionType == PlanConsumptionType.limitedDaily) {
+        final startOfClassDay = DateTime(
+          classModel.startTime.year,
+          classModel.startTime.month,
+          classModel.startTime.day,
+        );
+        final endOfClassDay = startOfClassDay.add(const Duration(days: 1));
+
+        final classesTodaySnap = await _firestore
+            .collection('classes')
+            .where(
+              'start_time',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(startOfClassDay),
+            )
+            .where('start_time', isLessThan: Timestamp.fromDate(endOfClassDay))
+            .where('attendees', arrayContains: user.userId)
+            .get();
+
+        int classesConsumedWithThisPlan = 0;
+
+        for (var doc in classesTodaySnap.docs) {
+          final data = doc.data();
+          final plansMap = data['attendee_plans'] as Map<String, dynamic>?;
+
+          if (plansMap != null && plansMap[user.userId] == plan.planId) {
+            classesConsumedWithThisPlan++;
+          }
+        }
+
+        final int limit = plan.dailyLimit ?? 1;
+
+        if (classesConsumedWithThisPlan < limit) {
+          return plan;
+        }
+      }
+    }
+
+    return null;
   }
 
-  Future<void> _assertBasePlanAsync(
-    UserModel userModel,
+  // valida un plan especifico elegido por el usuario
+  Future<UserPlan?> _validateSpecificPlan(
+    UserModel user,
     ClassModel classModel,
-    DateTime now,
+    String planId,
   ) async {
-    final activePlan = userModel.activePlan;
-    if (activePlan == null) throw Exception('No tienes un plan activo.');
-
-    if (!classModel.canReserveNow) {
-      throw Exception(
-        'El tiempo de reserva ha finalizado o la clase es muy lejana.',
-      );
-    }
-
-    final bool isAllowed = activePlan.scheduleRules.any(
-      (rule) => rule.matchesClass(classModel.startTime, classModel.category),
+    final tryPlan = user.activePlans.firstWhere(
+      (p) => p.planId == planId,
+      orElse: () =>
+          throw Exception('El plan seleccionado no existe en tu perfil.'),
     );
 
-    if (!isAllowed) {
-      throw Exception(
-        'Tu plan ${activePlan.name} no permite clases en este horario o categoría.',
-      );
+    final now = DateTime.now();
+
+    if (tryPlan.endDate.isBefore(now)) return null;
+    if (tryPlan.isPaused(now)) return null;
+
+    final matchesRule = tryPlan.scheduleRules.any(
+      (rule) => rule.matchesClass(classModel.startTime, classModel.category),
+    );
+    if (!matchesRule) return null;
+    if (user.isLegacyUser ||
+        tryPlan.consumptionType == PlanConsumptionType.unlimited) {
+      return tryPlan;
     }
 
-    bool hasDailyLimit =
-        activePlan.consumptionType == PlanConsumptionType.limitedDaily;
-
-    if (userModel.isLegacyUser ||
-        activePlan.consumptionType == PlanConsumptionType.unlimited) {
-      hasDailyLimit = false;
-    }
-
-    if (hasDailyLimit) {
+    if (tryPlan.consumptionType == PlanConsumptionType.limitedDaily) {
       final startOfClassDay = DateTime(
         classModel.startTime.year,
         classModel.startTime.month,
@@ -754,21 +860,34 @@ class ScheduleRepository {
       );
       final endOfClassDay = startOfClassDay.add(const Duration(days: 1));
 
-      final existingBookings = await _firestore
+      final classesTodaySnap = await _firestore
           .collection('classes')
           .where(
             'start_time',
             isGreaterThanOrEqualTo: Timestamp.fromDate(startOfClassDay),
           )
           .where('start_time', isLessThan: Timestamp.fromDate(endOfClassDay))
-          .where('attendees', arrayContains: userModel.userId)
+          .where('attendees', arrayContains: user.userId)
           .get();
 
-      final int limit = activePlan.dailyLimit ?? 1;
+      int classesConsumedWithThisPlan = 0;
 
-      if (existingBookings.docs.length >= limit) {
-        throw Exception('Has alcanzado tu límite diario de $limit clase(s).');
+      for (var doc in classesTodaySnap.docs) {
+        final data = doc.data();
+        final plansMap = data['attendee_plans'] as Map<String, dynamic>?;
+
+        if (plansMap != null && plansMap[user.userId] == tryPlan.planId) {
+          classesConsumedWithThisPlan++;
+        }
+      }
+
+      final int limit = tryPlan.dailyLimit ?? 1;
+
+      if (classesConsumedWithThisPlan < limit) {
+        return tryPlan;
       }
     }
+
+    return null;
   }
 }

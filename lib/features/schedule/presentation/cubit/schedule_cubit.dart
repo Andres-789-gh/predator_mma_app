@@ -14,25 +14,33 @@ class ScheduleCubit extends Cubit<ScheduleState> {
       super(ScheduleInitial());
 
   // helper privado
-  List<ScheduleItem> _mapClassesToItems(
+  Future<List<ScheduleItem>> _mapClassesToItems(
     List<ClassModel> classes,
     UserModel user,
-  ) {
-    return classes.map((c) {
-      final status = _repository.getClassStatus(user, c);
+  ) async {
+    final futures = classes.map((c) async {
+      final status = await _repository.getClassStatus(user, c);
       return ScheduleItem(classModel: c, status: status);
-    }).toList();
+    });
+
+    return Future.wait(futures);
   }
 
   // cargar horario
   Future<void> loadSchedule(DateTime from, DateTime to, UserModel user) async {
     try {
+      if (isClosed) return;
       emit(ScheduleLoading());
+
       final classes = await _repository.getClasses(fromDate: from, toDate: to);
-      final items = _mapClassesToItems(classes, user);
+      if (isClosed) return;
+
+      final items = await _mapClassesToItems(classes, user);
+      if (isClosed) return;
 
       emit(ScheduleLoaded(items: items, selectedDate: from));
     } catch (e) {
+      if (isClosed) return;
       emit(ScheduleError(e.toString().replaceAll('Exception: ', '')));
     }
   }
@@ -45,7 +53,7 @@ class ScheduleCubit extends Cubit<ScheduleState> {
   ) async {
     try {
       final classes = await _repository.getClasses(fromDate: from, toDate: to);
-      final items = _mapClassesToItems(classes, user);
+      final items = await _mapClassesToItems(classes, user);
 
       final currentDate = state is ScheduleLoaded
           ? (state as ScheduleLoaded).selectedDate
@@ -69,6 +77,7 @@ class ScheduleCubit extends Cubit<ScheduleState> {
     required UserModel user,
     required DateTime currentFromDate,
     required DateTime currentToDate,
+    String? planId,
   }) async {
     List<ScheduleItem> backupItems = [];
     DateTime backupDate = currentFromDate;
@@ -81,13 +90,24 @@ class ScheduleCubit extends Cubit<ScheduleState> {
     }
 
     try {
-      await _repository.reserveClass(classId: classId, userId: user.userId);
+      await _repository.reserveClass(
+        classId: classId,
+        userId: user.userId,
+        planId: planId,
+      );
+
+      if (isClosed) return;
 
       final updatedClasses = await _repository.getClasses(
         fromDate: currentFromDate,
         toDate: currentToDate,
       );
-      final updatedItems = _mapClassesToItems(updatedClasses, user);
+
+      if (isClosed) return;
+
+      final updatedItems = await _mapClassesToItems(updatedClasses, user);
+
+      if (isClosed) return;
 
       emit(
         ScheduleOperationSuccess(
@@ -104,6 +124,7 @@ class ScheduleCubit extends Cubit<ScheduleState> {
         ),
       );
     } catch (e) {
+      if (isClosed) return;
       emit(ScheduleError(e.toString().replaceAll('Exception: ', '')));
 
       if (backupItems.isNotEmpty) {
@@ -145,7 +166,7 @@ class ScheduleCubit extends Cubit<ScheduleState> {
         fromDate: currentFromDate,
         toDate: currentToDate,
       );
-      final updatedItems = _mapClassesToItems(updatedClasses, user);
+      final updatedItems = await _mapClassesToItems(updatedClasses, user);
 
       emit(
         ScheduleOperationSuccess(

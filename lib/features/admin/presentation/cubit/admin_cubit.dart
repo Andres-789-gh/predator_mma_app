@@ -281,9 +281,10 @@ class AdminCubit extends Cubit<AdminState> {
             current.year,
             current.month,
             current.day,
-            hour,
-            minute,
-          );
+            current.hour,
+            current.minute,
+          ).add(Duration(hours: hour, minutes: minute));
+
           final endDateTime = startDateTime.add(Duration(minutes: duration));
 
           var newClass = ClassModel(
@@ -584,6 +585,7 @@ class AdminCubit extends Cubit<AdminState> {
   // Cargar lista de usuarios y planes disponibles
   Future<void> loadUsersManagement() async {
     try {
+      if (isClosed) return;
       emit(AdminLoading());
 
       final results = await Future.wait([
@@ -591,11 +593,15 @@ class AdminCubit extends Cubit<AdminState> {
         _planRepository.getActivePlans(),
       ]);
 
+      if (isClosed) return;
+
       final users = results[0] as List<UserModel>;
       final plans = results[1] as List<PlanModel>;
 
       emit(AdminUsersLoaded(users: users, availablePlans: plans));
     } catch (e) {
+      if (isClosed) return;
+
       emit(AdminError(e.toString()));
     }
   }
@@ -622,54 +628,65 @@ class AdminCubit extends Cubit<AdminState> {
     if (state is AdminUsersLoaded) {
       usersToUpdate = (state as AdminUsersLoaded).users;
     } else {
-      return; 
+      return;
     }
 
-    emit(AdminLoading()); 
+    emit(AdminLoading());
 
     try {
-      final String pauseTag = "MASIVA_${DateFormat('yyyyMMdd').format(startDate)}";
+      final String pauseTag =
+          "MASIVA_${DateFormat('yyyyMMdd').format(startDate)}";
       final String auditLabel = "$pauseTag (por $adminName)";
-      
+
       int updatedCount = 0;
 
       for (final user in usersToUpdate) {
-        if (user.activePlan == null) continue;
-        
-        final currentPlan = user.activePlan!;
+        if (user.activePlans.isEmpty) continue;
 
-        // Proteccion duplicados
-        final alreadyHasThisPause = currentPlan.pauses.any((p) => 
-            p.createdBy.startsWith(pauseTag) &&
-            p.startDate.isAtSameMomentAs(startDate) && 
-            p.endDate.isAtSameMomentAs(endDate)
-        );
+        bool hasChanges = false;
+        List<UserPlan> updatedPlans = [];
 
-        if (alreadyHasThisPause) continue; 
+        // itera cada plan y pausa si es activo
+        for (var plan in user.activePlans) {
+          final now = DateTime.now();
 
-        // Crear pausa
-        final newPause = PlanPause(
-          startDate: startDate,
-          endDate: endDate,
-          createdBy: auditLabel,
-        );
+          // pausa si plan es activo
+          if (plan.isActive(now)) {
+            // Proteccion duplicados
+            final alreadyHasThisPause = plan.pauses.any(
+              (p) =>
+                  p.createdBy.startsWith(pauseTag) &&
+                  p.startDate.isAtSameMomentAs(startDate) &&
+                  p.endDate.isAtSameMomentAs(endDate),
+            );
 
-        final updatedPauses = List<PlanPause>.from(currentPlan.pauses)
-          ..add(newPause);
+            if (!alreadyHasThisPause) {
+              final newPause = PlanPause(
+                startDate: startDate,
+                endDate: endDate,
+                createdBy: auditLabel,
+              );
 
-        final updatedUser = user.copyWith(
-          activePlan: currentPlan.copyWith(pauses: updatedPauses),
-        );
+              final newPauses = List<PlanPause>.from(plan.pauses)
+                ..add(newPause);
+              updatedPlans.add(plan.copyWith(pauses: newPauses));
+              hasChanges = true;
+              continue;
+            }
+          }
+          updatedPlans.add(plan);
+        }
 
-        await _authRepository.updateUser(updatedUser); 
-        
-        updatedCount++;
+        if (hasChanges) {
+          final updatedUser = user.copyWith(activePlans: updatedPlans);
+          await _authRepository.updateUser(updatedUser);
+          updatedCount++;
+        }
       }
 
-      print("Se aplicó pausa masiva a $updatedCount usuarios.");
-      
-      await loadUsersManagement();
+      debugPrint("Se aplicó pausa masiva a $updatedCount usuarios.");
 
+      await loadUsersManagement();
     } catch (e) {
       emit(AdminError("Error aplicando pausa masiva: $e"));
     }
@@ -687,21 +704,30 @@ class AdminCubit extends Cubit<AdminState> {
     emit(AdminLoading());
 
     try {
-      final String targetTag = "MASIVA_${DateFormat('yyyyMMdd').format(originalStartDate)}";
-      
-      for (final user in users) {
-        if (user.activePlan == null) continue;
-        
-        final currentPlan = user.activePlan!;
-        
-        final filteredPauses = currentPlan.pauses.where((p) {
-          return !p.createdBy.startsWith(targetTag);
-        }).toList();
+      final String targetTag =
+          "MASIVA_${DateFormat('yyyyMMdd').format(originalStartDate)}";
 
-        if (filteredPauses.length != currentPlan.pauses.length) {
-          final updatedUser = user.copyWith(
-            activePlan: currentPlan.copyWith(pauses: filteredPauses),
-          );
+      for (final user in users) {
+        if (user.activePlans.isEmpty) continue;
+
+        bool hasChanges = false;
+        List<UserPlan> updatedPlans = [];
+
+        for (var plan in user.activePlans) {
+          final filteredPauses = plan.pauses.where((p) {
+            return !p.createdBy.startsWith(targetTag);
+          }).toList();
+
+          if (filteredPauses.length != plan.pauses.length) {
+            updatedPlans.add(plan.copyWith(pauses: filteredPauses));
+            hasChanges = true;
+          } else {
+            updatedPlans.add(plan);
+          }
+        }
+
+        if (hasChanges) {
+          final updatedUser = user.copyWith(activePlans: updatedPlans);
           await _authRepository.updateUser(updatedUser);
         }
       }
@@ -709,7 +735,7 @@ class AdminCubit extends Cubit<AdminState> {
       await loadUsersManagement();
     } catch (e) {
       emit(AdminError("Error deshaciendo pausa: $e"));
-      await loadUsersManagement(); 
+      await loadUsersManagement();
     }
   }
 }

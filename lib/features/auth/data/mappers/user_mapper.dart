@@ -36,6 +36,16 @@ class UserMapper {
       orElse: () => UserRole.client,
     );
 
+    List<UserPlan> parsedPlans = [];
+
+    if (map['active_plans'] != null && map['active_plans'] is List) {
+      parsedPlans = (map['active_plans'] as List)
+          .map((x) => _UserPlanMapper.fromMap(x as Map<String, dynamic>))
+          .toList();
+    } else if (map['active_plan'] != null && map['active_plan'] is Map) {
+      parsedPlans = [_UserPlanMapper.fromMap(map['active_plan'])];
+    }
+
     return UserModel(
       userId: docId,
       email: map['email'] ?? '',
@@ -52,9 +62,7 @@ class UserMapper {
       isWaiverSigned: map['legal']?['is_signed'] ?? false,
       waiverSignedAt: (map['legal']?['signed_at'] as Timestamp?)?.toDate(),
       waiverSignatureUrl: map['legal']?['signature_url'],
-      activePlan: (map['active_plan'] is Map<String, dynamic>)
-          ? _UserPlanMapper.fromMap(map['active_plan'])
-          : null,
+      activePlans: parsedPlans,
       emergencyContact: map['emergency_contact'] ?? '',
       accessExceptions: safeExceptions,
     );
@@ -85,9 +93,9 @@ class UserMapper {
         'signature_url': user.waiverSignatureUrl,
       },
 
-      'active_plan': user.activePlan != null
-          ? _UserPlanMapper.toMap(user.activePlan!)
-          : null,
+      'active_plans': user.activePlans
+          .map((x) => _UserPlanMapper.toMap(x))
+          .toList(),
 
       'emergency_contact': user.emergencyContact,
 
@@ -101,8 +109,10 @@ class UserMapper {
 class _UserPlanMapper {
   static UserPlan fromMap(Map<String, dynamic> map) {
     return UserPlan(
+      subscriptionId: map['subscription_id'] ?? map['plan_id'] ?? 'unknown_sub',
       planId: map['plan_id'] ?? '',
       name: map['name'] ?? '',
+      price: (map['price'] ?? 0).toDouble(),
       consumptionType: PlanConsumptionType.values.firstWhere(
         (e) => e.name == (map['consumption_type'] ?? 'limitedDaily'),
         orElse: () => PlanConsumptionType.limitedDaily,
@@ -127,8 +137,10 @@ class _UserPlanMapper {
 
   static Map<String, dynamic> toMap(UserPlan plan) {
     return {
+      'subscription_id': plan.subscriptionId,
       'plan_id': plan.planId,
       'name': plan.name,
+      'price': plan.price,
       'consumption_type': plan.consumptionType.name,
       'daily_limit': plan.dailyLimit,
       'schedule_rules': plan.scheduleRules

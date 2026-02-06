@@ -52,7 +52,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
     super.dispose();
   }
 
-  // funcion abrir/cerrar menu
   void _toggleMenu() {
     setState(() {
       _isMenuOpen = !_isMenuOpen;
@@ -174,47 +173,53 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                         itemCount: filteredUsers.length,
                         itemBuilder: (context, index) {
                           final user = filteredUsers[index];
-                          final activePlan = user.activePlan;
+                          final plans = user.activePlans;
+                          final now = DateTime.now();
 
-                          bool isPaused = false;
-                          bool isActive = false;
+                          bool hasAnyActive = false;
+                          bool hasAnyPaused = false;
+                          int pausedCount = 0;
 
-                          if (activePlan != null) {
-                            final now = DateTime.now();
-                            isPaused = activePlan.pauses.any(
-                              (p) =>
-                                  now.isAfter(
-                                    p.startDate.subtract(
-                                      const Duration(seconds: 1),
-                                    ),
-                                  ) &&
-                                  now.isBefore(
-                                    p.endDate.add(const Duration(seconds: 1)),
-                                  ),
-                            );
+                          if (plans.isNotEmpty) {
+                            hasAnyActive = plans.any((p) => p.isActive(now));
+                            pausedCount = plans.where((p) {
+                              return p.pauses.any(
+                                (pause) =>
+                                    now.isAfter(pause.startDate) &&
+                                    now.isBefore(pause.endDate),
+                              );
+                            }).length;
 
-                            isActive = activePlan.isActive(now);
+                            hasAnyPaused = pausedCount > 0;
                           }
 
                           String planText = "Sin plan activo";
                           Color planColor = Colors.grey;
 
-                          if (isPaused) {
-                            planText = "Plan: ${activePlan!.name} (PAUSADO)";
+                          if (plans.isEmpty) {
+                            planText = "Sin planes";
+                            planColor = Colors.grey;
+                          } else if (hasAnyPaused) {
+                            planText =
+                                "${plans.length} Plan(es) ($pausedCount pausado${pausedCount > 1 ? 's' : ''})";
                             planColor = Colors.orange[800]!;
-                          } else if (isActive) {
-                            planText = "Plan: ${activePlan!.name}";
+                          } else if (hasAnyActive) {
+                            if (plans.length == 1) {
+                              planText = "Plan: ${plans.first.name}";
+                            } else {
+                              planText = "${plans.length} Planes Activos";
+                            }
                             planColor = Colors.green[800]!;
-                          } else if (activePlan != null) {
-                            planText = "Plan: ${activePlan.name} (Vencido)";
+                          } else {
+                            planText = "Planes Vencidos";
                             planColor = Colors.red;
                           }
 
                           return ListTile(
                             leading: CircleAvatar(
-                              backgroundColor: isPaused
+                              backgroundColor: hasAnyPaused
                                   ? Colors.orange
-                                  : (isActive ? Colors.green : Colors.grey),
+                                  : (hasAnyActive ? Colors.green : Colors.grey),
                               foregroundColor: Colors.white,
                               child: Text(
                                 user.firstName.isNotEmpty
@@ -479,7 +484,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
     );
   }
 
-  // funcion deshacer pausas masivas
+  // Deshacer pausas masivas
   void _showUndoPauseDialog(BuildContext context) {
     final adminCubit = context.read<AdminCubit>();
     final state = adminCubit.state;
@@ -487,13 +492,15 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
 
     if (state is AdminUsersLoaded) {
       for (var user in state.users) {
-        if (user.activePlan == null) continue;
-        for (var pause in user.activePlan!.pauses) {
-          if (pause.createdBy.startsWith("MASIVA_")) {
-            final tag = pause.createdBy.split(' ').first;
+        if (user.activePlans.isEmpty) continue;
 
-            if (!uniqueMassivePauses.containsKey(tag)) {
-              uniqueMassivePauses[tag] = pause;
+        for (var plan in user.activePlans) {
+          for (var pause in plan.pauses) {
+            if (pause.createdBy.startsWith("MASIVA_")) {
+              final tag = pause.createdBy.split(' ').first;
+              if (!uniqueMassivePauses.containsKey(tag)) {
+                uniqueMassivePauses[tag] = pause;
+              }
             }
           }
         }

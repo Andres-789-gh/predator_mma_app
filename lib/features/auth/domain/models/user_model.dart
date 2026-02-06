@@ -18,7 +18,7 @@ class UserModel {
   final bool isWaiverSigned;
   final DateTime? waiverSignedAt;
   final String? waiverSignatureUrl;
-  final UserPlan? activePlan;
+  final List<UserPlan> activePlans;
   final String emergencyContact;
   final List<AccessExceptionModel> accessExceptions;
 
@@ -38,7 +38,7 @@ class UserModel {
     this.isWaiverSigned = false,
     this.waiverSignedAt,
     this.waiverSignatureUrl,
-    this.activePlan,
+    this.activePlans = const [],
     required this.emergencyContact,
     List<AccessExceptionModel> accessExceptions = const [],
   }) : accessExceptions = List.unmodifiable(accessExceptions);
@@ -61,7 +61,7 @@ class UserModel {
     bool? isWaiverSigned,
     DateTime? waiverSignedAt,
     String? waiverSignatureUrl,
-    UserPlan? activePlan,
+    List<UserPlan>? activePlans,
     String? emergencyContact,
     List<AccessExceptionModel>? accessExceptions,
   }) {
@@ -81,7 +81,7 @@ class UserModel {
       isWaiverSigned: isWaiverSigned ?? this.isWaiverSigned,
       waiverSignedAt: waiverSignedAt ?? this.waiverSignedAt,
       waiverSignatureUrl: waiverSignatureUrl ?? this.waiverSignatureUrl,
-      activePlan: activePlan ?? this.activePlan,
+      activePlans: activePlans ?? this.activePlans,
       emergencyContact: emergencyContact ?? this.emergencyContact,
       accessExceptions: accessExceptions ?? this.accessExceptions,
     );
@@ -89,19 +89,23 @@ class UserModel {
 }
 
 class UserPlan {
+  final String subscriptionId;
   final DateTime startDate;
   final DateTime endDate;
   final int? remainingClasses;
   final List<PlanPause> pauses;
   final String planId;
   final String name;
+  final double price;
   final PlanConsumptionType consumptionType;
   final List<ScheduleRule> scheduleRules;
   final int? dailyLimit;
 
   const UserPlan({
+    required this.subscriptionId,
     required this.planId,
     required this.name,
+    required this.price,
     required this.consumptionType,
     required this.scheduleRules,
     required this.startDate,
@@ -142,8 +146,10 @@ class UserPlan {
   }
 
   UserPlan copyWith({
+    String? subscriptionId,
     String? planId,
     String? name,
+    double? price,
     PlanConsumptionType? consumptionType,
     List<ScheduleRule>? scheduleRules,
     DateTime? startDate,
@@ -153,8 +159,10 @@ class UserPlan {
     int? dailyLimit,
   }) {
     return UserPlan(
+      subscriptionId: subscriptionId ?? this.subscriptionId,
       planId: planId ?? this.planId,
       name: name ?? this.name,
+      price: price ?? this.price,
       consumptionType: consumptionType ?? this.consumptionType,
       scheduleRules: scheduleRules ?? this.scheduleRules,
       startDate: startDate ?? this.startDate,

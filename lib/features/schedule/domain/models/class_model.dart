@@ -14,6 +14,8 @@ class ClassModel {
   final List<String> waitlist;
   final bool isCancelled;
   final String? recurrenceId;
+  final Map<String, String> attendeePlans;
+  final Map<String, String> waitlistPlans;
 
   ClassModel({
     required this.classId,
@@ -29,6 +31,8 @@ class ClassModel {
     required List<String> waitlist,
     this.isCancelled = false,
     this.recurrenceId,
+    this.attendeePlans = const {},
+    this.waitlistPlans = const {},
   }) : attendees = List.unmodifiable(attendees),
        waitlist = List.unmodifiable(waitlist) {
     if (endTime.isBefore(startTime)) {
@@ -59,6 +63,8 @@ class ClassModel {
     bool? isCancelled,
     String? recurrenceId,
     bool clearRecurrenceId = false,
+    Map<String, String>? attendeePlans,
+    Map<String, String>? waitlistPlans,
   }) {
     return ClassModel(
       classId: classId ?? this.classId,
@@ -78,6 +84,8 @@ class ClassModel {
       recurrenceId: clearRecurrenceId
           ? null
           : (recurrenceId ?? this.recurrenceId),
+      attendeePlans: attendeePlans ?? this.attendeePlans,
+      waitlistPlans: waitlistPlans ?? this.waitlistPlans,
     );
   }
 
@@ -85,8 +93,15 @@ class ClassModel {
   bool isUserOnWaitlist(String userId) => waitlist.contains(userId);
   int get availableSlots => maxCapacity - attendees.length;
   bool get hasFinished => DateTime.now().isAfter(endTime);
+
   bool get canReserveNow {
     final now = DateTime.now();
     return now.isBefore(startTime) && !isCancelled;
+  }
+
+  String? getPlanUsedByUser(String userId) {
+    if (attendeePlans.containsKey(userId)) return attendeePlans[userId];
+    if (waitlistPlans.containsKey(userId)) return waitlistPlans[userId];
+    return null;
   }
 }

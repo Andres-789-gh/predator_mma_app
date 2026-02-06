@@ -6,6 +6,7 @@ import '../../../../auth/domain/models/user_model.dart';
 import '../../../../../core/constants/enums.dart';
 import '../../../../../core/utils/currency_formatter.dart';
 import '../../../../../core/utils/date_utils.dart';
+import 'package:uuid/uuid.dart';
 
 class AssignPlanDialog extends StatefulWidget {
   final List<PlanModel> availablePlans;
@@ -233,9 +234,17 @@ class _AssignPlanDialogState extends State<AssignPlanDialog> {
     if (confirm == true) {
       if (!mounted) return;
 
+      final double finalPrice =
+          double.tryParse(priceCtrl.text.replaceAll(RegExp(r'[^0-9.]'), '')) ??
+          0.0;
+
+      final String uniqueId = const Uuid().v4();
+
       final newAssignedPlan = UserPlan(
+        subscriptionId: uniqueId,
         planId: selectedPlan!.id,
         name: selectedPlan!.name,
+        price: finalPrice,
         consumptionType: selectedPlan!.consumptionType,
         scheduleRules: selectedPlan!.scheduleRules,
         startDate: startDate,
