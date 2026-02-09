@@ -65,3 +65,8 @@ key.properties
 .env
 service-account.json
 firebase-service-account.json
+
+# SEGURIDAD FIREBASE - NUNCA SUBIR
+serviceAccountKey.json
+*.json
+predator_seeder/
