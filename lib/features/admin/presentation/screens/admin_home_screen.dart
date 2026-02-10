@@ -9,6 +9,7 @@ import '../cubit/admin_cubit.dart';
 import '../../../plans/presentation/screens/plans_screen.dart';
 import '../../../plans/data/plan_repository.dart';
 import 'admin_users_screen.dart';
+import '../../../../features/inventory/presentation/screens/inventory_screen.dart';
 
 class AdminHomeScreen extends StatelessWidget {
   const AdminHomeScreen({super.key});
@@ -123,9 +124,16 @@ class AdminHomeScreen extends StatelessWidget {
                         ),
                         _AdminMenuCard(
                           icon: Icons.inventory_2,
-                          title: "Inventario\n(Próx.)",
-                          color: Colors.grey,
-                          onTap: () {},
+                          title: "Inventario",
+                          color: Colors.redAccent, // define color activo
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const InventoryScreen(),
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),

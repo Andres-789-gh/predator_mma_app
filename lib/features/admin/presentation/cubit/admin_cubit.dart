@@ -116,14 +116,19 @@ class AdminCubit extends Cubit<AdminState> {
             preservedData: currentData,
           );
 
+          if (isClosed) return;
+
           if (state is AdminConflictDetected) return;
           await _scheduleRepository.saveSchedulePattern(atomicPattern);
         }
       }
 
+      if (isClosed) return;
+
       emit(const AdminOperationSuccess("Horario guardado correctamente."));
       await loadFormData(silent: true);
     } catch (e) {
+      if (isClosed) return;
       emit(AdminError(e.toString().replaceAll('Exception: ', '')));
       await loadFormData(silent: true);
     }
@@ -136,12 +141,16 @@ class AdminCubit extends Cubit<AdminState> {
       final patternsSnapshot = await _scheduleRepository.getSchedulePatterns();
       if (patternsSnapshot.isEmpty) return;
 
+      if (isClosed) return;
+
       final now = DateTime.now();
       final startOfToday = DateTime(now.year, now.month, now.day);
       final thisWeekClasses = await _scheduleRepository.getClasses(
         fromDate: startOfToday,
         toDate: startOfToday.add(const Duration(days: 7)),
       );
+
+      if (isClosed) return;
 
       final nextMonthDate = startOfToday.add(const Duration(days: 30));
       final nextMonthClasses = await _scheduleRepository.getClasses(
@@ -163,6 +172,7 @@ class AdminCubit extends Cubit<AdminState> {
       }
 
       for (var pattern in patternsSnapshot) {
+        if (isClosed) return;
         await _generateClassesFromPattern(
           pattern,
           months: 3,
@@ -264,6 +274,8 @@ class AdminCubit extends Cubit<AdminState> {
       fromDate: startDate,
       toDate: endDate,
     );
+
+    if (isClosed) return;
 
     final List<ClassModel> classesToCreate = [];
     final List<ClassModel> allDbConflicts = [];
@@ -375,6 +387,8 @@ class AdminCubit extends Cubit<AdminState> {
               ? state as AdminLoadedData
               : const AdminLoadedData(instructors: [], classTypes: []));
 
+      if (isClosed) return;
+
       emit(
         AdminConflictDetected(
           newClass: refClass,
@@ -388,6 +402,7 @@ class AdminCubit extends Cubit<AdminState> {
     }
 
     for (var cls in classesToCreate) {
+      if (isClosed) return;
       await _scheduleRepository.createScheduleClass(cls);
     }
   }
@@ -421,9 +436,12 @@ class AdminCubit extends Cubit<AdminState> {
       );
       await _scheduleRepository.createClassType(newType);
 
+      if (isClosed) return;
+
       emit(const AdminOperationSuccess("Clase creada exitosamente"));
       await loadFormData(silent: true);
     } catch (e) {
+      if (isClosed) return;
       emit(AdminError(e.toString().replaceAll('Exception: ', '')));
       await loadFormData(silent: true);
     }
@@ -451,9 +469,12 @@ class AdminCubit extends Cubit<AdminState> {
 
       await _scheduleRepository.createScheduleClass(newClass);
 
+      if (isClosed) return;
+
       emit(const AdminOperationSuccess("Clase reemplazada exitosamente"));
       await loadFormData(silent: true);
     } catch (e) {
+      if (isClosed) return;
       emit(AdminError(e.toString().replaceAll('Exception: ', '')));
       await loadFormData(silent: true);
     }
@@ -480,6 +501,8 @@ class AdminCubit extends Cubit<AdminState> {
           fromDate: startOfDay,
           toDate: endOfDay,
         );
+
+        if (isClosed) return;
 
         final conflicts = existing.where((e) {
           return e.classId != originalClass.classId &&
@@ -528,9 +551,12 @@ class AdminCubit extends Cubit<AdminState> {
           break;
       }
 
+      if (isClosed) return;
+
       emit(const AdminOperationSuccess("Edición realizada correctamente"));
       await loadFormData(silent: true);
     } catch (e) {
+      if (isClosed) return;
       emit(AdminError(e.toString().replaceAll('Exception: ', '')));
       await loadFormData(silent: true);
     }
@@ -547,9 +573,13 @@ class AdminCubit extends Cubit<AdminState> {
         classModel: classModel,
         mode: mode,
       );
+
+      if (isClosed) return;
+
       emit(const AdminOperationSuccess("Clase(s) eliminada(s)"));
       await loadFormData(silent: true);
     } catch (e) {
+      if (isClosed) return;
       emit(AdminError(e.toString()));
       await loadFormData(silent: true);
     }
@@ -560,9 +590,13 @@ class AdminCubit extends Cubit<AdminState> {
     try {
       emit(AdminLoading());
       await _scheduleRepository.updateClassType(type);
+
+      if (isClosed) return;
+
       emit(const AdminOperationSuccess("Catálogo actualizado"));
       await loadFormData(silent: true);
     } catch (e) {
+      if (isClosed) return;
       emit(AdminError(e.toString()));
       await loadFormData(silent: true);
     }
@@ -573,9 +607,13 @@ class AdminCubit extends Cubit<AdminState> {
     try {
       emit(AdminLoading());
       await _scheduleRepository.deleteClassType(id);
+
+      if (isClosed) return;
+
       emit(const AdminOperationSuccess("Clase eliminada del catálogo"));
       await loadFormData(silent: true);
     } catch (e) {
+      if (isClosed) return;
       emit(AdminError(e.toString()));
       await loadFormData(silent: true);
     }
@@ -601,7 +639,6 @@ class AdminCubit extends Cubit<AdminState> {
       emit(AdminUsersLoaded(users: users, availablePlans: plans));
     } catch (e) {
       if (isClosed) return;
-
       emit(AdminError(e.toString()));
     }
   }
@@ -610,9 +647,13 @@ class AdminCubit extends Cubit<AdminState> {
     try {
       emit(AdminLoading());
       await _authRepository.updateUser(user);
+
+      if (isClosed) return;
+
       emit(const AdminOperationSuccess("Usuario actualizado correctamente"));
       await loadUsersManagement();
     } catch (e) {
+      if (isClosed) return;
       emit(AdminError(e.toString()));
       await loadUsersManagement();
     }
@@ -641,6 +682,8 @@ class AdminCubit extends Cubit<AdminState> {
       int updatedCount = 0;
 
       for (final user in usersToUpdate) {
+        if (isClosed) return;
+
         if (user.activePlans.isEmpty) continue;
 
         bool hasChanges = false;
@@ -686,8 +729,11 @@ class AdminCubit extends Cubit<AdminState> {
 
       debugPrint("Se aplicó pausa masiva a $updatedCount usuarios.");
 
+      if (isClosed) return;
+
       await loadUsersManagement();
     } catch (e) {
+      if (isClosed) return;
       emit(AdminError("Error aplicando pausa masiva: $e"));
     }
   }
@@ -708,6 +754,8 @@ class AdminCubit extends Cubit<AdminState> {
           "MASIVA_${DateFormat('yyyyMMdd').format(originalStartDate)}";
 
       for (final user in users) {
+        if (isClosed) return;
+
         if (user.activePlans.isEmpty) continue;
 
         bool hasChanges = false;
@@ -732,8 +780,11 @@ class AdminCubit extends Cubit<AdminState> {
         }
       }
 
+      if (isClosed) return;
+
       await loadUsersManagement();
     } catch (e) {
+      if (isClosed) return;
       emit(AdminError("Error deshaciendo pausa: $e"));
       await loadUsersManagement();
     }

@@ -4,21 +4,26 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/schedule/data/schedule_repository.dart';
 import 'features/auth/presentation/cubit/auth_cubit.dart';
+import 'features/inventory/data/repositories/inventory_repository_impl.dart';
+import 'features/inventory/domain/repositories/inventory_repository.dart';
+import 'features/inventory/domain/usecases/get_inventory_usecase.dart';
+import 'features/inventory/domain/usecases/manage_product_usecase.dart';
+import 'features/inventory/presentation/cubit/inventory_cubit.dart';
+import 'features/inventory/presentation/cubit/product_form_cubit.dart';
 
 // Variable global para acceder a las dependencias desde cualquier lado
 final sl = GetIt.instance;
 
 Future<void> init() async {
-  
   // Herramientas externas
-  
+
   sl.registerLazySingleton(() => FirebaseAuth.instance);
   sl.registerLazySingleton(() => FirebaseFirestore.instance);
 
   // auth
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepository(
-      auth: sl(),      // Inyecta FirebaseAuth
+      auth: sl(), // Inyecta FirebaseAuth
       firestore: sl(), // Inyecta FirebaseFirestore
     ),
   );
@@ -27,7 +32,15 @@ Future<void> init() async {
     () => ScheduleRepository(firestore: sl()),
   );
 
-  // inventario (pendiente)
+  // inventario
+  sl.registerLazySingleton<InventoryRepository>(
+    () => InventoryRepositoryImpl(firestore: sl()),
+  );
+
+  sl.registerLazySingleton(() => ManageProductUseCase(sl()));
+  sl.registerLazySingleton(() => GetInventoryUseCase(sl()));
+  sl.registerFactory(() => InventoryCubit(sl()));
+  sl.registerFactory(() => ProductFormCubit(sl()));
 
   // Presentacion
   sl.registerFactory(() => AuthCubit(sl()));
