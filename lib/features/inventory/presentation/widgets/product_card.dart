@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../domain/entities/product_entity.dart';
+import '../../../sales/presentation/widgets/sale_dialog.dart';
 
 class ProductCard extends StatelessWidget {
   final ProductEntity product;
   final VoidCallback onTap;
+  final VoidCallback? onSaleSuccess;
 
-  const ProductCard({super.key, required this.product, required this.onTap});
+  const ProductCard({
+    super.key,
+    required this.product,
+    required this.onTap,
+    this.onSaleSuccess,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -84,12 +91,23 @@ class ProductCard extends StatelessWidget {
                     currencyFormat.format(product.costPrice),
                   ),
                   const Spacer(),
-                  Text(
-                    'ganancia: ${currencyFormat.format(product.profit)}',
-                    style: TextStyle(
-                      color: Colors.green.shade700,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
+                  FilledButton.icon(
+                    onPressed: () async {
+                      final sold = await showDialog<bool>(
+                        context: context,
+                        builder: (_) => SaleDialog(product: product),
+                      );
+
+                      if (sold == true && onSaleSuccess != null) {
+                        onSaleSuccess!();
+                      }
+                    },
+                    icon: const Icon(Icons.attach_money, size: 18),
+                    label: const Text('Vender'),
+                    style: FilledButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      backgroundColor: Colors.teal,
+                      foregroundColor: Colors.white,
                     ),
                   ),
                 ],

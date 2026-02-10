@@ -164,6 +164,9 @@ class _InventoryViewState extends State<_InventoryView> {
                             context.read<InventoryCubit>().loadInitialData();
                           }
                         },
+                        onSaleSuccess: () {
+                          context.read<InventoryCubit>().loadInitialData();
+                        },
                       );
                     },
                   );
