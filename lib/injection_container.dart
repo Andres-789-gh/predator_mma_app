@@ -2,8 +2,8 @@ import 'package:get_it/get_it.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'features/auth/data/auth_repository.dart';
-import 'features/schedule/data/schedule_repository.dart';
 import 'features/auth/presentation/cubit/auth_cubit.dart';
+import 'features/schedule/data/schedule_repository.dart';
 import 'features/inventory/data/repositories/inventory_repository_impl.dart';
 import 'features/inventory/domain/repositories/inventory_repository.dart';
 import 'features/inventory/domain/usecases/get_inventory_usecase.dart';
@@ -14,22 +14,31 @@ import 'features/sales/data/repositories/sales_repository_impl.dart';
 import 'features/sales/data/repositories/sales_repository.dart';
 import 'features/sales/domain/usecases/register_sale_usecase.dart';
 import 'features/sales/presentation/cubit/sales_cubit.dart';
+import 'features/plans/data/plan_repository.dart';
+import 'features/plans/domain/usecases/assign_plan_and_record_sale_usecase.dart';
+import 'features/notifications/data/repositories/notification_repository.dart';
+import 'features/notifications/domain/usecases/resolve_plan_request_usecase.dart';
+import 'features/notifications/presentation/cubit/admin_notification_cubit.dart';
 
 final sl = GetIt.instance;
 
 Future<void> init() async {
+  // External
   sl.registerLazySingleton(() => FirebaseAuth.instance);
   sl.registerLazySingleton(() => FirebaseFirestore.instance);
 
-  // auth
+  // Auth
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepository(auth: sl(), firestore: sl()),
   );
+  sl.registerFactory(() => AuthCubit(sl()));
+
+  // Schedule
   sl.registerLazySingleton<ScheduleRepository>(
     () => ScheduleRepository(firestore: sl()),
   );
 
-  // inventario
+  // Inventario
   sl.registerLazySingleton<InventoryRepository>(
     () => InventoryRepositoryImpl(firestore: sl()),
   );
@@ -38,13 +47,42 @@ Future<void> init() async {
   sl.registerFactory(() => InventoryCubit(sl()));
   sl.registerFactory(() => ProductFormCubit(sl()));
 
-  // Presentacion
-  sl.registerFactory(() => AuthCubit(sl()));
-
-  // ventas
+  // Ventas
   sl.registerLazySingleton<SalesRepository>(
     () => SalesRepositoryImpl(firestore: sl()),
   );
   sl.registerLazySingleton(() => RegisterSaleUseCase(sl()));
   sl.registerFactory(() => SalesCubit(sl(), sl()));
+  sl.registerLazySingleton<PlanRepository>(
+    () => PlanRepository(firestore: sl()),
+  );
+
+  // Caso de uso compartido (Venta de Servicios/Planes)
+  sl.registerLazySingleton(
+    () =>
+        AssignPlanAndRecordSaleUseCase(salesRepository: sl(), firestore: sl()),
+  );
+
+  // Repositorio
+  sl.registerLazySingleton<NotificationRepository>(
+    () => NotificationRepositoryImpl(firestore: sl()),
+  );
+
+  // Caso de Uso (Resolver Solicitud)
+  sl.registerLazySingleton(
+    () => ResolvePlanRequestUseCase(
+      notificationRepository: sl(),
+      assignPlanUseCase: sl(),
+      authRepository: sl(),
+      planRepository: sl(),
+    ),
+  );
+
+  // Cubit (Admin Notificaciones)
+  sl.registerFactory(
+    () => AdminNotificationCubit(
+      notificationRepository: sl(),
+      resolveUseCase: sl(),
+    ),
+  );
 }

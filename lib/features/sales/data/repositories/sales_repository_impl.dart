@@ -46,10 +46,36 @@ class SalesRepositoryImpl implements SalesRepository {
           'sale_date': Timestamp.fromDate(sale.saleDate),
           'note': sale.note,
           'created_at': FieldValue.serverTimestamp(),
+          'is_service': false,
         });
       });
     } catch (e) {
       throw Exception('error procesando la venta: $e');
+    }
+  }
+
+  @override
+  Future<void> registerServiceSale(SaleEntity sale) async {
+    try {
+      final saleRef = _firestore.collection('sales').doc();
+
+      await saleRef.set({
+        'product_id': sale.productId,
+        'product_name': sale.productName,
+        'unit_price': sale.productUnitPrice,
+        'unit_cost': sale.productUnitCost,
+        'quantity': sale.quantity,
+        'total_price': sale.totalPrice,
+        'buyer_id': sale.buyerId,
+        'buyer_name': sale.buyerName,
+        'payment_method': sale.paymentMethod,
+        'sale_date': Timestamp.fromDate(sale.saleDate),
+        'note': sale.note,
+        'created_at': FieldValue.serverTimestamp(),
+        'is_service': true,
+      });
+    } catch (e) {
+      throw Exception('error registrando venta de servicio: $e');
     }
   }
 }

@@ -1,16 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../domain/models/plan_model.dart';
-import 'mappers/plan_mapper.dart'; 
+import 'mappers/plan_mapper.dart';
 
 class PlanRepository {
   final FirebaseFirestore _firestore;
 
   PlanRepository({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   Future<void> createPlan(PlanModel plan) async {
     if (plan.scheduleRules.isEmpty) {
-      throw Exception('Error de integridad: El plan debe tener al menos una regla de horario.');
+      throw Exception(
+        'Error de integridad: El plan debe tener al menos una regla de horario.',
+      );
     }
 
     try {
@@ -18,7 +20,6 @@ class PlanRepository {
       final planWithId = plan.copyWith(id: docRef.id);
 
       await docRef.set(PlanMapper.toMap(planWithId));
-      
     } catch (e) {
       throw Exception('Error creando plan: $e');
     }
@@ -31,7 +32,7 @@ class PlanRepository {
           .collection('plans')
           .where('is_active', isEqualTo: true)
           .get();
-      
+
       return snapshot.docs
           .map((doc) => PlanMapper.fromMap(doc.data(), doc.id))
           .toList();
@@ -42,11 +43,16 @@ class PlanRepository {
 
   Future<void> updatePlan(PlanModel plan) async {
     if (plan.scheduleRules.isEmpty) {
-      throw Exception('Error de integridad: No se puede guardar un plan sin reglas.');
+      throw Exception(
+        'Error de integridad: No se puede guardar un plan sin reglas.',
+      );
     }
 
     try {
-      await _firestore.collection('plans').doc(plan.id).update(PlanMapper.toMap(plan));
+      await _firestore
+          .collection('plans')
+          .doc(plan.id)
+          .update(PlanMapper.toMap(plan));
     } catch (e) {
       throw Exception('Error actualizando plan: $e');
     }
@@ -54,9 +60,23 @@ class PlanRepository {
 
   Future<void> deletePlan(String planId) async {
     try {
-      await _firestore.collection('plans').doc(planId).update({'is_active': false});
+      await _firestore.collection('plans').doc(planId).update({
+        'is_active': false,
+      });
     } catch (e) {
       throw Exception('Error eliminando plan: $e');
+    }
+  }
+
+  Future<PlanModel?> getPlanById(String id) async {
+    try {
+      final doc = await _firestore.collection('plans').doc(id).get();
+      if (doc.exists && doc.data() != null) {
+        return PlanMapper.fromMap(doc.data()!, doc.id);
+      }
+      return null;
+    } catch (e) {
+      throw Exception('error buscando plan: $e');
     }
   }
 }

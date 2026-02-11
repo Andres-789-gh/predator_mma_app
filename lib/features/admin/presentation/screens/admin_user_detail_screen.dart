@@ -41,7 +41,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
     _tabController = TabController(length: 2, vsync: this);
   }
 
-  // comparar si hubo cambios
+  // Compara si hubo cambios
   bool get _hasChanges {
     final u1 = widget.user;
     final u2 = _editedUser;
@@ -79,7 +79,10 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
       canPop: !_hasChanges,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        await _showExitConfirmation();
+        final shouldExit = await _showExitConfirmation();
+        if (shouldExit == true && mounted) {
+          Navigator.of(context).pop();
+        }
       },
       child: Scaffold(
         appBar: AppBar(
@@ -106,7 +109,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
         ),
         body: Column(
           children: [
-            // header del perfil
+            // Header del perfil
             UserProfileHeader(
               user: _editedUser,
               onToggleLegacyStatus: () {
@@ -132,7 +135,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  // tab de suscripciones
+                  // Tab Suscripciones
                   UserSubscriptionsTab(
                     activePlans: _editedUser.activePlans,
                     onAssignNewPlan: _showAssignPlanDialog,
@@ -140,7 +143,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
                     onPausePlan: (plan) => _showPauseDialog(plan),
                     onCancelPlan: (plan) => _showCancelPlanDialog(plan),
                   ),
-                  // tab de tickets
+                  // Tab Tickets
                   UserTicketsTab(
                     tickets: _editedUser.accessExceptions,
                     onAddTicket: _showAddTicketDialog,
@@ -166,13 +169,13 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
     );
   }
 
-  // funciones logicas de plan
+  // LÓGICA PLANES
   void _showAssignPlanDialog() {
     showDialog(
       context: context,
       builder: (ctx) => AssignPlanDialog(
         availablePlans: widget.availablePlans,
-        onPlanAssigned: (UserPlan newPlan) {
+        onPlanAssigned: (UserPlan newPlan, String paymentMethod, String? note) {
           setState(() {
             final updatedPlans = List<UserPlan>.from(_editedUser.activePlans)
               ..add(newPlan);
@@ -213,8 +216,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
     );
   }
 
-  // actualiza _resumePlan para recibir el plan
-  void _resumePlan(UserPlan targetPlan) async {
+  Future<void> _resumePlan(UserPlan targetPlan) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -300,7 +302,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
     }
   }
 
-  // funciones logicas de tickets
+  // LÓGICA TICKETS
   void _showAddTicketDialog() {
     final authState = context.read<AuthCubit>().state;
     final String currentAdminName = (authState is AuthAuthenticated)
@@ -332,32 +334,29 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
     );
   }
 
-  // funciones de guardado
-  Future<void> _showExitConfirmation() async {
-    final shouldSave = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("¿Salir sin guardar?"),
-        content: const Text("Tienes cambios pendientes."),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx, false);
-              Navigator.of(context).pop();
-            },
-            child: const Text("Descartar", style: TextStyle(color: Colors.red)),
+  // GUARDADO Y SALIDA
+  Future<bool> _showExitConfirmation() async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text("¿Salir sin guardar?"),
+            content: const Text("Tienes cambios pendientes."),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text("Cancelar"),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                ),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text("Salir y Descartar"),
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text("Guardar"),
-          ),
-        ],
-      ),
-    );
-
-    if (shouldSave == true) {
-      _saveChanges();
-    }
+        ) ??
+        false;
   }
 
   Future<void> _confirmSave() async {

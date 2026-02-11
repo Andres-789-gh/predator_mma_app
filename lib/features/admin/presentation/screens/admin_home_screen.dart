@@ -10,6 +10,9 @@ import '../../../plans/presentation/screens/plans_screen.dart';
 import '../../../plans/data/plan_repository.dart';
 import 'admin_users_screen.dart';
 import '../../../../features/inventory/presentation/screens/inventory_screen.dart';
+import '../../../../features/notifications/presentation/cubit/admin_notification_cubit.dart';
+import '../../../../features/notifications/presentation/screens/admin_notifications_screen.dart';
+import '../../../../injection_container.dart';
 
 class AdminHomeScreen extends StatelessWidget {
   const AdminHomeScreen({super.key});
@@ -24,19 +27,53 @@ class AdminHomeScreen extends StatelessWidget {
     final user = authState.user;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return BlocProvider(
-      lazy: false,
-      create: (context) => AdminCubit(
-        authRepository: context.read<AuthRepository>(),
-        scheduleRepository: context.read<ScheduleRepository>(),
-        planRepository: context.read<PlanRepository>(),
-      )..loadFormData(checkSchedule: true, silent: true),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          lazy: false,
+          create: (context) => AdminCubit(
+            authRepository: context.read<AuthRepository>(),
+            scheduleRepository: context.read<ScheduleRepository>(),
+            planRepository: context.read<PlanRepository>(),
+          )..loadFormData(checkSchedule: true, silent: true),
+        ),
+        BlocProvider(create: (context) => sl<AdminNotificationCubit>()),
+      ],
       child: Builder(
         builder: (context) {
           return Scaffold(
             appBar: AppBar(
               title: const Text("Panel de Control"),
               actions: [
+                // btn notificaciones
+                BlocBuilder<AdminNotificationCubit, AdminNotificationState>(
+                  builder: (context, state) {
+                    int pendingCount = 0;
+                    if (state is AdminNotificationLoaded) {
+                      pendingCount = state.pendingCount;
+                    }
+
+                    return IconButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => BlocProvider.value(
+                              value: context.read<AdminNotificationCubit>(),
+                              child: const AdminNotificationsScreen(),
+                            ),
+                          ),
+                        );
+                      },
+                      icon: Badge(
+                        isLabelVisible: pendingCount > 0,
+                        label: Text('$pendingCount'),
+                        child: const Icon(Icons.notifications),
+                      ),
+                      tooltip: "Notificaciones",
+                    );
+                  },
+                ),
                 IconButton(
                   icon: const Icon(Icons.logout),
                   tooltip: "Cerrar Sesión",
@@ -125,7 +162,7 @@ class AdminHomeScreen extends StatelessWidget {
                         _AdminMenuCard(
                           icon: Icons.inventory_2,
                           title: "Inventario",
-                          color: Colors.redAccent, // define color activo
+                          color: Colors.redAccent,
                           onTap: () {
                             Navigator.push(
                               context,

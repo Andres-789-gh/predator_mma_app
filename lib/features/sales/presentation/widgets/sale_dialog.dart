@@ -45,10 +45,9 @@ class _SaleDialogViewState extends State<_SaleDialogView> {
 
   final List<String> _paymentMethods = [
     'Efectivo',
-    'Nequi',
-    'DaviPlata',
     'Tarjeta',
     'Transferencia',
+    'Otro',
   ];
 
   @override

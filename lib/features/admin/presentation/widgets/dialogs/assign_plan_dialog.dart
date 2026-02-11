@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:uuid/uuid.dart';
 import '../../../../plans/domain/models/plan_model.dart';
 import '../../../../auth/domain/models/user_model.dart';
 import '../../../../../core/constants/enums.dart';
 import '../../../../../core/utils/currency_formatter.dart';
 import '../../../../../core/utils/date_utils.dart';
-import 'package:uuid/uuid.dart';
 
 class AssignPlanDialog extends StatefulWidget {
   final List<PlanModel> availablePlans;
-  final Function(UserPlan) onPlanAssigned;
+  final Function(UserPlan plan, String paymentMethod, String? note)
+  onPlanAssigned;
 
   const AssignPlanDialog({
     super.key,
@@ -27,11 +28,20 @@ class _AssignPlanDialogState extends State<AssignPlanDialog> {
   int durationMonths = 1;
   DateTime startDate = DateTime.now();
   final priceCtrl = TextEditingController();
+  final noteCtrl = TextEditingController();
   DateTime newEndDate = DateTime.now().add(const Duration(days: 30));
+  String selectedPaymentMethod = 'Efectivo';
+  final List<String> paymentMethods = [
+    'Efectivo',
+    'Tarjeta',
+    'Transferencia',
+    'Otro',
+  ];
 
   @override
   void dispose() {
     priceCtrl.dispose();
+    noteCtrl.dispose();
     super.dispose();
   }
 
@@ -47,7 +57,6 @@ class _AssignPlanDialogState extends State<AssignPlanDialog> {
           durationMonths,
         );
       }
-
       // Calculo precio
       priceCtrl.text = (selectedPlan!.price * durationMonths).toStringAsFixed(
         0,
@@ -183,13 +192,38 @@ class _AssignPlanDialogState extends State<AssignPlanDialog> {
                 CurrencyInputFormatter(),
               ],
               decoration: const InputDecoration(
-                labelText: "Precio del Plan",
+                labelText: "Precio Plan",
                 prefixText: "\$ ",
                 border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
+                helperText: "Este precio quedará registrado para los reportes",
+              ),
+            ),
+            const SizedBox(height: 15),
+
+            // Método de Pago
+            DropdownButtonFormField<String>(
+              value: selectedPaymentMethod,
+              decoration: const InputDecoration(
+                labelText: "Método de Pago",
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.payment),
+              ),
+              items: paymentMethods.map((method) {
+                return DropdownMenuItem(value: method, child: Text(method));
+              }).toList(),
+              onChanged: (val) {
+                if (val != null) setState(() => selectedPaymentMethod = val);
+              },
+            ),
+            const SizedBox(height: 15),
+
+            // Observación
+            TextField(
+              controller: noteCtrl,
+              decoration: const InputDecoration(
+                labelText: "Observación (Opcional)",
+                border: OutlineInputBorder(),
+                isDense: true,
               ),
             ),
           ],
@@ -202,21 +236,26 @@ class _AssignPlanDialogState extends State<AssignPlanDialog> {
         ),
         FilledButton(
           onPressed: selectedPlan == null ? null : _confirmAssignment,
-          child: const Text("Continuar"),
+          child: const Text("Confirmar Venta"),
         ),
       ],
     );
   }
 
   Future<void> _confirmAssignment() async {
+    final double finalPrice =
+        double.tryParse(priceCtrl.text.replaceAll(RegExp(r'[^0-9.]'), '')) ??
+        0.0;
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (alertCtx) => AlertDialog(
         title: const Text("¿Confirmar Asignación?"),
         content: Text(
-          "Se asignará '${selectedPlan!.name}' por $durationMonths mes(es).\n\n"
-          "Vence: ${DateFormat('dd/MM/yyyy').format(newEndDate)}\n"
-          "Valor: \$${priceCtrl.text}",
+          "Plan: ${selectedPlan!.name}\n"
+          "Método: $selectedPaymentMethod\n"
+          "Valor: \$${priceCtrl.text}\n\n"
+          "Esto activará el plan inmediatamente.",
         ),
         actions: [
           TextButton(
@@ -225,7 +264,7 @@ class _AssignPlanDialogState extends State<AssignPlanDialog> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(alertCtx, true),
-            child: const Text("Asignar"),
+            child: const Text("Procesar"),
           ),
         ],
       ),
@@ -233,10 +272,6 @@ class _AssignPlanDialogState extends State<AssignPlanDialog> {
 
     if (confirm == true) {
       if (!mounted) return;
-
-      final double finalPrice =
-          double.tryParse(priceCtrl.text.replaceAll(RegExp(r'[^0-9.]'), '')) ??
-          0.0;
 
       final String uniqueId = const Uuid().v4();
 
@@ -257,7 +292,11 @@ class _AssignPlanDialogState extends State<AssignPlanDialog> {
             : null,
       );
 
-      widget.onPlanAssigned(newAssignedPlan);
+      widget.onPlanAssigned(
+        newAssignedPlan,
+        selectedPaymentMethod,
+        noteCtrl.text,
+      );
       Navigator.pop(context);
     }
   }
