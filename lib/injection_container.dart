@@ -16,8 +16,10 @@ import 'features/sales/domain/usecases/register_sale_usecase.dart';
 import 'features/sales/presentation/cubit/sales_cubit.dart';
 import 'features/plans/data/plan_repository.dart';
 import 'features/plans/domain/usecases/assign_plan_and_record_sale_usecase.dart';
+import 'features/plans/presentation/cubit/plan_cubit.dart';
 import 'features/notifications/data/repositories/notification_repository.dart';
 import 'features/notifications/domain/usecases/resolve_plan_request_usecase.dart';
+import 'features/notifications/domain/usecases/request_plan_usecase.dart';
 import 'features/notifications/presentation/cubit/admin_notification_cubit.dart';
 
 final sl = GetIt.instance;
@@ -53,9 +55,12 @@ Future<void> init() async {
   );
   sl.registerLazySingleton(() => RegisterSaleUseCase(sl()));
   sl.registerFactory(() => SalesCubit(sl(), sl()));
+
+  // Planes
   sl.registerLazySingleton<PlanRepository>(
     () => PlanRepository(firestore: sl()),
   );
+  sl.registerFactory(() => PlanCubit(sl()));
 
   // Caso de uso compartido (Venta de Servicios/Planes)
   sl.registerLazySingleton(
@@ -63,12 +68,14 @@ Future<void> init() async {
         AssignPlanAndRecordSaleUseCase(salesRepository: sl(), firestore: sl()),
   );
 
+  // NOTIFICACIONES:
+
   // Repositorio
   sl.registerLazySingleton<NotificationRepository>(
     () => NotificationRepositoryImpl(firestore: sl()),
   );
 
-  // Caso de Uso (Resolver Solicitud)
+  // Casos de Uso
   sl.registerLazySingleton(
     () => ResolvePlanRequestUseCase(
       notificationRepository: sl(),
@@ -77,6 +84,8 @@ Future<void> init() async {
       planRepository: sl(),
     ),
   );
+
+  sl.registerLazySingleton(() => RequestPlanUseCase(sl()));
 
   // Cubit (Admin Notificaciones)
   sl.registerFactory(

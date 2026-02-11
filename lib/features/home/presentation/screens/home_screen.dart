@@ -9,6 +9,7 @@ import '../../../schedule/data/schedule_repository.dart';
 import '../../../schedule/presentation/screens/schedule_screen.dart';
 import '../../../auth/presentation/screens/waiver_screen.dart';
 import '../../../../core/constants/enums.dart';
+import '../../../plans/presentation/screens/client_plans_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -164,14 +165,42 @@ class HomeScreen extends StatelessWidget {
                   ],
 
                   // Seccion planes
-                  Text(
-                    'TUS PLANES',
-                    style: TextStyle(
-                      color: textColor.withOpacity(0.6),
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'TUS PLANES',
+                        style: TextStyle(
+                          color: textColor.withValues(alpha: 0.6),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ClientPlansScreen(),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.add_shopping_cart, size: 16),
+                        label: const Text(
+                          "SOLICITAR PLAN",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          padding: EdgeInsets.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 10),
 
@@ -564,72 +593,82 @@ class HomeScreen extends StatelessWidget {
 
   // Widget para cuando no hay plan
   Widget _buildNoPlanCard(BuildContext context, bool isDark) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ClientPlansScreen()),
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
+          border: Border.all(
+            // Cambié sutilmente el color del borde a rojo suave para indicar que es "tuable"
+            // Si prefieres el original, usa: isDark ? Colors.white10 : Colors.grey[400]!
+            color: Colors.red.withOpacity(0.3),
+            width: 1,
           ),
-        ],
-        border: Border.all(
-          color: isDark ? Colors.white10 : Colors.grey[400]!,
-          width: 1,
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Icon(
-                Icons.card_membership,
-                color: isDark ? Colors.white : Colors.black87,
-                size: 30,
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Icon(
+                  Icons.card_membership,
+                  color: isDark ? Colors.white : Colors.black87,
+                  size: 30,
                 ),
-                decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  'INACTIVO',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text(
+                    'INACTIVO',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'SIN PLAN ACTIVO',
+              style: TextStyle(
+                color: !isDark ? Colors.black87 : Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
               ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'SIN PLAN ACTIVO',
-            style: TextStyle(
-              color: !isDark ? Colors.black87 : Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
             ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            'Adquiere un plan para comenzar a reservar clases.',
-            style: TextStyle(
-              color: !isDark ? Colors.grey[700] : Colors.white54,
+            const SizedBox(height: 5),
+            Text(
+              'Adquiere un plan para comenzar a reservar clases.',
+              style: TextStyle(
+                color: !isDark ? Colors.grey[700] : Colors.white54,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
