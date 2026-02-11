@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:intl/intl.dart';
 import '../../domain/entities/product_entity.dart';
 import '../../../sales/presentation/widgets/sale_dialog.dart';
@@ -31,88 +32,108 @@ class ProductCard extends StatelessWidget {
         ? Colors.blue.shade900
         : (product.stock! < 5 ? Colors.red.shade900 : Colors.green.shade900);
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 2,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      product.name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: stockColor,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      product.stock == null
-                          ? 'bajo pedido'
-                          : '${product.stock} unid.',
-                      style: TextStyle(
-                        color: stockTextColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  _buildInfoColumn(
-                    'venta',
-                    currencyFormat.format(product.salePrice),
-                  ),
-                  const SizedBox(width: 16),
-                  _buildInfoColumn(
-                    'costo',
-                    currencyFormat.format(product.costPrice),
-                  ),
-                  const Spacer(),
-                  FilledButton.icon(
-                    onPressed: () async {
-                      final sold = await showDialog<bool>(
-                        context: context,
-                        builder: (_) => SaleDialog(product: product),
-                      );
+    return Slidable(
+      key: Key(product.id),
+      endActionPane: ActionPane(
+        motion: const ScrollMotion(),
+        extentRatio: 0.29,
+        children: [
+          SlidableAction(
+            onPressed: (context) async {
+              final sold = await showDialog<bool>(
+                context: context,
+                builder: (_) => SaleDialog(product: product),
+              );
 
-                      if (sold == true && onSaleSuccess != null) {
-                        onSaleSuccess!();
-                      }
-                    },
-                    icon: const Icon(Icons.attach_money, size: 18),
-                    label: const Text('Vender'),
-                    style: FilledButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      backgroundColor: Colors.teal,
-                      foregroundColor: Colors.white,
+              if (sold == true && onSaleSuccess != null) {
+                onSaleSuccess!();
+              }
+            },
+            backgroundColor: Colors.teal,
+            foregroundColor: Colors.white,
+            icon: Icons.attach_money,
+            label: 'Vender',
+            borderRadius: const BorderRadius.only(
+              topRight: Radius.circular(12),
+              bottomRight: Radius.circular(12),
+            ),
+          ),
+        ],
+      ),
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        product.name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: stockColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        product.stock == null
+                            ? 'bajo pedido'
+                            : '${product.stock} unid.',
+                        style: TextStyle(
+                          color: stockTextColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                Row(
+                  children: [
+                    _buildInfoColumn(
+                      'venta',
+                      currencyFormat.format(product.salePrice),
+                    ),
+                    const SizedBox(width: 16),
+                    _buildInfoColumn(
+                      'costo',
+                      currencyFormat.format(product.costPrice),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'ganancia: ${currencyFormat.format(product.profit)}',
+                      style: TextStyle(
+                        color: Colors.green.shade700,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
