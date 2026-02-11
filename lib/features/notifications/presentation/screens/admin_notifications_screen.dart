@@ -81,7 +81,7 @@ class _NotificationCard extends StatelessWidget {
             const SizedBox(height: 8),
             // titulo y descripcion
             Text(
-              'de: ${notification.fromUserName}',
+              'De: ${notification.fromUserName}',
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
