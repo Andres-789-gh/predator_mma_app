@@ -1,5 +1,4 @@
 import '../../../../core/constants/enums.dart';
-import '../../../../core/utils/date_utils.dart';
 import '../../../../features/auth/domain/models/user_model.dart';
 import '../../../../features/auth/data/auth_repository.dart';
 import '../../../../features/plans/domain/usecases/assign_plan_and_record_sale_usecase.dart';
@@ -23,9 +22,16 @@ class ResolvePlanRequestUseCase {
        _authRepository = authRepository,
        _planRepository = planRepository;
 
-  Future<void> executeApprove(NotificationModel notification) async {
+  Future<void> executeApprove({
+    required NotificationModel notification,
+    required double finalPrice,
+    required DateTime startDate,
+    required DateTime endDate,
+    required String paymentMethod,
+    String? adminNote,
+  }) async {
     if (notification.status != NotificationStatus.pending) {
-      throw Exception('la solicitud no está pendiente');
+      throw Exception('La solicitud no está pendiente');
     }
 
     final payload = notification.payload;
@@ -33,24 +39,15 @@ class ResolvePlanRequestUseCase {
     final planId = payload['plan_id'];
 
     if (userId.isEmpty || planId == null) {
-      throw Exception('datos de notificación corruptos');
+      throw Exception('Datos de notificación corruptos');
     }
 
     try {
       final user = await _authRepository.getUserData(userId);
-      if (user == null) throw Exception('el usuario ya no existe');
+      if (user == null) throw Exception('El usuario ya no existe');
 
       final planModel = await _planRepository.getPlanById(planId);
-      if (planModel == null) throw Exception('el plan solicitado ya no existe');
-
-      final startDate = DateTime.now();
-      DateTime endDate;
-
-      if (planModel.consumptionType == PlanConsumptionType.pack) {
-        endDate = startDate.add(const Duration(days: 30));
-      } else {
-        endDate = AppDateUtils.calculateGymEndDate(startDate, 1);
-      }
+      if (planModel == null) throw Exception('El plan base ya no existe');
 
       final planToAssign = UserPlan(
         subscriptionId:
@@ -58,11 +55,9 @@ class ResolvePlanRequestUseCase {
             DateTime.now().millisecondsSinceEpoch.toString(),
         planId: planModel.id,
         name: planModel.name,
-        price: planModel
-            .price,
+        price: finalPrice,
         consumptionType: planModel.consumptionType,
-        scheduleRules:
-            planModel.scheduleRules,
+        scheduleRules: planModel.scheduleRules,
         startDate: startDate,
         endDate: endDate,
         dailyLimit: planModel.dailyLimit,
@@ -71,28 +66,35 @@ class ResolvePlanRequestUseCase {
             : null,
       );
 
-      // ejecuta venta y asignacion
       await _assignPlanUseCase.execute(
         user: user,
         newPlan: planToAssign,
-        paymentMethod: payload['payment_method'] ?? 'Solicitud App',
-        note: 'Aprobado desde Notificaciones',
+        paymentMethod: paymentMethod,
+        note: adminNote ?? 'Aprobado desde Notificaciones',
       );
 
-      // cerrar notificacion
       await _notificationRepository.updateStatus(
         notification.id,
         NotificationStatus.approved,
+        note: adminNote,
       );
     } catch (e) {
-      throw Exception('error aprobando solicitud: $e');
+      throw Exception('Error aprobando solicitud: $e');
     }
   }
 
-  Future<void> executeReject(String notificationId) async {
+  Future<void> executeReject(String notificationId, String reason) async {
     await _notificationRepository.updateStatus(
       notificationId,
       NotificationStatus.rejected,
+      note: reason,
+    );
+  }
+
+  Future<void> executeArchive(String notificationId) async {
+    await _notificationRepository.updateStatus(
+      notificationId,
+      NotificationStatus.archived,
     );
   }
 }

@@ -6,7 +6,7 @@ import '../../domain/models/notification_model.dart';
 import '../../data/repositories/notification_repository.dart';
 import '../../domain/usecases/resolve_plan_request_usecase.dart';
 
-// --- ESTADOS ---
+// Estados
 abstract class AdminNotificationState extends Equatable {
   const AdminNotificationState();
   @override
@@ -19,7 +19,6 @@ class AdminNotificationLoading extends AdminNotificationState {}
 
 class AdminNotificationLoaded extends AdminNotificationState {
   final List<NotificationModel> notifications;
-  // Getter util para saber si hay pendientes (para el puntito rojo del UI)
   int get pendingCount => notifications
       .where((n) => !n.isRead && n.status == NotificationStatus.pending)
       .length;
@@ -37,7 +36,7 @@ class AdminNotificationError extends AdminNotificationState {
   List<Object?> get props => [message];
 }
 
-// --- CUBIT ---
+// Cubit
 class AdminNotificationCubit extends Cubit<AdminNotificationState> {
   final NotificationRepository _notificationRepository;
   final ResolvePlanRequestUseCase _resolveUseCase;
@@ -54,7 +53,6 @@ class AdminNotificationCubit extends Cubit<AdminNotificationState> {
 
   void _subscribeToNotifications() {
     emit(AdminNotificationLoading());
-    // Escucha en tiempo real solo las del Admin
     _subscription = _notificationRepository
         .getNotificationsStream('admin')
         .listen(
@@ -67,34 +65,51 @@ class AdminNotificationCubit extends Cubit<AdminNotificationState> {
         );
   }
 
-  // Cuando el admin abre la bandeja
+  // admin abre la bandeja
   Future<void> markAsRead(String notificationId) async {
     try {
       await _notificationRepository.markAsRead(notificationId);
-    } catch (_) {
-      // Silencioso, no bloqueamos al usuario por esto
-    }
+    } catch (_) {}
   }
 
-  // ACCION PRINCIPAL: Aprobar Solicitud
-  Future<void> approveRequest(NotificationModel notification) async {
+  // Aprobar
+  Future<void> approveRequest({
+    required NotificationModel notification,
+    required double finalPrice,
+    required DateTime startDate,
+    required DateTime endDate,
+    required String paymentMethod,
+    String? note,
+  }) async {
     try {
-      // Nota: No emitimos Loading global para no redibujar toda la lista,
-      // idealmente se maneja un estado local o un toast de "Procesando..."
-      await _resolveUseCase.executeApprove(notification);
-      // El stream actualizará la lista automáticamente a "Approved"
+      await _resolveUseCase.executeApprove(
+        notification: notification,
+        finalPrice: finalPrice,
+        startDate: startDate,
+        endDate: endDate,
+        paymentMethod: paymentMethod,
+        adminNote: note,
+      );
     } catch (e) {
       emit(AdminNotificationError(e.toString()));
-      // Re-suscribirse si el error rompió el estado (opcional)
       _subscribeToNotifications();
     }
   }
 
-  Future<void> rejectRequest(String notificationId) async {
+  Future<void> rejectRequest(String notificationId, String reason) async {
     try {
-      await _resolveUseCase.executeReject(notificationId);
+      await _resolveUseCase.executeReject(notificationId, reason);
     } catch (e) {
-      emit(AdminNotificationError("Error al rechazar: $e"));
+      emit(AdminNotificationError("error al rechazar: $e"));
+    }
+  }
+
+  // eliminar
+  Future<void> archiveNotification(String notificationId) async {
+    try {
+      await _resolveUseCase.executeArchive(notificationId);
+    } catch (e) {
+      emit(AdminNotificationError("error al borrar: $e"));
     }
   }
 

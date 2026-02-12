@@ -4,15 +4,16 @@ import 'package:intl/intl.dart';
 import '../../../../core/constants/enums.dart';
 import '../../domain/models/notification_model.dart';
 import '../cubit/admin_notification_cubit.dart';
+import '../widgets/approve_plan_dialog.dart';
+import '../widgets/reject_plan_dialog.dart';
 
 class AdminNotificationsScreen extends StatelessWidget {
   const AdminNotificationsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // obtiene notificaciones al iniciar
     return Scaffold(
-      appBar: AppBar(title: const Text('centro de notificaciones')),
+      appBar: AppBar(title: const Text('Centro de Solicitudes')),
       body: BlocBuilder<AdminNotificationCubit, AdminNotificationState>(
         builder: (context, state) {
           if (state is AdminNotificationLoading) {
@@ -22,11 +23,12 @@ class AdminNotificationsScreen extends StatelessWidget {
             return Center(child: Text(state.message));
           }
           if (state is AdminNotificationLoaded) {
-            final list = state.notifications;
+            final list = state.notifications
+                .where((n) => n.status != NotificationStatus.archived)
+                .toList();
+
             if (list.isEmpty) {
-              return const Center(
-                child: Text('no hay notificaciones pendientes'),
-              );
+              return const Center(child: Text('No hay notificaciones activas'));
             }
             return ListView.separated(
               padding: const EdgeInsets.all(16),
@@ -49,12 +51,22 @@ class _NotificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     final isPending = notification.status == NotificationStatus.pending;
+
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final pendingColor = isDark
+        ? Colors.blue.withOpacity(0.1)
+        : Colors.blue.shade50;
+
     final dateStr = DateFormat('dd/MM HH:mm').format(notification.createdAt);
 
     return Card(
       elevation: 2,
-      color: notification.isRead ? Colors.white : Colors.blue.shade50,
+      color: notification.isRead ? cardColor : pendingColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -63,58 +75,77 @@ class _NotificationCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // tipo notificacion
                 Chip(
                   label: Text(
                     _getLabel(notification.type),
-                    style: const TextStyle(fontSize: 10),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
                   ),
+                  backgroundColor: theme.highlightColor,
                   padding: EdgeInsets.zero,
                   visualDensity: VisualDensity.compact,
                 ),
-                Text(
-                  dateStr,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                Row(
+                  children: [
+                    Text(
+                      dateStr,
+                      style: TextStyle(fontSize: 12, color: theme.hintColor),
+                    ),
+                    if (!isPending)
+                      IconButton(
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          size: 18,
+                          color: Colors.grey,
+                        ),
+                        tooltip: "Eliminar del historial",
+                        onPressed: () => _confirmDelete(context),
+                      ),
+                  ],
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            // titulo y descripcion
             Text(
               'De: ${notification.fromUserName}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: theme.colorScheme.onSurface,
+              ),
             ),
             const SizedBox(height: 4),
-            Text(_getDescription(notification)),
+            _buildDetailText(context),
             const SizedBox(height: 12),
-            // btn si esta pendiente
+
             if (isPending)
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    onPressed: () => _reject(context),
+                    onPressed: () => _showRejectDialog(context),
                     child: const Text(
-                      'rechazar',
+                      'Rechazar',
                       style: TextStyle(color: Colors.red),
                     ),
                   ),
                   const SizedBox(width: 8),
                   FilledButton(
-                    onPressed: () => _approve(context),
-                    child: const Text('aprobar'),
+                    onPressed: () => _showApproveDialog(context),
+                    child: const Text('Revisar'),
                   ),
                 ],
               )
             else
-              // estado final
               Align(
                 alignment: Alignment.centerRight,
                 child: Text(
-                  notification.status.toString().split('.').last.toUpperCase(),
-                  style: const TextStyle(
+                  _translateStatus(notification.status),
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: Colors.grey,
+                    color: _getStatusColor(notification.status),
                   ),
                 ),
               ),
@@ -124,31 +155,127 @@ class _NotificationCard extends StatelessWidget {
     );
   }
 
+  Widget _buildDetailText(BuildContext context) {
+    if (notification.type == NotificationType.planRequest) {
+      final payload = notification.payload;
+      final planName = payload['plan_name'] ?? 'Desconocido';
+      final price = (payload['plan_price'] as num?)?.toDouble() ?? 0.0;
+
+      final currency = NumberFormat.currency(
+        locale: 'es_CO',
+        symbol: '\$',
+        decimalDigits: 0,
+      );
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Solicita: $planName"),
+          Text(
+            "Valor: ${currency.format(price)}",
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      );
+    }
+    return const Text('Sin detalles adicionales');
+  }
+
   String _getLabel(NotificationType type) {
     switch (type) {
       case NotificationType.planRequest:
-        return 'solicitud plan';
+        return 'SOLICITUD DE PLAN';
       case NotificationType.paymentDue:
-        return 'pago vencido';
+        return 'PAGO VENCIDO';
       case NotificationType.systemInfo:
-        return 'sistema';
+        return 'SISTEMA';
     }
   }
 
-  String _getDescription(NotificationModel n) {
-    if (n.type == NotificationType.planRequest) {
-      final planName = n.payload['plan_name'] ?? 'plan desconocido';
-      final price = n.payload['plan_price'] ?? 0;
-      return 'solicita activar: $planName (\$$price)';
+  String _translateStatus(NotificationStatus status) {
+    switch (status) {
+      case NotificationStatus.pending:
+        return 'PENDIENTE';
+      case NotificationStatus.approved:
+        return 'APROBADO';
+      case NotificationStatus.rejected:
+        return 'RECHAZADO';
+      case NotificationStatus.archived:
+        return 'ARCHIVADO/ELIMINADO';
     }
-    return 'sin detalles adicionales';
   }
 
-  void _approve(BuildContext context) {
-    context.read<AdminNotificationCubit>().approveRequest(notification);
+  Color _getStatusColor(NotificationStatus status) {
+    switch (status) {
+      case NotificationStatus.approved:
+        return Colors.green;
+      case NotificationStatus.rejected:
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
   }
 
-  void _reject(BuildContext context) {
-    context.read<AdminNotificationCubit>().rejectRequest(notification.id);
+  // ACCIONES
+  void _showApproveDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => ApprovePlanDialog(
+        notification: notification,
+        onApprove: (price, start, end, paymentMethod, note) {
+          context.read<AdminNotificationCubit>().approveRequest(
+            notification: notification,
+            finalPrice: price,
+            startDate: start,
+            endDate: end,
+            paymentMethod: paymentMethod,
+            note: note,
+          );
+        },
+      ),
+    );
+  }
+
+  void _showRejectDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => RejectPlanDialog(
+        notification: notification,
+        onReject: (reason) {
+          context.read<AdminNotificationCubit>().rejectRequest(
+            notification.id,
+            reason,
+          );
+        },
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("¿Borrar notificación?"),
+        content: const Text("Desaparecerá de la bandeja de notificaciones."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancelar"),
+          ),
+          TextButton(
+            onPressed: () {
+              context.read<AdminNotificationCubit>().archiveNotification(
+                notification.id,
+              );
+              Navigator.pop(ctx);
+            },
+            child: const Text("Borrar", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 }

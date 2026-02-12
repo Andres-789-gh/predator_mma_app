@@ -20,7 +20,7 @@ class AssignPlanAndRecordSaleUseCase {
     required String paymentMethod,
     String? note,
   }) async {
-    if (newPlan.price < 0) throw Exception('el precio no puede ser negativo');
+    if (newPlan.price < 0) throw Exception('El precio no puede ser negativo');
 
     final saleEntity = SaleEntity(
       id: '',
@@ -42,27 +42,30 @@ class AssignPlanAndRecordSaleUseCase {
       final userRef = _firestore.collection('users').doc(user.userId);
 
       final planMap = {
-        'subscriptionId': newPlan.subscriptionId,
-        'planId': newPlan.planId,
+        'subscription_id': newPlan.subscriptionId,
+        'plan_id': newPlan.planId,
         'name': newPlan.name,
         'price': newPlan.price,
-        'consumptionType': newPlan.consumptionType.toString(),
-        'scheduleRules': newPlan.scheduleRules
+        'consumption_type': newPlan.consumptionType
+            .toString()
+            .split('.')
+            .last,
+        'schedule_rules': newPlan.scheduleRules
             .map(
               (e) => {
-                'allowedDays': e.allowedDays,
-                'startMinute': e.startMinute,
-                'endMinute': e.endMinute,
-                'allowedCategories': e.allowedCategories
+                'allowed_days': e.allowedDays,
+                'start_minute': e.startMinute,
+                'end_minute': e.endMinute,
+                'allowed_categories': e.allowedCategories
                     .map((c) => c.toString())
                     .toList(),
               },
             )
             .toList(),
-        'startDate': Timestamp.fromDate(newPlan.startDate),
-        'endDate': Timestamp.fromDate(newPlan.endDate),
-        'remainingClasses': newPlan.remainingClasses,
-        'dailyLimit': newPlan.dailyLimit,
+        'start_date': Timestamp.fromDate(newPlan.startDate),
+        'end_date': Timestamp.fromDate(newPlan.endDate),
+        'remaining_classes': newPlan.remainingClasses,
+        'daily_limit': newPlan.dailyLimit,
         'pauses': [],
       };
 
@@ -70,7 +73,7 @@ class AssignPlanAndRecordSaleUseCase {
         'active_plans': FieldValue.arrayUnion([planMap]),
       });
     } catch (e) {
-      throw Exception('fallo asignacion y venta: $e');
+      throw Exception('Fallo asignación: $e');
     }
   }
 }

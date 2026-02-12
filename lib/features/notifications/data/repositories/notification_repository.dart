@@ -7,7 +7,11 @@ abstract class NotificationRepository {
   Future<void> sendNotification(NotificationModel notification);
   Stream<List<NotificationModel>> getNotificationsStream(String role);
   Future<void> markAsRead(String notificationId);
-  Future<void> updateStatus(String notificationId, NotificationStatus status);
+  Future<void> updateStatus(
+    String notificationId,
+    NotificationStatus status, {
+    String? note,
+  });
 }
 
 class NotificationRepositoryImpl implements NotificationRepository {
@@ -57,13 +61,23 @@ class NotificationRepositoryImpl implements NotificationRepository {
   @override
   Future<void> updateStatus(
     String notificationId,
-    NotificationStatus status,
-  ) async {
+    NotificationStatus status, {
+    String? note,
+  }) async {
     try {
-      await _firestore.collection('notifications').doc(notificationId).update({
+      final Map<String, dynamic> data = {
         'status': status.toString(),
         'resolved_at': FieldValue.serverTimestamp(),
-      });
+      };
+
+      if (note != null && note.isNotEmpty) {
+        data['resolution_note'] = note;
+      }
+
+      await _firestore
+          .collection('notifications')
+          .doc(notificationId)
+          .update(data);
     } catch (e) {
       throw Exception('error actualizando estado: $e');
     }
