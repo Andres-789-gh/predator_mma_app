@@ -87,13 +87,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           end: Alignment.bottomCenter,
                           colors: isDark 
                             ? [
-                                Colors.black.withOpacity(0.3), 
-                                Colors.black.withOpacity(0.8),
+                                Colors.black.withValues(alpha: 0.3), 
+                                Colors.black.withValues(alpha: 0.8),
                                 Colors.black, 
                               ]
                             : [
-                                Colors.white.withOpacity(0.3), 
-                                Colors.white.withOpacity(0.8),
+                                Colors.white.withValues(alpha: 0.3), 
+                                Colors.white.withValues(alpha: 0.8),
                                 Colors.white, 
                               ],
                         ),
@@ -192,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   backgroundColor: primaryColor,
                                   foregroundColor: Colors.white,
                                   elevation: 8,
-                                  shadowColor: primaryColor.withOpacity(0.5),
+                                  shadowColor: primaryColor.withValues(alpha: 0.5),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),

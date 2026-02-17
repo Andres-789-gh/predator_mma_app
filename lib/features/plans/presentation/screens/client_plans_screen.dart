@@ -239,7 +239,7 @@ class _ClientPlanCard extends StatelessWidget {
                 const Divider(),
                 const SizedBox(height: 10),
                 const Text(
-                  "Al solicitar este plan, el administrador recibirá tu petición para activarlo.",
+                  "Al solicitar este plan, un administrador recibirá tu petición para activarlo.",
                   style: TextStyle(fontSize: 12, color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),

@@ -89,7 +89,7 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
 
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryColor,
-                    disabledBackgroundColor: primaryColor.withOpacity(0.6),
+                    disabledBackgroundColor: primaryColor.withValues(alpha: 0.6),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -589,9 +589,9 @@ class _RuleEditorDialogState extends State<_RuleEditorDialog> {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
+                    color: Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: Colors.red.withOpacity(0.5)),
+                    border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
                   ),
                   child: Row(
                     children: [
@@ -719,7 +719,7 @@ class _RuleEditorDialogState extends State<_RuleEditorDialog> {
         height: 35,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.1) : Colors.transparent,
+          color: isSelected ? color.withValues(alpha: 0.1) : Colors.transparent,
           border: Border.all(
             color: isSelected
                 ? color

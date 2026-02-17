@@ -18,7 +18,7 @@ class UserModel {
   final bool isWaiverSigned;
   final DateTime? waiverSignedAt;
   final String? waiverSignatureUrl;
-  final List<UserPlan> activePlans;
+  final List<UserPlan> activePlans; // historial de suscripciones
   final String emergencyContact;
   final List<AccessExceptionModel> accessExceptions;
 
@@ -44,6 +44,24 @@ class UserModel {
   }) : accessExceptions = List.unmodifiable(accessExceptions);
 
   String get fullName => '$firstName $lastName';
+
+  // planes vigentes
+  List<UserPlan> get validPlans {
+    final now = DateTime.now();
+    return activePlans.where((p) => !p.isExpired(now)).toList();
+  }
+
+  // historial planes vencidos
+  List<UserPlan> get expiredPlans {
+    final now = DateTime.now();
+    return activePlans.where((p) => p.isExpired(now)).toList();
+  }
+
+  // al menos un plan activo
+  bool get hasActivePlan {
+    final now = DateTime.now();
+    return activePlans.any((p) => p.isActive(now));
+  }
 
   UserModel copyWith({
     String? userId,
@@ -128,9 +146,13 @@ class UserPlan {
   }
 
   bool isActive(DateTime now) {
-    if (now.isAfter(effectiveEndDate)) return false;
+    if (isExpired(now)) return false;
     if (isPaused(now)) return false;
     return true;
+  }
+
+  bool isExpired(DateTime now) {
+    return now.isAfter(effectiveEndDate);
   }
 
   bool isPaused(DateTime date) {

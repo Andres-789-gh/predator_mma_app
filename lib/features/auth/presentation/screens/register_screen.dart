@@ -123,7 +123,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         end: Alignment.bottomCenter,
                         colors: isDark
                           ? [
-                              Colors.black.withOpacity(0.8),
+                              Colors.black.withValues(alpha: 0.8),
                               Colors.black, 
                             ]
                           : [ 
@@ -331,7 +331,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               backgroundColor: primaryColor,
                               foregroundColor: Colors.white,
                               elevation: 8,
-                              shadowColor: primaryColor.withOpacity(0.5),
+                              shadowColor: primaryColor.withValues(alpha: 0.5),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -382,7 +382,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _buildLabel(String text, BuildContext context, {bool isUrgent = false}) {
     final theme = Theme.of(context);
-    final textColor = theme.colorScheme.onSurface.withOpacity(0.7);
+    final textColor = theme.colorScheme.onSurface.withValues(alpha: 0.7);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),

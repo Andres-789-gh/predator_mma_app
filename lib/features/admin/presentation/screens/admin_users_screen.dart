@@ -29,7 +29,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
   void initState() {
     super.initState();
 
-    // Cargar lista usuarios
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AdminCubit>().loadUsersManagement();
     });
@@ -173,16 +172,18 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                         itemCount: filteredUsers.length,
                         itemBuilder: (context, index) {
                           final user = filteredUsers[index];
-                          final plans = user.activePlans;
+                          final validPlans = user.validPlans;
                           final now = DateTime.now();
 
                           bool hasAnyActive = false;
                           bool hasAnyPaused = false;
                           int pausedCount = 0;
 
-                          if (plans.isNotEmpty) {
-                            hasAnyActive = plans.any((p) => p.isActive(now));
-                            pausedCount = plans.where((p) {
+                          if (validPlans.isNotEmpty) {
+                            hasAnyActive = validPlans.any(
+                              (p) => p.isActive(now),
+                            );
+                            pausedCount = validPlans.where((p) {
                               return p.pauses.any(
                                 (pause) =>
                                     now.isAfter(pause.startDate) &&
@@ -196,23 +197,26 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                           String planText = "Sin plan activo";
                           Color planColor = Colors.grey;
 
-                          if (plans.isEmpty) {
-                            planText = "Sin planes";
-                            planColor = Colors.grey;
+                          if (validPlans.isEmpty) {
+                            if (user.activePlans.isNotEmpty) {
+                              planText =
+                                  "Vencido (${user.activePlans.length} hist.)";
+                              planColor = Colors.red.shade300;
+                            } else {
+                              planText = "Sin planes";
+                              planColor = Colors.grey;
+                            }
                           } else if (hasAnyPaused) {
                             planText =
-                                "${plans.length} Plan(es) ($pausedCount pausado${pausedCount > 1 ? 's' : ''})";
+                                "${validPlans.length} Plan(es) ($pausedCount pausado${pausedCount > 1 ? 's' : ''})";
                             planColor = Colors.orange[800]!;
                           } else if (hasAnyActive) {
-                            if (plans.length == 1) {
-                              planText = "Plan: ${plans.first.name}";
+                            if (validPlans.length == 1) {
+                              planText = "Plan: ${validPlans.first.name}";
                             } else {
-                              planText = "${plans.length} Planes Activos";
+                              planText = "${validPlans.length} Planes Activos";
                             }
                             planColor = Colors.green[800]!;
-                          } else {
-                            planText = "Planes Vencidos";
-                            planColor = Colors.red;
                           }
 
                           return ListTile(

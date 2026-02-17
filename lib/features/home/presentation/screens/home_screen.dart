@@ -33,7 +33,8 @@ class HomeScreen extends StatelessWidget {
 
         if (state is AuthAuthenticated) {
           final user = state.user;
-          final plans = user.activePlans;
+          final plans = user.validPlans;
+
           final now = DateTime.now();
           final bool hasAnyActivePlan = plans.any((p) => p.isActive(now));
           final bool hasTickets = user.accessExceptions.any(
@@ -456,9 +457,9 @@ class HomeScreen extends StatelessWidget {
                                   ),
                                 );
                               },
-                              child: Row(
+                              child: const Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
-                                children: const [
+                                children: [
                                   Icon(
                                     Icons.calendar_month,
                                     color: Colors.white,

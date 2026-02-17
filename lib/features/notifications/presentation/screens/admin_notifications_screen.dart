@@ -58,7 +58,7 @@ class _NotificationCard extends StatelessWidget {
 
     final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
     final pendingColor = isDark
-        ? Colors.blue.withOpacity(0.1)
+        ? Colors.blue.withValues(alpha: 0.1)
         : Colors.blue.shade50;
 
     final dateStr = DateFormat('dd/MM HH:mm').format(notification.createdAt);

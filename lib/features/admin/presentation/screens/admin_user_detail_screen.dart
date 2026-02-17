@@ -80,7 +80,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         final shouldExit = await _showExitConfirmation();
-        if (shouldExit == true && mounted) {
+        if (shouldExit == true && context.mounted) {
           Navigator.of(context).pop();
         }
       },
@@ -137,7 +137,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
                 children: [
                   // Tab Suscripciones
                   UserSubscriptionsTab(
-                    activePlans: _editedUser.activePlans,
+                    activePlans: _editedUser.validPlans,
                     onAssignNewPlan: _showAssignPlanDialog,
                     onResumePlan: (plan) => _resumePlan(plan),
                     onPausePlan: (plan) => _showPauseDialog(plan),
