@@ -13,6 +13,7 @@ import '../../../../features/inventory/presentation/screens/inventory_screen.dar
 import '../../../../features/notifications/presentation/cubit/admin_notification_cubit.dart';
 import '../../../../features/notifications/presentation/screens/admin_notifications_screen.dart';
 import '../../../../injection_container.dart';
+import '../../../reports/presentation/screens/reports_screen.dart';
 
 class AdminHomeScreen extends StatelessWidget {
   const AdminHomeScreen({super.key});
@@ -155,9 +156,16 @@ class AdminHomeScreen extends StatelessWidget {
                         ),
                         _AdminMenuCard(
                           icon: Icons.analytics,
-                          title: "Reportes\n(Próx.)",
-                          color: Colors.grey,
-                          onTap: () {},
+                          title: "Reportes",
+                          color: Colors.redAccent,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ReportsScreen(),
+                              ),
+                            );
+                          },
                         ),
                         _AdminMenuCard(
                           icon: Icons.inventory_2,

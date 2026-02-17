@@ -22,6 +22,9 @@ import 'features/notifications/domain/usecases/resolve_plan_request_usecase.dart
 import 'features/notifications/domain/usecases/request_plan_usecase.dart';
 import 'features/notifications/presentation/cubit/admin_notification_cubit.dart';
 import 'features/notifications/presentation/cubit/client_notification_cubit.dart';
+import 'features/reports/data/repositories/reports_repository.dart';
+import 'features/reports/domain/usecases/generate_excel_report_usecase.dart';
+import 'features/reports/presentation/cubit/report_cubit.dart';
 
 final sl = GetIt.instance;
 
@@ -100,4 +103,14 @@ Future<void> init() async {
   sl.registerFactoryParam<ClientNotificationCubit, String, void>(
     (userId, _) => ClientNotificationCubit(repository: sl(), userId: userId),
   );
+
+  // REPORTES:
+  // cubit
+  sl.registerFactory(() => ReportCubit(sl()));
+
+  // use cases
+  sl.registerLazySingleton(() => GenerateExcelReportUseCase(sl()));
+
+  // repositories
+  sl.registerLazySingleton(() => ReportsRepository(firestore: sl()));
 }

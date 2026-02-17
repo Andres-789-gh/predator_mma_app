@@ -13,6 +13,7 @@ class SaleEntity extends Equatable {
   final String paymentMethod;
   final DateTime saleDate;
   final String? note;
+  final bool isService;
 
   const SaleEntity({
     required this.id,
@@ -27,7 +28,10 @@ class SaleEntity extends Equatable {
     required this.paymentMethod,
     required this.saleDate,
     this.note,
+    this.isService = false,
   });
+
+  double get netProfit => totalPrice - (productUnitCost * quantity);
 
   @override
   List<Object?> get props => [
@@ -43,5 +47,6 @@ class SaleEntity extends Equatable {
     paymentMethod,
     saleDate,
     note,
+    isService,
   ];
 }

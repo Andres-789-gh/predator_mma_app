@@ -34,6 +34,11 @@ dependencies:
   flutter_slidable: ^4.0.3
   rxdart: ^0.27.7
 
+  # Excel export
+  excel: ^4.0.0
+  path_provider: ^2.1.2
+  share_plus: ^7.2.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
