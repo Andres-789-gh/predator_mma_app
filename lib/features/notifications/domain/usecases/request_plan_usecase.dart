@@ -31,6 +31,9 @@ class RequestPlanUseCase {
       toRole: 'admin',
       type: NotificationType.planRequest,
       status: NotificationStatus.pending,
+      title: 'Nueva Solicitud de Plan',
+      body: '${user.fullName} solicita el plan ${plan.name}',
+      isRead: false,
       payload: payload,
       createdAt: DateTime.now(),
     );

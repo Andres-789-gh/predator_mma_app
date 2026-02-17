@@ -246,7 +246,7 @@ class _NotificationCard extends StatelessWidget {
         notification: notification,
         onReject: (reason) {
           context.read<AdminNotificationCubit>().rejectRequest(
-            notification.id,
+            notification,
             reason,
           );
         },

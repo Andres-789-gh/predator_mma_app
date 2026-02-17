@@ -78,17 +78,68 @@ class ResolvePlanRequestUseCase {
         NotificationStatus.approved,
         note: adminNote,
       );
+
+      final responseNotification = NotificationModel(
+        id: '',
+        type: NotificationType.planRequest,
+        status: NotificationStatus.approved,
+        fromUserId: 'admin',
+        fromUserName: 'Administrador',
+        toUserId: userId,
+        toRole: 'client',
+        title: 'Solicitud Aprobada',
+        body: 'Tu plan ${planModel.name} ha sido activado exitosamente.',
+        isRead: false,
+        createdAt: DateTime.now(),
+        payload: {
+          'plan_name': planModel.name,
+          'resolution_note': adminNote,
+          'related_request_id': notification.id,
+        },
+      );
+
+      await _notificationRepository.sendNotification(responseNotification);
     } catch (e) {
       throw Exception('Error aprobando solicitud: $e');
     }
   }
 
-  Future<void> executeReject(String notificationId, String reason) async {
-    await _notificationRepository.updateStatus(
-      notificationId,
-      NotificationStatus.rejected,
-      note: reason,
-    );
+  Future<void> executeReject({
+    required NotificationModel notification,
+    required String reason,
+  }) async {
+    try {
+      await _notificationRepository.updateStatus(
+        notification.id,
+        NotificationStatus.rejected,
+        note: reason,
+      );
+
+      final planName = notification.payload['plan_name'] ?? 'Plan solicitado';
+
+      final responseNotification = NotificationModel(
+        id: '',
+        type: NotificationType.planRequest,
+        status: NotificationStatus.rejected,
+        fromUserId: 'admin',
+        fromUserName: 'Administrador',
+        toUserId: notification.fromUserId,
+        toRole: 'client',
+        title: 'Solicitud Rechazada',
+        body: 'No pudimos activar tu plan $planName.',
+        isRead: false,
+        createdAt: DateTime.now(),
+        payload: {
+          'plan_name': planName,
+          'resolution_note': reason,
+          'related_request_id': notification.id,
+        },
+      );
+
+      await _notificationRepository.sendNotification(responseNotification);
+    } catch (e) {
+      throw Exception('Error rechazando solicitud: $e');
+    }
   }
 
   Future<void> executeArchive(String notificationId) async {

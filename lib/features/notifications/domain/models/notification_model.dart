@@ -2,46 +2,64 @@ import '../../../../core/constants/enums.dart';
 
 class NotificationModel {
   final String id;
+  final NotificationType type;
+  final NotificationStatus status;
   final String fromUserId;
   final String fromUserName;
   final String toRole;
-  final NotificationType type;
-  final NotificationStatus status;
-  final Map<String, dynamic> payload;
+  final String? toUserId;
+  final String title;
+  final String body;
   final bool isRead;
   final DateTime createdAt;
   final DateTime? resolvedAt;
+  final Map<String, dynamic> payload;
 
-  const NotificationModel({
+  NotificationModel({
     required this.id,
+    required this.type,
+    required this.status,
     required this.fromUserId,
     required this.fromUserName,
-    this.toRole = 'admin',
-    required this.type,
-    this.status = NotificationStatus.pending,
-    required this.payload,
-    this.isRead = false,
+    required this.toRole,
+    this.toUserId,
+    this.title = '',
+    this.body = '',
+    required this.isRead,
     required this.createdAt,
     this.resolvedAt,
+    required this.payload,
   });
 
   NotificationModel copyWith({
     String? id,
+    NotificationType? type,
     NotificationStatus? status,
+    String? fromUserId,
+    String? fromUserName,
+    String? toRole,
+    String? toUserId,
+    String? title,
+    String? body,
     bool? isRead,
+    DateTime? createdAt,
     DateTime? resolvedAt,
+    Map<String, dynamic>? payload,
   }) {
     return NotificationModel(
       id: id ?? this.id,
-      fromUserId: fromUserId,
-      fromUserName: fromUserName,
-      toRole: toRole,
-      type: type,
+      type: type ?? this.type,
       status: status ?? this.status,
-      payload: payload,
+      fromUserId: fromUserId ?? this.fromUserId,
+      fromUserName: fromUserName ?? this.fromUserName,
+      toRole: toRole ?? this.toRole,
+      toUserId: toUserId ?? this.toUserId,
+      title: title ?? this.title,
+      body: body ?? this.body,
       isRead: isRead ?? this.isRead,
-      createdAt: createdAt,
+      createdAt: createdAt ?? this.createdAt,
       resolvedAt: resolvedAt ?? this.resolvedAt,
+      payload: payload ?? this.payload,
     );
   }
 }

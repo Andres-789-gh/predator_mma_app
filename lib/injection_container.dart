@@ -21,6 +21,7 @@ import 'features/notifications/data/repositories/notification_repository.dart';
 import 'features/notifications/domain/usecases/resolve_plan_request_usecase.dart';
 import 'features/notifications/domain/usecases/request_plan_usecase.dart';
 import 'features/notifications/presentation/cubit/admin_notification_cubit.dart';
+import 'features/notifications/presentation/cubit/client_notification_cubit.dart';
 
 final sl = GetIt.instance;
 
@@ -93,5 +94,10 @@ Future<void> init() async {
       notificationRepository: sl(),
       resolveUseCase: sl(),
     ),
+  );
+
+  // Cubit (Cliente Notificaciones)
+  sl.registerFactoryParam<ClientNotificationCubit, String, void>(
+    (userId, _) => ClientNotificationCubit(repository: sl(), userId: userId),
   );
 }

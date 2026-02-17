@@ -1,11 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:rxdart/rxdart.dart';
 import '../../domain/models/notification_model.dart';
 import '../mappers/notification_mapper.dart';
 import '../../../../core/constants/enums.dart';
 
 abstract class NotificationRepository {
   Future<void> sendNotification(NotificationModel notification);
-  Stream<List<NotificationModel>> getNotificationsStream(String role);
+  Stream<List<NotificationModel>> getNotificationsStream(
+    String role, {
+    String? userId,
+  });
   Future<void> markAsRead(String notificationId);
   Future<void> updateStatus(
     String notificationId,
@@ -34,8 +38,12 @@ class NotificationRepositoryImpl implements NotificationRepository {
   }
 
   @override
-  Stream<List<NotificationModel>> getNotificationsStream(String role) {
-    return _firestore
+  Stream<List<NotificationModel>> getNotificationsStream(
+    String role, {
+    String? userId,
+  }) {
+    // Por rol
+    final roleStream = _firestore
         .collection('notifications')
         .where('to_role', isEqualTo: role)
         .orderBy('created_at', descending: true)
@@ -45,6 +53,32 @@ class NotificationRepositoryImpl implements NotificationRepository {
               .map((doc) => NotificationMapper.fromFirestore(doc))
               .toList(),
         );
+
+    // Admin solo rol
+    if (userId == null || userId.isEmpty) return roleStream;
+
+    // Notificaciónes personales
+    final userStream = _firestore
+        .collection('notifications')
+        .where('to_user_id', isEqualTo: userId)
+        .orderBy('created_at', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => NotificationMapper.fromFirestore(doc))
+              .toList(),
+        );
+
+    return Rx.combineLatest2<
+      List<NotificationModel>,
+      List<NotificationModel>,
+      List<NotificationModel>
+    >(roleStream, userStream, (roleList, userList) {
+      final combined = [...roleList, ...userList];
+      final unique = {for (var n in combined) n.id: n}.values.toList();
+      unique.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return unique;
+    });
   }
 
   @override
@@ -69,11 +103,9 @@ class NotificationRepositoryImpl implements NotificationRepository {
         'status': status.toString(),
         'resolved_at': FieldValue.serverTimestamp(),
       };
-
       if (note != null && note.isNotEmpty) {
         data['resolution_note'] = note;
       }
-
       await _firestore
           .collection('notifications')
           .doc(notificationId)

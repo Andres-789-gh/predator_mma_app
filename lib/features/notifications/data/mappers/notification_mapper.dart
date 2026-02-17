@@ -11,6 +11,10 @@ class NotificationMapper {
       fromUserId: data['from_user_id'] ?? '',
       fromUserName: data['from_user_name'] ?? 'Desconocido',
       toRole: data['to_role'] ?? 'admin',
+      toUserId: data['to_user_id'],
+      title: data['title'] ?? '',
+      body: data['body'] ?? '',
+
       type: NotificationType.values.firstWhere(
         (e) => e.toString() == data['type'],
         orElse: () => NotificationType.systemInfo,
@@ -31,6 +35,9 @@ class NotificationMapper {
       'from_user_id': notification.fromUserId,
       'from_user_name': notification.fromUserName,
       'to_role': notification.toRole,
+      'to_user_id': notification.toUserId,
+      'title': notification.title,
+      'body': notification.body,
       'type': notification.type.toString(),
       'status': notification.status.toString(),
       'payload': notification.payload,

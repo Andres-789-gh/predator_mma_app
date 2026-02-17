@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../injection_container.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../auth/domain/models/user_model.dart';
@@ -10,6 +11,8 @@ import '../../../schedule/presentation/screens/schedule_screen.dart';
 import '../../../auth/presentation/screens/waiver_screen.dart';
 import '../../../../core/constants/enums.dart';
 import '../../../plans/presentation/screens/client_plans_screen.dart';
+import '../../../notifications/presentation/cubit/client_notification_cubit.dart';
+import '../../../notifications/presentation/screens/client_notifications_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -39,403 +42,464 @@ class HomeScreen extends StatelessWidget {
           final bool canReserve = hasAnyActivePlan || hasTickets;
           final bool isWaiverSigned = user.isWaiverSigned;
 
-          return Scaffold(
-            backgroundColor: theme.scaffoldBackgroundColor,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              scrolledUnderElevation: 0,
-              title: Text(
-                'PREDATOR',
-                style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
-              ),
-              systemOverlayStyle: SystemUiOverlayStyle(
-                statusBarColor: Colors.transparent,
-                statusBarIconBrightness: isDark
-                    ? Brightness.light
-                    : Brightness.dark,
-                statusBarBrightness: isDark
-                    ? Brightness.dark
-                    : Brightness.light,
-              ),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.logout, color: Colors.red),
-                  onPressed: () {
-                    _showLogoutDialog(context);
-                  },
+          return BlocProvider(
+            create: (_) => sl<ClientNotificationCubit>(param1: user.userId),
+            child: Scaffold(
+              backgroundColor: theme.scaffoldBackgroundColor,
+              appBar: AppBar(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                scrolledUnderElevation: 0,
+                title: Text(
+                  'PREDATOR',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
                 ),
-              ],
-            ),
-            body: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // header
-                  Text(
-                    'Bienvenido, ${user.firstName}',
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                systemOverlayStyle: SystemUiOverlayStyle(
+                  statusBarColor: Colors.transparent,
+                  statusBarIconBrightness: isDark
+                      ? Brightness.light
+                      : Brightness.dark,
+                  statusBarBrightness: isDark
+                      ? Brightness.dark
+                      : Brightness.light,
+                ),
+                actions: [
+                  // btn notificaciones
+                  BlocBuilder<ClientNotificationCubit, ClientNotificationState>(
+                    builder: (context, notifState) {
+                      int unread = 0;
+                      if (notifState is ClientNotificationLoaded) {
+                        unread = notifState.unreadCount;
+                      }
 
-                  const SizedBox(height: 5),
-                  Text(
-                    'Cliente',
-                    style: TextStyle(
-                      color: isDark ? Colors.grey : Colors.grey[700],
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  if (!isWaiverSigned) ...[
-                    const SizedBox(height: 30),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 16,
-                        horizontal: 20,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.05),
-                        border: Border.all(color: Colors.red.withOpacity(0.5)),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Column(
+                      return Stack(
                         children: [
-                          const Icon(
-                            Icons.warning_amber_rounded,
-                            color: Colors.red,
-                            size: 40,
+                          IconButton(
+                            icon: const Icon(Icons.notifications_outlined),
+                            color: textColor,
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => BlocProvider.value(
+                                    value: context
+                                        .read<ClientNotificationCubit>(),
+                                    child: const ClientNotificationsScreen(),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
-                          const SizedBox(height: 10),
-                          const Text(
-                            'Exoneración Pendiente',
-                            style: TextStyle(
-                              color: Colors.red,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Debes firmar la exoneración para poder reservar clases.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: textColor.withOpacity(0.8),
-                              fontSize: 14,
-                            ),
-                          ),
-
-                          const SizedBox(height: 15),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 45,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red,
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
+                          if (unread > 0)
+                            Positioned(
+                              right: 8,
+                              top: 8,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Text(
+                                  unread > 9 ? '+9' : '$unread',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const WaiverScreen(),
-                                  ),
-                                );
-                              },
-                              child: const Text(
-                                'FIRMAR AHORA',
-                                style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+
+                  const SizedBox(width: 5),
+
+                  IconButton(
+                    icon: const Icon(Icons.logout, color: Colors.red),
+                    onPressed: () {
+                      _showLogoutDialog(context);
+                    },
+                  ),
+                ],
+              ),
+              body: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // header
+                    Text(
+                      'Bienvenido, ${user.firstName}',
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 5),
+                    Text(
+                      'Cliente',
+                      style: TextStyle(
+                        color: isDark ? Colors.grey : Colors.grey[700],
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    if (!isWaiverSigned) ...[
+                      const SizedBox(height: 30),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 16,
+                          horizontal: 20,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.05),
+                          border: Border.all(
+                            color: Colors.red.withValues(alpha: 0.5),
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.warning_amber_rounded,
+                              color: Colors.red,
+                              size: 40,
+                            ),
+                            const SizedBox(height: 10),
+                            const Text(
+                              'Exoneración Pendiente',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-                  ],
-
-                  // Seccion planes
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'TUS PLANES',
-                        style: TextStyle(
-                          color: textColor.withValues(alpha: 0.6),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ClientPlansScreen(),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Debes firmar la exoneración para poder reservar clases.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: textColor.withValues(alpha: 0.8),
+                                fontSize: 14,
+                              ),
                             ),
-                          );
-                        },
-                        icon: const Icon(Icons.add_shopping_cart, size: 16),
-                        label: const Text(
-                          "SOLICITAR PLAN",
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          padding: EdgeInsets.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            const SizedBox(height: 15),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 45,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const WaiverScreen(),
+                                    ),
+                                  );
+                                },
+                                child: const Text(
+                                  'FIRMAR AHORA',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+                      const SizedBox(height: 40),
                     ],
-                  ),
-                  const SizedBox(height: 10),
 
-                  // Carrusel planes
-                  if (plans.isEmpty)
-                    _buildNoPlanCard(context, isDark)
-                  else if (plans.length == 1)
-                    _buildPlanCard(context, plans.first, isDark)
-                  else
-                    SizedBox(
-                      height: 220,
-                      child: PageView.builder(
-                        itemCount: plans.length,
-                        controller: PageController(viewportFraction: 0.9),
-                        itemBuilder: (context, index) {
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 10),
-                            child: _buildPlanCard(
-                              context,
-                              plans[index],
-                              isDark,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-
-                  // Ingresos extra
-                  if (hasTickets) ...[
-                    const SizedBox(height: 30),
+                    // Seccion planes
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Icon(
-                          Icons.confirmation_number_outlined,
-                          color: textColor.withOpacity(0.6),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
                         Text(
-                          'INGRESOS EXTRA DISPONIBLES',
+                          'TUS PLANES',
                           style: TextStyle(
-                            color: textColor.withOpacity(0.6),
+                            color: textColor.withValues(alpha: 0.6),
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 1,
                           ),
                         ),
+                        TextButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ClientPlansScreen(),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.add_shopping_cart, size: 16),
+                          label: const Text(
+                            "SOLICITAR PLAN",
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            padding: EdgeInsets.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 15),
-                    SizedBox(
-                      height: 100,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: user.accessExceptions
-                            .where((t) => t.quantity > 0)
-                            .length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 15),
-                        itemBuilder: (context, index) {
-                          final ticket = user.accessExceptions
-                              .where((t) => t.quantity > 0)
-                              .toList()[index];
-                          return Container(
-                            width: 200,
-                            padding: const EdgeInsets.all(15),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFF2C2C2C)
-                                  : Colors.white,
-                              borderRadius: BorderRadius.circular(15),
-                              border: Border.all(
-                                color: Colors.amber.withOpacity(0.5),
+                    const SizedBox(height: 10),
+
+                    // Carrusel planes
+                    if (plans.isEmpty)
+                      _buildNoPlanCard(context, isDark)
+                    else if (plans.length == 1)
+                      _buildPlanCard(context, plans.first, isDark)
+                    else
+                      SizedBox(
+                        height: 220,
+                        child: PageView.builder(
+                          itemCount: plans.length,
+                          controller: PageController(viewportFraction: 0.9),
+                          itemBuilder: (context, index) {
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 10),
+                              child: _buildPlanCard(
+                                context,
+                                plans[index],
+                                isDark,
                               ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.amber.withOpacity(0.1),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
+                            );
+                          },
+                        ),
+                      ),
+
+                    // Ingresos extra
+                    if (hasTickets) ...[
+                      const SizedBox(height: 30),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.confirmation_number_outlined,
+                            color: textColor.withValues(alpha: 0.6),
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'INGRESOS EXTRA DISPONIBLES',
+                            style: TextStyle(
+                              color: textColor.withValues(alpha: 0.6),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: BoxDecoration(
-                                        color: Colors.amber.withOpacity(0.2),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Text(
-                                        '${ticket.quantity}',
-                                        style: const TextStyle(
-                                          color: Colors.amber,
-                                          fontWeight: FontWeight.bold,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 15),
+                      SizedBox(
+                        height: 100,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: user.accessExceptions
+                              .where((t) => t.quantity > 0)
+                              .length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(width: 15),
+                          itemBuilder: (context, index) {
+                            final ticket = user.accessExceptions
+                                .where((t) => t.quantity > 0)
+                                .toList()[index];
+                            return Container(
+                              width: 200,
+                              padding: const EdgeInsets.all(15),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? const Color(0xFF2C2C2C)
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(15),
+                                border: Border.all(
+                                  color: Colors.amber.withValues(alpha: 0.5),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.amber.withValues(alpha: 0.1),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.amber.withValues(alpha: 0.2),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Text(
+                                          '${ticket.quantity}',
+                                          style: const TextStyle(
+                                            color: Colors.amber,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        ticket.originalPlanName.isEmpty
-                                            ? 'Ticket General'
-                                            : ticket.originalPlanName,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: textColor,
-                                          overflow: TextOverflow.ellipsis,
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          ticket.originalPlanName.isEmpty
+                                              ? 'Ticket General'
+                                              : ticket.originalPlanName,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: textColor,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                         ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (ticket.validUntil != null) ...[
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Vence: ${ticket.validUntil!.day}/${ticket.validUntil!.month}',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey[500],
                                       ),
                                     ),
                                   ],
-                                ),
-                                if (ticket.validUntil != null) ...[
-                                  const SizedBox(height: 8),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
+
+              // Btn reservar
+              bottomNavigationBar: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: theme.scaffoldBackgroundColor,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, -5),
+                    ),
+                  ],
+                ),
+                child: SafeArea(
+                  child: canReserve
+                      ? Container(
+                          width: double.infinity,
+                          height: 55,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(15),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFD32F2F), Color(0xFFB71C1C)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.red.withValues(alpha: 0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(15),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => BlocProvider(
+                                      create: (context) => ScheduleCubit(
+                                        repository: context
+                                            .read<ScheduleRepository>(),
+                                      ),
+                                      child: const ScheduleScreen(),
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: const [
+                                  Icon(
+                                    Icons.calendar_month,
+                                    color: Colors.white,
+                                    size: 22,
+                                  ),
+                                  SizedBox(width: 10),
                                   Text(
-                                    'Vence: ${ticket.validUntil!.day}/${ticket.validUntil!.month}',
+                                    'VER HORARIOS Y RESERVAR',
                                     style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey[500],
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.5,
                                     ),
                                   ),
                                 ],
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-
-                  const SizedBox(height: 40),
-                ],
-              ),
-            ),
-
-            // Btn reservar
-            bottomNavigationBar: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: theme.scaffoldBackgroundColor,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, -5),
-                  ),
-                ],
-              ),
-              child: SafeArea(
-                child: canReserve
-                    ? Container(
-                        width: double.infinity,
-                        height: 55,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(15),
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFD32F2F), Color(0xFFB71C1C)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.red.withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(15),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => BlocProvider(
-                                    create: (context) => ScheduleCubit(
-                                      repository: context
-                                          .read<ScheduleRepository>(),
-                                    ),
-                                    child: const ScheduleScreen(),
-                                  ),
-                                ),
-                              );
-                            },
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
-                                Icon(
-                                  Icons.calendar_month,
-                                  color: Colors.white,
-                                  size: 22,
-                                ),
-                                SizedBox(width: 10),
-                                Text(
-                                  'VER HORARIOS Y RESERVAR',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      )
-                    : SizedBox(
-                        height: 55,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.lock_clock,
-                              size: 20,
-                              color: Colors.grey[400],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'No tienes ingresos disponibles',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey[600],
                               ),
                             ),
-                          ],
+                          ),
+                        )
+                      : SizedBox(
+                          height: 55,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.lock_clock,
+                                size: 20,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'No tienes ingresos disponibles',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                ),
               ),
             ),
           );
@@ -449,7 +513,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // Widget para tarjeta de plan individual
+  // tarjeta plan individual
   Widget _buildPlanCard(BuildContext context, UserPlan plan, bool isDark) {
     final now = DateTime.now();
     final bool isPlanExpired = plan.endDate.isBefore(now);
@@ -475,18 +539,18 @@ class HomeScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
         ],
         border: Border.all(
           color: isPlanExpired
-              ? Colors.red.withOpacity(0.3)
+              ? Colors.red.withValues(alpha: 0.3)
               : isPlanPaused
-              ? Colors.orange.withOpacity(0.3)
+              ? Colors.orange.withValues(alpha: 0.3)
               : (isPlanActiveVisual
-                    ? Colors.green.withOpacity(0.5)
+                    ? Colors.green.withValues(alpha: 0.5)
                     : (isDark ? Colors.white10 : Colors.grey[400]!)),
           width: 1,
         ),
@@ -513,12 +577,12 @@ class HomeScreen extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: isPlanExpired
-                      ? Colors.red.withOpacity(0.1)
+                      ? Colors.red.withValues(alpha: 0.1)
                       : isPlanPaused
-                      ? Colors.orange.withOpacity(0.1)
+                      ? Colors.orange.withValues(alpha: 0.1)
                       : (isPlanActiveVisual
-                            ? Colors.green.withOpacity(0.2)
-                            : Colors.grey.withOpacity(0.2)),
+                            ? Colors.green.withValues(alpha: 0.2)
+                            : Colors.grey.withValues(alpha: 0.2)),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -591,7 +655,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // Widget para cuando no hay plan
+  // no hay plan
   Widget _buildNoPlanCard(BuildContext context, bool isDark) {
     return GestureDetector(
       onTap: () {
@@ -608,17 +672,12 @@ class HomeScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
               blurRadius: 10,
               offset: const Offset(0, 5),
             ),
           ],
-          border: Border.all(
-            // Cambié sutilmente el color del borde a rojo suave para indicar que es "tuable"
-            // Si prefieres el original, usa: isDark ? Colors.white10 : Colors.grey[400]!
-            color: Colors.red.withOpacity(0.3),
-            width: 1,
-          ),
+          border: Border.all(color: Colors.red.withValues(alpha: 0.3), width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -637,7 +696,7 @@ class HomeScreen extends StatelessWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.2),
+                    color: Colors.grey.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Text(
