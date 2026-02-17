@@ -96,16 +96,17 @@ class AdminNotificationCubit extends Cubit<AdminNotificationState> {
     }
   }
 
-  Future<void> rejectRequest(NotificationModel notification, String reason) async {
+  Future<void> rejectRequest(
+    NotificationModel notification,
+    String reason,
+  ) async {
     try {
       await _resolveUseCase.executeReject(
-        notification: notification, 
-        reason: reason
+        notification: notification,
+        reason: reason,
       );
-      
-      // Recargamos para reflejar cambios en la UI del admin
-      // (Opcional si tu stream ya lo maneja, pero seguro refrescar)
-      // _subscribeToNotifications(); 
+
+      _subscribeToNotifications();
     } catch (e) {
       emit(AdminNotificationError("error al rechazar: $e"));
     }

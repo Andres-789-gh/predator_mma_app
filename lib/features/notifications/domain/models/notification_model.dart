@@ -14,6 +14,7 @@ class NotificationModel {
   final DateTime createdAt;
   final DateTime? resolvedAt;
   final Map<String, dynamic> payload;
+  final List<String> hiddenFor;
 
   NotificationModel({
     required this.id,
@@ -29,6 +30,7 @@ class NotificationModel {
     required this.createdAt,
     this.resolvedAt,
     required this.payload,
+    this.hiddenFor = const [],
   });
 
   NotificationModel copyWith({
@@ -45,6 +47,7 @@ class NotificationModel {
     DateTime? createdAt,
     DateTime? resolvedAt,
     Map<String, dynamic>? payload,
+    List<String>? hiddenFor,
   }) {
     return NotificationModel(
       id: id ?? this.id,
@@ -60,6 +63,7 @@ class NotificationModel {
       createdAt: createdAt ?? this.createdAt,
       resolvedAt: resolvedAt ?? this.resolvedAt,
       payload: payload ?? this.payload,
+      hiddenFor: hiddenFor ?? this.hiddenFor,
     );
   }
 }

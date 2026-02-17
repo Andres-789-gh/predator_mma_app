@@ -11,11 +11,13 @@ abstract class NotificationRepository {
     String? userId,
   });
   Future<void> markAsRead(String notificationId);
+  Future<void> markBatchAsRead(List<String> notificationIds);
   Future<void> updateStatus(
     String notificationId,
     NotificationStatus status, {
     String? note,
   });
+  Future<void> hideNotification(String notificationId, String userId);
 }
 
 class NotificationRepositoryImpl implements NotificationRepository {
@@ -42,7 +44,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
     String role, {
     String? userId,
   }) {
-    // Por rol
+    // por rol
     final roleStream = _firestore
         .collection('notifications')
         .where('to_role', isEqualTo: role)
@@ -54,10 +56,10 @@ class NotificationRepositoryImpl implements NotificationRepository {
               .toList(),
         );
 
-    // Admin solo rol
+    // admin solo rol
     if (userId == null || userId.isEmpty) return roleStream;
 
-    // Notificaciónes personales
+    // notificaciónes personales
     final userStream = _firestore
         .collection('notifications')
         .where('to_user_id', isEqualTo: userId)
@@ -93,6 +95,21 @@ class NotificationRepositoryImpl implements NotificationRepository {
   }
 
   @override
+  Future<void> markBatchAsRead(List<String> notificationIds) async {
+    if (notificationIds.isEmpty) return;
+    try {
+      final batch = _firestore.batch();
+      for (final id in notificationIds) {
+        final ref = _firestore.collection('notifications').doc(id);
+        batch.update(ref, {'is_read': true});
+      }
+      await batch.commit();
+    } catch (e) {
+      throw Exception('error en lectura por lote: $e');
+    }
+  }
+
+  @override
   Future<void> updateStatus(
     String notificationId,
     NotificationStatus status, {
@@ -112,6 +129,17 @@ class NotificationRepositoryImpl implements NotificationRepository {
           .update(data);
     } catch (e) {
       throw Exception('error actualizando estado: $e');
+    }
+  }
+
+  @override
+  Future<void> hideNotification(String notificationId, String userId) async {
+    try {
+      await _firestore.collection('notifications').doc(notificationId).update({
+        'hidden_for': FieldValue.arrayUnion([userId]),
+      });
+    } catch (e) {
+      throw Exception('error ocultando notificacion: $e');
     }
   }
 }

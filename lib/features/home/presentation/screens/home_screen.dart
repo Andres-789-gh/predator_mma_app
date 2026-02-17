@@ -354,7 +354,9 @@ class HomeScreen extends StatelessWidget {
                                       Container(
                                         padding: const EdgeInsets.all(6),
                                         decoration: BoxDecoration(
-                                          color: Colors.amber.withValues(alpha: 0.2),
+                                          color: Colors.amber.withValues(
+                                            alpha: 0.2,
+                                          ),
                                           shape: BoxShape.circle,
                                         ),
                                         child: Text(
@@ -677,7 +679,10 @@ class HomeScreen extends StatelessWidget {
               offset: const Offset(0, 5),
             ),
           ],
-          border: Border.all(color: Colors.red.withValues(alpha: 0.3), width: 1),
+          border: Border.all(
+            color: Colors.red.withValues(alpha: 0.3),
+            width: 1,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

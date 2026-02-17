@@ -14,7 +14,6 @@ class NotificationMapper {
       toUserId: data['to_user_id'],
       title: data['title'] ?? '',
       body: data['body'] ?? '',
-
       type: NotificationType.values.firstWhere(
         (e) => e.toString() == data['type'],
         orElse: () => NotificationType.systemInfo,
@@ -27,6 +26,7 @@ class NotificationMapper {
       isRead: data['is_read'] ?? false,
       createdAt: (data['created_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
       resolvedAt: (data['resolved_at'] as Timestamp?)?.toDate(),
+      hiddenFor: List<String>.from(data['hidden_for'] ?? []),
     );
   }
 
@@ -46,6 +46,7 @@ class NotificationMapper {
       'resolved_at': notification.resolvedAt != null
           ? Timestamp.fromDate(notification.resolvedAt!)
           : null,
+      'hidden_for': notification.hiddenFor,
     };
   }
 }

@@ -48,15 +48,36 @@ class ClientNotificationCubit extends Cubit<ClientNotificationState> {
     emit(ClientNotificationLoading());
     _subscription = _repository
         .getNotificationsStream('client', userId: _userId)
-        .listen(
-          (notifications) => emit(ClientNotificationLoaded(notifications)),
-          onError: (e) => emit(ClientNotificationError(e.toString())),
-        );
+        .listen((notifications) {
+          final visibleNotifications = notifications
+              .where((n) => !n.hiddenFor.contains(_userId))
+              .toList();
+          emit(ClientNotificationLoaded(visibleNotifications));
+        }, onError: (e) => emit(ClientNotificationError(e.toString())));
   }
 
   Future<void> markAsRead(String notificationId) async {
     try {
       await _repository.markAsRead(notificationId);
+    } catch (_) {}
+  }
+
+  Future<void> markAllAsRead(List<NotificationModel> notifications) async {
+    final unreadIds = notifications
+        .where((n) => !n.isRead)
+        .map((n) => n.id)
+        .toList();
+
+    if (unreadIds.isEmpty) return;
+
+    try {
+      await _repository.markBatchAsRead(unreadIds);
+    } catch (_) {}
+  }
+
+  Future<void> deleteNotification(String notificationId) async {
+    try {
+      await _repository.hideNotification(notificationId, _userId);
     } catch (_) {}
   }
 
