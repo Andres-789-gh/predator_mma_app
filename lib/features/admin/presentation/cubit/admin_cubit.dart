@@ -11,6 +11,8 @@ import '../../../../core/constants/enums.dart';
 import '../../../plans/data/plan_repository.dart';
 import '../../../plans/domain/models/plan_model.dart';
 import 'package:intl/intl.dart';
+import '../../../../features/plans/domain/usecases/assign_plan_and_record_sale_usecase.dart';
+import '../../../../features/sales/domain/usecases/sell_ticket_usecase.dart';
 
 class TimeSlot {
   final TimeOfDay time;
@@ -22,14 +24,20 @@ class AdminCubit extends Cubit<AdminState> {
   final AuthRepository _authRepository;
   final ScheduleRepository _scheduleRepository;
   final PlanRepository _planRepository;
+  final AssignPlanAndRecordSaleUseCase _assignPlanUseCase;
+  final SellTicketUseCase _sellTicketUseCase;
 
   AdminCubit({
     required AuthRepository authRepository,
     required ScheduleRepository scheduleRepository,
     required PlanRepository planRepository,
+    required AssignPlanAndRecordSaleUseCase assignPlanUseCase,
+    required SellTicketUseCase sellTicketUseCase,
   }) : _authRepository = authRepository,
        _scheduleRepository = scheduleRepository,
        _planRepository = planRepository,
+       _assignPlanUseCase = assignPlanUseCase,
+       _sellTicketUseCase = sellTicketUseCase,
        super(AdminInitial());
 
   Future<void> loadFormData({
@@ -786,6 +794,66 @@ class AdminCubit extends Cubit<AdminState> {
     } catch (e) {
       if (isClosed) return;
       emit(AdminError("Error deshaciendo pausa: $e"));
+      await loadUsersManagement();
+    }
+  }
+
+  // Vender Plan
+  Future<void> assignPlanToUser({
+    required UserModel user,
+    required UserPlan newPlan,
+    required String paymentMethod,
+    required String adminName,
+    String? note,
+  }) async {
+    try {
+      emit(AdminLoading());
+      final finalNote = "$adminName: ${note ?? 'Asignación de plan'}";
+
+      await _assignPlanUseCase.execute(
+        user: user,
+        newPlan: newPlan,
+        paymentMethod: paymentMethod,
+        note: finalNote,
+      );
+
+      emit(const AdminOperationSuccess("Plan vendido correctamente"));
+      await loadUsersManagement();
+    } catch (e) {
+      emit(AdminError(e.toString()));
+      await loadUsersManagement();
+    }
+  }
+
+  // Vender Ticket
+  Future<void> sellTicketToUser({
+    required UserModel user,
+    required int quantity,
+    required double price,
+    required String paymentMethod,
+    required String adminName,
+    required List<ScheduleRule> scheduleRules,
+    required String planName,
+    String? note,
+  }) async {
+    try {
+      emit(AdminLoading());
+      await _sellTicketUseCase.execute(
+        user: user,
+        quantity: quantity,
+        price: price,
+        paymentMethod: paymentMethod,
+        adminName: adminName,
+        scheduleRules: scheduleRules,
+        originalPlanName: planName,
+        note: note,
+      );
+      emit(
+        const AdminOperationSuccess("Ingresos extra asignados correctamente"),
+      );
+      await loadUsersManagement();
+    } catch (e) {
+      emit(AdminError(e.toString()));
       await loadUsersManagement();
     }
   }

@@ -14,28 +14,28 @@ class GenerateExcelReportUseCase {
     required DateTime startDate,
     required DateTime endDate,
   }) async {
-    // obtiene datos
+    // 1. Obtener datos de Firebase
     final sales = await _repository.getSalesByDateRange(startDate, endDate);
 
     if (sales.isEmpty) {
       throw Exception('No hay ventas en el rango seleccionado');
     }
 
-    // crea excel en memoria
+    // 2. Crear Excel en memoria
     var excel = Excel.createExcel();
 
-    // renombra hoja
+    // Renombrar hoja por defecto
     Sheet sheet = excel['Sheet1'];
     excel.rename('Sheet1', 'Reporte Ventas');
 
-    // estilos basicos
+    // Estilos básicos
     CellStyle headerStyle = CellStyle(
       bold: true,
       horizontalAlign: HorizontalAlign.Center,
       backgroundColorHex: ExcelColor.blueGrey200,
     );
 
-    // encabezados
+    // 3. Encabezados
     List<String> headers = [
       'Fecha',
       'Tipo',
@@ -57,7 +57,7 @@ class GenerateExcelReportUseCase {
       cell.cellStyle = headerStyle;
     }
 
-    // llena datos y calcula totales
+    // 4. Llenar datos
     double totalRevenue = 0;
     double totalProfit = 0;
     final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
@@ -66,77 +66,49 @@ class GenerateExcelReportUseCase {
       final sale = sales[i];
       final row = i + 1;
 
+      // Calcular totales generales para el final
       totalRevenue += sale.totalPrice;
-      totalProfit += sale.netProfit;
+      // Asumimos que SaleEntity tiene un getter 'netProfit'. 
+      // Si no, calcula: sale.totalPrice - (sale.productUnitCost * sale.quantity)
+      double currentNetProfit = sale.totalPrice - (sale.productUnitCost * sale.quantity);
+      totalProfit += currentNetProfit;
 
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
-          .value = TextCellValue(
-        dateFormat.format(sale.saleDate),
-      );
+      // Escribir celdas
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
+          .value = TextCellValue(dateFormat.format(sale.saleDate));
 
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: row))
-          .value = TextCellValue(
-        sale.isService ? 'PLAN' : 'PRODUCTO',
-      );
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: row))
+          .value = TextCellValue(sale.isService ? 'PLAN/SERVICIO' : 'PRODUCTO');
 
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: row))
-          .value = TextCellValue(
-        sale.productName,
-      );
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: row))
+          .value = TextCellValue(sale.productName);
 
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: row))
-          .value = TextCellValue(
-        sale.buyerName ?? 'Anónimo',
-      );
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: row))
+          .value = TextCellValue(sale.buyerName ?? 'Anónimo');
 
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: row))
-          .value = TextCellValue(
-        sale.paymentMethod,
-      );
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: row))
+          .value = TextCellValue(sale.paymentMethod);
 
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: row))
-          .value = IntCellValue(
-        sale.quantity,
-      );
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: row))
+          .value = IntCellValue(sale.quantity);
 
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: row))
-          .value = DoubleCellValue(
-        sale.productUnitPrice,
-      );
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 6, rowIndex: row))
+          .value = DoubleCellValue(sale.productUnitPrice);
 
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: row))
-          .value = DoubleCellValue(
-        sale.productUnitCost,
-      );
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: row))
+          .value = DoubleCellValue(sale.productUnitCost);
 
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 8, rowIndex: row))
-          .value = DoubleCellValue(
-        sale.totalPrice,
-      );
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 8, rowIndex: row))
+          .value = DoubleCellValue(sale.totalPrice);
 
-      sheet
-          .cell(CellIndex.indexByColumnRow(columnIndex: 9, rowIndex: row))
-          .value = DoubleCellValue(
-        sale.netProfit,
-      );
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 9, rowIndex: row))
+          .value = DoubleCellValue(currentNetProfit);
     }
 
-    // fila de totales
+    // 5. Fila de Totales
     int totalRow = sales.length + 2;
-    sheet
-        .cell(CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: totalRow))
-        .value = TextCellValue(
-      "TOTALES:",
-    );
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: totalRow))
+        .value = TextCellValue("TOTALES:");
 
     var revenueCell = sheet.cell(
       CellIndex.indexByColumnRow(columnIndex: 8, rowIndex: totalRow),
@@ -156,12 +128,12 @@ class GenerateExcelReportUseCase {
       backgroundColorHex: ExcelColor.yellow200,
     );
 
-    // auto ajusta columnas
+    // Ajustar ancho columnas
     for (int i = 0; i < headers.length; i++) {
-      sheet.setColumnWidth(i, 20.0);
+      sheet.setColumnWidth(i, 25.0); // Método correcto para excel ^4.0.0
     }
 
-    // guarda y comparte
+    // 6. Guardar y Compartir
     final List<int>? fileBytes = excel.save();
 
     if (fileBytes != null) {
@@ -172,8 +144,11 @@ class GenerateExcelReportUseCase {
 
       await file.writeAsBytes(fileBytes, flush: true);
 
-      // comparte archivo
-      await Share.shareXFiles([XFile(file.path)], text: 'Reporte Predator MMA');
+      // Usamos Share.shareXFiles para que funcione en versiones nuevas
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'Reporte Financiero Generado',
+      );
     }
   }
 }

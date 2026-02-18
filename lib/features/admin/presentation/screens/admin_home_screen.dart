@@ -3,11 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import 'admin_screen.dart';
-import '../../../auth/data/auth_repository.dart';
-import '../../../schedule/data/schedule_repository.dart';
 import '../cubit/admin_cubit.dart';
 import '../../../plans/presentation/screens/plans_screen.dart';
-import '../../../plans/data/plan_repository.dart';
 import 'admin_users_screen.dart';
 import '../../../../features/inventory/presentation/screens/inventory_screen.dart';
 import '../../../../features/notifications/presentation/cubit/admin_notification_cubit.dart';
@@ -32,11 +29,8 @@ class AdminHomeScreen extends StatelessWidget {
       providers: [
         BlocProvider(
           lazy: false,
-          create: (context) => AdminCubit(
-            authRepository: context.read<AuthRepository>(),
-            scheduleRepository: context.read<ScheduleRepository>(),
-            planRepository: context.read<PlanRepository>(),
-          )..loadFormData(checkSchedule: true, silent: true),
+          create: (_) =>
+              sl<AdminCubit>()..loadFormData(checkSchedule: true, silent: true),
         ),
         BlocProvider(create: (context) => sl<AdminNotificationCubit>()),
       ],

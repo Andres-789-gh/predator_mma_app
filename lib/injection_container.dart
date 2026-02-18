@@ -25,6 +25,8 @@ import 'features/notifications/presentation/cubit/client_notification_cubit.dart
 import 'features/reports/data/repositories/reports_repository.dart';
 import 'features/reports/domain/usecases/generate_excel_report_usecase.dart';
 import 'features/reports/presentation/cubit/report_cubit.dart';
+import 'features/admin/presentation/cubit/admin_cubit.dart';
+import 'features/sales/domain/usecases/sell_ticket_usecase.dart';
 
 final sl = GetIt.instance;
 
@@ -71,15 +73,26 @@ Future<void> init() async {
     () =>
         AssignPlanAndRecordSaleUseCase(salesRepository: sl(), firestore: sl()),
   );
+  sl.registerLazySingleton(
+    () => SellTicketUseCase(salesRepository: sl(), firestore: sl()),
+  );
 
-  // NOTIFICACIONES:
+  // Admin Cubit
+  sl.registerFactory(
+    () => AdminCubit(
+      authRepository: sl(),
+      scheduleRepository: sl(),
+      planRepository: sl(),
+      assignPlanUseCase: sl(),
+      sellTicketUseCase: sl(),
+    ),
+  );
 
-  // Repositorio
+  // Notificaciones
   sl.registerLazySingleton<NotificationRepository>(
     () => NotificationRepositoryImpl(firestore: sl()),
   );
 
-  // Casos de Uso
   sl.registerLazySingleton(
     () => ResolvePlanRequestUseCase(
       notificationRepository: sl(),
@@ -91,7 +104,6 @@ Future<void> init() async {
 
   sl.registerLazySingleton(() => RequestPlanUseCase(sl()));
 
-  // Cubit (Admin Notificaciones)
   sl.registerFactory(
     () => AdminNotificationCubit(
       notificationRepository: sl(),
@@ -99,18 +111,12 @@ Future<void> init() async {
     ),
   );
 
-  // Cubit (Cliente Notificaciones)
   sl.registerFactoryParam<ClientNotificationCubit, String, void>(
     (userId, _) => ClientNotificationCubit(repository: sl(), userId: userId),
   );
 
-  // REPORTES:
-  // cubit
+  // Reportes
   sl.registerFactory(() => ReportCubit(sl()));
-
-  // use cases
   sl.registerLazySingleton(() => GenerateExcelReportUseCase(sl()));
-
-  // repositories
   sl.registerLazySingleton(() => ReportsRepository(firestore: sl()));
 }

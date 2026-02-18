@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../auth/data/auth_repository.dart';
-import '../../../schedule/data/schedule_repository.dart';
 import '../cubit/admin_cubit.dart';
 import '../cubit/admin_state.dart';
 import '../tabs/admin_calendar_tab.dart';
 import '../tabs/admin_generator_tab.dart';
 import '../tabs/admin_types_tab.dart';
-import '../../../plans/data/plan_repository.dart';
+import '../../../../injection_container.dart';
 
 class AdminScreen extends StatelessWidget {
   const AdminScreen({super.key});
@@ -15,11 +13,7 @@ class AdminScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => AdminCubit(
-        authRepository: context.read<AuthRepository>(),
-        scheduleRepository: context.read<ScheduleRepository>(),
-        planRepository: context.read<PlanRepository>(),
-      )..loadFormData(checkSchedule: true),
+      create: (_) => sl<AdminCubit>()..loadFormData(checkSchedule: true),
       child: const _AdminView(),
     );
   }
@@ -32,7 +26,8 @@ class _AdminView extends StatefulWidget {
   State<_AdminView> createState() => _AdminViewState();
 }
 
-class _AdminViewState extends State<_AdminView> with SingleTickerProviderStateMixin {
+class _AdminViewState extends State<_AdminView>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   AdminLoadedData? _lastLoadedData;
 
@@ -68,11 +63,21 @@ class _AdminViewState extends State<_AdminView> with SingleTickerProviderStateMi
       body: BlocConsumer<AdminCubit, AdminState>(
         listener: (context, state) {
           if (state is AdminOperationSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message), backgroundColor: Colors.green));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.green,
+              ),
+            );
             context.read<AdminCubit>().loadFormData(silent: true);
           }
           if (state is AdminError) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message), backgroundColor: Colors.red));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.red,
+              ),
+            );
           }
         },
         builder: (context, state) {
@@ -83,7 +88,9 @@ class _AdminViewState extends State<_AdminView> with SingleTickerProviderStateMi
           }
 
           if (_lastLoadedData == null) {
-            return const Center(child: CircularProgressIndicator(color: Colors.red));
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.red),
+            );
           }
 
           return Stack(
@@ -99,7 +106,9 @@ class _AdminViewState extends State<_AdminView> with SingleTickerProviderStateMi
               if (state is AdminLoading)
                 Container(
                   color: Colors.black.withValues(alpha: 0.3),
-                  child: const Center(child: CircularProgressIndicator(color: Colors.red)),
+                  child: const Center(
+                    child: CircularProgressIndicator(color: Colors.red),
+                  ),
                 ),
             ],
           );

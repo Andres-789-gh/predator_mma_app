@@ -256,17 +256,22 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                             ),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () {
+                              final adminCubit = context.read<AdminCubit>();
+
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => AdminUserDetailScreen(
-                                    user: user,
-                                    availablePlans: state.availablePlans,
-                                    onSave: (updatedUser) {
-                                      context
-                                          .read<AdminCubit>()
-                                          .updateUserProfile(updatedUser);
-                                    },
+                                  builder: (_) => BlocProvider.value(
+                                    value: adminCubit,
+                                    child: AdminUserDetailScreen(
+                                      user: user,
+                                      availablePlans: state.availablePlans,
+                                      onSave: (updatedUser) {
+                                        adminCubit.updateUserProfile(
+                                          updatedUser,
+                                        );
+                                      },
+                                    ),
                                   ),
                                 ),
                               );

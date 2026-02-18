@@ -12,6 +12,8 @@ import '../widgets/dialogs/assign_plan_dialog.dart';
 import '../widgets/dialogs/pause_plan_dialog.dart';
 import '../widgets/dialogs/add_ticket_dialog.dart';
 import '../widgets/dialogs/ticket_detail_dialog.dart';
+import '../cubit/admin_cubit.dart';
+import '../cubit/admin_state.dart';
 
 class AdminUserDetailScreen extends StatefulWidget {
   final UserModel user;
@@ -41,7 +43,22 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
     _tabController = TabController(length: 2, vsync: this);
   }
 
-  // Compara si hubo cambios
+  void _reloadUser() {
+    final adminState = context.read<AdminCubit>().state;
+    if (adminState is AdminUsersLoaded) {
+      try {
+        final updatedUser = adminState.users.firstWhere(
+          (u) => u.userId == _editedUser.userId,
+        );
+        setState(() {
+          _editedUser = updatedUser;
+        });
+      } catch (e) {
+        // Si no encuentra no hace nada
+      }
+    }
+  }
+
   bool get _hasChanges {
     final u1 = widget.user;
     final u2 = _editedUser;
@@ -75,114 +92,170 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return PopScope(
-      canPop: !_hasChanges,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-        final shouldExit = await _showExitConfirmation();
-        if (shouldExit == true && context.mounted) {
-          Navigator.of(context).pop();
+    return BlocListener<AdminCubit, AdminState>(
+      listener: (context, state) {
+        if (state is AdminOperationSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _reloadUser();
+        } else if (state is AdminError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+          );
         }
       },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text("Perfil de Usuario"),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: TextButton.icon(
-                onPressed: _hasChanges ? _confirmSave : null,
-                icon: const Icon(Icons.save, size: 20),
-                label: const Text(
-                  "GUARDAR",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                style: TextButton.styleFrom(
-                  foregroundColor: _hasChanges ? Colors.blue : Colors.grey,
-                  backgroundColor: _hasChanges
-                      ? Colors.blue.withValues(alpha: 0.1)
-                      : null,
+      child: PopScope(
+        canPop: !_hasChanges,
+        onPopInvokedWithResult: (didPop, result) async {
+          if (didPop) return;
+          final shouldExit = await _showExitConfirmation();
+          if (shouldExit == true && context.mounted) {
+            Navigator.of(context).pop();
+          }
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text("Perfil de Usuario"),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: TextButton.icon(
+                  onPressed: _hasChanges ? _confirmSave : null,
+                  icon: const Icon(Icons.save, size: 20),
+                  label: const Text(
+                    "GUARDAR",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  style: TextButton.styleFrom(
+                    foregroundColor: _hasChanges ? Colors.blue : Colors.grey,
+                    backgroundColor: _hasChanges
+                        ? Colors.blue.withValues(alpha: 0.1)
+                        : null,
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-        body: Column(
-          children: [
-            // Header del perfil
-            UserProfileHeader(
-              user: _editedUser,
-              onToggleLegacyStatus: () {
-                setState(() {
-                  _editedUser = _editedUser.copyWith(
-                    isLegacyUser: !_editedUser.isLegacyUser,
-                  );
-                });
-              },
-            ),
-
-            TabBar(
-              controller: _tabController,
-              labelColor: theme.colorScheme.primary,
-              unselectedLabelColor: Colors.grey,
-              tabs: const [
-                Tab(text: "PLANES"),
-                Tab(text: "INGRESOS EXTRAS"),
-              ],
-            ),
-
-            Expanded(
-              child: TabBarView(
+            ],
+          ),
+          body: Column(
+            children: [
+              UserProfileHeader(
+                user: _editedUser,
+                onToggleLegacyStatus: () {
+                  setState(() {
+                    _editedUser = _editedUser.copyWith(
+                      isLegacyUser: !_editedUser.isLegacyUser,
+                    );
+                  });
+                },
+              ),
+              TabBar(
                 controller: _tabController,
-                children: [
-                  // Tab Suscripciones
-                  UserSubscriptionsTab(
-                    activePlans: _editedUser.validPlans,
-                    onAssignNewPlan: _showAssignPlanDialog,
-                    onResumePlan: (plan) => _resumePlan(plan),
-                    onPausePlan: (plan) => _showPauseDialog(plan),
-                    onCancelPlan: (plan) => _showCancelPlanDialog(plan),
-                  ),
-                  // Tab Tickets
-                  UserTicketsTab(
-                    tickets: _editedUser.accessExceptions,
-                    onAddTicket: _showAddTicketDialog,
-                    onTicketTap: (ticket) => _showTicketDetailDialog(ticket),
-                    onRemoveTicket: (index) {
-                      setState(() {
-                        final newList = List<AccessExceptionModel>.from(
-                          _editedUser.accessExceptions,
-                        );
-                        newList.removeAt(index);
-                        _editedUser = _editedUser.copyWith(
-                          accessExceptions: newList,
-                        );
-                      });
-                    },
-                  ),
+                labelColor: theme.colorScheme.primary,
+                unselectedLabelColor: Colors.grey,
+                tabs: const [
+                  Tab(text: "PLANES"),
+                  Tab(text: "INGRESOS EXTRAS"),
                 ],
               ),
-            ),
-          ],
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    // Tab Suscripciones
+                    UserSubscriptionsTab(
+                      activePlans: _editedUser.validPlans,
+                      onAssignNewPlan: _showAssignPlanDialog,
+                      onResumePlan: (plan) => _resumePlan(plan),
+                      onPausePlan: (plan) => _showPauseDialog(plan),
+                      onCancelPlan: (plan) => _showCancelPlanDialog(plan),
+                    ),
+                    // Tab Tickets
+                    UserTicketsTab(
+                      tickets: _editedUser.accessExceptions,
+                      onAddTicket: _showAddTicketDialog,
+                      onTicketTap: (ticket) => _showTicketDetailDialog(ticket),
+                      onRemoveTicket: (index) {
+                        setState(() {
+                          final newList = List<AccessExceptionModel>.from(
+                            _editedUser.accessExceptions,
+                          );
+                          newList.removeAt(index);
+                          _editedUser = _editedUser.copyWith(
+                            accessExceptions: newList,
+                          );
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // LÓGICA PLANES
+  // log planes
   void _showAssignPlanDialog() {
+    final authState = context.read<AuthCubit>().state;
+    final String currentAdminName = (authState is AuthAuthenticated)
+        ? authState.user.fullName
+        : "Admin Desconocido";
+
     showDialog(
       context: context,
       builder: (ctx) => AssignPlanDialog(
         availablePlans: widget.availablePlans,
         onPlanAssigned: (UserPlan newPlan, String paymentMethod, String? note) {
-          setState(() {
-            final updatedPlans = List<UserPlan>.from(_editedUser.activePlans)
-              ..add(newPlan);
-
-            _editedUser = _editedUser.copyWith(activePlans: updatedPlans);
-          });
+          context.read<AdminCubit>().assignPlanToUser(
+            user: widget.user,
+            newPlan: newPlan,
+            paymentMethod: paymentMethod,
+            adminName: currentAdminName,
+            note: note,
+          );
         },
+      ),
+    );
+  }
+
+  // log tickets
+  void _showAddTicketDialog() {
+    final authState = context.read<AuthCubit>().state;
+    final String currentAdminName = (authState is AuthAuthenticated)
+        ? authState.user.fullName
+        : "Admin Desconocido";
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AddTicketDialog(
+        availablePlans: widget.availablePlans,
+        currentAdminName: currentAdminName,
+        onTicketAdded:
+            (
+              int qty,
+              double price,
+              String method,
+              String note,
+              List<ScheduleRule> rules,
+              String planName,
+            ) {
+              context.read<AdminCubit>().sellTicketToUser(
+                user: widget.user,
+                quantity: qty,
+                price: price,
+                paymentMethod: method,
+                adminName: currentAdminName,
+                scheduleRules: rules,
+                planName: planName,
+                note: note,
+              );
+            },
       ),
     );
   }
@@ -302,31 +375,6 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
     }
   }
 
-  // LÓGICA TICKETS
-  void _showAddTicketDialog() {
-    final authState = context.read<AuthCubit>().state;
-    final String currentAdminName = (authState is AuthAuthenticated)
-        ? authState.user.fullName
-        : "Admin Desconocido";
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AddTicketDialog(
-        availablePlans: widget.availablePlans,
-        currentAdminName: currentAdminName,
-        onTicketAdded: (AccessExceptionModel newTicket) {
-          setState(() {
-            final newList = List<AccessExceptionModel>.from(
-              _editedUser.accessExceptions,
-            )..add(newTicket);
-
-            _editedUser = _editedUser.copyWith(accessExceptions: newList);
-          });
-        },
-      ),
-    );
-  }
-
   void _showTicketDetailDialog(AccessExceptionModel ticket) {
     showDialog(
       context: context,
@@ -334,7 +382,6 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
     );
   }
 
-  // GUARDADO Y SALIDA
   Future<bool> _showExitConfirmation() async {
     return await showDialog<bool>(
           context: context,
