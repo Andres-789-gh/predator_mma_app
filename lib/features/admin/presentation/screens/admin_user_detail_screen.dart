@@ -35,6 +35,8 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
     with SingleTickerProviderStateMixin {
   late UserModel _editedUser;
   late TabController _tabController;
+  List<PendingPlanSale> _pendingPlans = [];
+  List<PendingTicketSale> _pendingTickets = [];
 
   @override
   void initState() {
@@ -202,23 +204,23 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
 
   // log planes
   void _showAssignPlanDialog() {
-    final authState = context.read<AuthCubit>().state;
-    final String currentAdminName = (authState is AuthAuthenticated)
-        ? authState.user.fullName
-        : "Admin Desconocido";
-
     showDialog(
       context: context,
       builder: (ctx) => AssignPlanDialog(
         availablePlans: widget.availablePlans,
         onPlanAssigned: (UserPlan newPlan, String paymentMethod, String? note) {
-          context.read<AdminCubit>().assignPlanToUser(
-            user: widget.user,
-            newPlan: newPlan,
+          final pendingSale = PendingPlanSale(
+            plan: newPlan,
             paymentMethod: paymentMethod,
-            adminName: currentAdminName,
             note: note,
           );
+
+          setState(() {
+            _pendingPlans.add(pendingSale);
+            final updatedPlans = List<UserPlan>.from(_editedUser.activePlans)
+              ..add(newPlan);
+            _editedUser = _editedUser.copyWith(activePlans: updatedPlans);
+          });
         },
       ),
     );
@@ -229,7 +231,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
     final authState = context.read<AuthCubit>().state;
     final String currentAdminName = (authState is AuthAuthenticated)
         ? authState.user.fullName
-        : "Admin Desconocido";
+        : "admin";
 
     showDialog(
       context: context,
@@ -244,17 +246,39 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
               String note,
               List<ScheduleRule> rules,
               String planName,
+              DateTime validUntil,
             ) {
-              context.read<AdminCubit>().sellTicketToUser(
-                user: widget.user,
+              final pendingTicket = PendingTicketSale(
                 quantity: qty,
                 price: price,
                 paymentMethod: method,
-                adminName: currentAdminName,
+                note: note,
                 scheduleRules: rules,
                 planName: planName,
-                note: note,
+                validUntil: validUntil,
               );
+
+              final tempTicket = AccessExceptionModel(
+                id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+                reason: note,
+                grantedAt: DateTime.now(),
+                grantedBy: currentAdminName,
+                scheduleRules: rules,
+                originalPlanName: planName,
+                quantity: qty,
+                price: price,
+                validUntil: validUntil,
+              );
+
+              setState(() {
+                _pendingTickets.add(pendingTicket);
+                final updatedTickets = List<AccessExceptionModel>.from(
+                  _editedUser.accessExceptions,
+                )..add(tempTicket);
+                _editedUser = _editedUser.copyWith(
+                  accessExceptions: updatedTickets,
+                );
+              });
             },
       ),
     );
@@ -433,7 +457,33 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
   }
 
   void _saveChanges() {
-    widget.onSave(_editedUser);
+    final authState = context.read<AuthCubit>().state;
+    final String currentAdminName = (authState is AuthAuthenticated)
+        ? authState.user.fullName
+        : "admin";
+
+    final cleanPlans = _editedUser.activePlans.where((p) {
+      return !_pendingPlans.any(
+        (draft) => draft.plan.subscriptionId == p.subscriptionId,
+      );
+    }).toList();
+
+    final cleanTickets = _editedUser.accessExceptions.where((t) {
+      return !t.id.startsWith('temp_');
+    }).toList();
+
+    final cleanUser = _editedUser.copyWith(
+      activePlans: cleanPlans,
+      accessExceptions: cleanTickets,
+    );
+
+    context.read<AdminCubit>().commitUserProfileAndSales(
+      userToUpdate: cleanUser,
+      pendingPlans: _pendingPlans,
+      pendingTickets: _pendingTickets,
+      adminName: currentAdminName,
+    );
+
     Navigator.pop(context);
   }
 }

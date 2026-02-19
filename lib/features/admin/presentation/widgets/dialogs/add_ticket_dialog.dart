@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import '../../../../plans/domain/models/plan_model.dart';
 import '../../../../../core/utils/currency_formatter.dart';
+import '../../../../../core/utils/date_utils.dart';
 
 class AddTicketDialog extends StatefulWidget {
   final List<PlanModel> availablePlans;
@@ -13,6 +15,7 @@ class AddTicketDialog extends StatefulWidget {
     String note,
     List<ScheduleRule> rules,
     String planName,
+    DateTime validUntil,
   )
   onTicketAdded;
 
@@ -32,6 +35,7 @@ class _AddTicketDialogState extends State<AddTicketDialog> {
   PlanModel? selectedPlan;
   String reason = "";
   double price = 0;
+  late DateTime validUntil;
 
   String selectedPaymentMethod = 'Efectivo';
   final List<String> paymentMethods = [
@@ -41,6 +45,12 @@ class _AddTicketDialogState extends State<AddTicketDialog> {
     'Otro',
   ];
   final _priceController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    validUntil = AppDateUtils.calculateGymEndDate(DateTime.now(), 1);
+  }
 
   @override
   void dispose() {
@@ -79,7 +89,6 @@ class _AddTicketDialogState extends State<AddTicketDialog> {
             ),
             const SizedBox(height: 15),
 
-            // Cantidad
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -111,7 +120,6 @@ class _AddTicketDialogState extends State<AddTicketDialog> {
             ),
             const SizedBox(height: 15),
 
-            // Precio
             TextField(
               controller: _priceController,
               decoration: const InputDecoration(
@@ -132,7 +140,25 @@ class _AddTicketDialogState extends State<AddTicketDialog> {
             ),
             const SizedBox(height: 15),
 
-            // Método de Pago
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text("Fecha de Vencimiento"),
+              subtitle: Text(DateFormat('dd/MM/yyyy').format(validUntil)),
+              trailing: const Icon(Icons.calendar_today),
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: validUntil,
+                  firstDate: DateTime.now().subtract(const Duration(days: 1)),
+                  lastDate: DateTime.now().add(const Duration(days: 1000)),
+                );
+                if (picked != null) {
+                  setState(() => validUntil = picked);
+                }
+              },
+            ),
+            const SizedBox(height: 15),
+
             DropdownButtonFormField<String>(
               value: selectedPaymentMethod,
               decoration: const InputDecoration(
@@ -148,10 +174,9 @@ class _AddTicketDialogState extends State<AddTicketDialog> {
             ),
             const SizedBox(height: 15),
 
-            // Motivo
             TextField(
               decoration: const InputDecoration(
-                labelText: "Observación (Opcional)",
+                labelText: "Observaciones (Opcional)",
                 border: OutlineInputBorder(),
               ),
               onChanged: (v) => reason = v,
@@ -175,9 +200,7 @@ class _AddTicketDialogState extends State<AddTicketDialog> {
   void _confirmAdd() {
     if (selectedPlan == null) return;
 
-    final note = reason.trim().isEmpty
-        ? "Venta Ingreso: ${selectedPlan!.name}"
-        : reason.trim();
+    final note = reason.trim().isEmpty ? "Sin observaciones" : reason.trim();
 
     widget.onTicketAdded(
       quantity,
@@ -186,6 +209,7 @@ class _AddTicketDialogState extends State<AddTicketDialog> {
       note,
       selectedPlan!.scheduleRules,
       selectedPlan!.name,
+      validUntil,
     );
     Navigator.pop(context);
   }

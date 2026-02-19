@@ -25,9 +25,9 @@ class SellTicketUseCase {
     required String adminName,
     required List<ScheduleRule> scheduleRules,
     required String originalPlanName,
+    required DateTime validUntil,
     String? note,
   }) async {
-    // Registrar Venta
     final saleEntity = SaleEntity(
       id: '',
       productId: 'ticket_pack',
@@ -40,18 +40,17 @@ class SellTicketUseCase {
       buyerName: user.fullName,
       paymentMethod: paymentMethod,
       saleDate: DateTime.now(),
-      note: note ?? 'Venta realizada por $adminName',
+      note: note ?? 'Sin observaciones',
       isService: true,
     );
 
     try {
       await _salesRepository.registerServiceSale(saleEntity);
 
-      // Crear Ticket
       final newTicket = AccessExceptionModel(
         id: const Uuid().v4(),
-        validUntil: DateTime.now().add(const Duration(days: 60)),
-        reason: note ?? 'Compra Ingresos Extra',
+        validUntil: validUntil,
+        reason: note ?? 'Sin observaciones',
         quantity: quantity,
         originalPlanName: originalPlanName,
         grantedAt: DateTime.now(),

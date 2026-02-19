@@ -70,16 +70,16 @@ class UserTicketsTab extends StatelessWidget {
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (ticket.reason != null && ticket.reason!.isNotEmpty)
-                        Text(
-                          "Motivo: ${ticket.reason}",
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontStyle: FontStyle.italic,
-                          ),
+                      Text(
+                        "Observaciones: ${ticket.reason?.isNotEmpty == true ? ticket.reason : 'Sin observaciones'}",
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
                         ),
+                      ),
                       Text(
                         "Vence: ${ticket.validUntil != null ? DateFormat('dd/MM/yyyy').format(ticket.validUntil!) : 'Indefinido'}",
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),

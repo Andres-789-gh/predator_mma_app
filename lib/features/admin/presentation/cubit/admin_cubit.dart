@@ -20,6 +20,34 @@ class TimeSlot {
   TimeSlot(this.time, this.durationMinutes);
 }
 
+class PendingPlanSale {
+  final UserPlan plan;
+  final String paymentMethod;
+  final String? note;
+
+  PendingPlanSale({required this.plan, required this.paymentMethod, this.note});
+}
+
+class PendingTicketSale {
+  final int quantity;
+  final double price;
+  final String paymentMethod;
+  final String note;
+  final List<ScheduleRule> scheduleRules;
+  final String planName;
+  final DateTime validUntil;
+
+  PendingTicketSale({
+    required this.quantity,
+    required this.price,
+    required this.paymentMethod,
+    required this.note,
+    required this.scheduleRules,
+    required this.planName,
+    required this.validUntil,
+  });
+}
+
 class AdminCubit extends Cubit<AdminState> {
   final AuthRepository _authRepository;
   final ScheduleRepository _scheduleRepository;
@@ -73,6 +101,53 @@ class AdminCubit extends Cubit<AdminState> {
     } catch (e) {
       if (isClosed) return;
       emit(AdminError(e.toString().replaceAll('Exception: ', '')));
+    }
+  }
+
+  Future<void> commitUserProfileAndSales({
+    required UserModel userToUpdate,
+    required List<PendingPlanSale> pendingPlans,
+    required List<PendingTicketSale> pendingTickets,
+    required String adminName,
+  }) async {
+    try {
+      emit(AdminLoading());
+
+      await _authRepository.updateUser(userToUpdate);
+
+      for (final pendingPlan in pendingPlans) {
+        final note = pendingPlan.note != null
+            ? "$adminName: ${pendingPlan.note}"
+            : "$adminName: asignacion de plan";
+        await _assignPlanUseCase.execute(
+          user: userToUpdate,
+          newPlan: pendingPlan.plan,
+          paymentMethod: pendingPlan.paymentMethod,
+          note: note,
+        );
+      }
+
+      for (final pendingTicket in pendingTickets) {
+        await _sellTicketUseCase.execute(
+          user: userToUpdate,
+          quantity: pendingTicket.quantity,
+          price: pendingTicket.price,
+          paymentMethod: pendingTicket.paymentMethod,
+          adminName: adminName,
+          scheduleRules: pendingTicket.scheduleRules,
+          originalPlanName: pendingTicket.planName,
+          note: pendingTicket.note,
+          validUntil: pendingTicket.validUntil,
+        );
+      }
+
+      if (isClosed) return;
+      emit(const AdminOperationSuccess("Cambios guardados exitosamente"));
+      await loadUsersManagement();
+    } catch (e) {
+      if (isClosed) return;
+      emit(AdminError(e.toString()));
+      await loadUsersManagement();
     }
   }
 
@@ -834,10 +909,12 @@ class AdminCubit extends Cubit<AdminState> {
     required String adminName,
     required List<ScheduleRule> scheduleRules,
     required String planName,
+    required DateTime validUntil,
     String? note,
   }) async {
     try {
       emit(AdminLoading());
+
       await _sellTicketUseCase.execute(
         user: user,
         quantity: quantity,
@@ -847,10 +924,13 @@ class AdminCubit extends Cubit<AdminState> {
         scheduleRules: scheduleRules,
         originalPlanName: planName,
         note: note,
+        validUntil: validUntil,
       );
+
       emit(
-        const AdminOperationSuccess("Ingresos extra asignados correctamente"),
+        const AdminOperationSuccess("ingresos extra asignados correctamente"),
       );
+
       await loadUsersManagement();
     } catch (e) {
       emit(AdminError(e.toString()));

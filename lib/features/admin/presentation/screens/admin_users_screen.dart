@@ -200,7 +200,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                           if (validPlans.isEmpty) {
                             if (user.activePlans.isNotEmpty) {
                               planText =
-                                  "Vencido (${user.activePlans.length} hist.)";
+                                  "Vencido";
                               planColor = Colors.red.shade300;
                             } else {
                               planText = "Sin planes";
