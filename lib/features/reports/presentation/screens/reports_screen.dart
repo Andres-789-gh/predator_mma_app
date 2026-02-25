@@ -75,7 +75,7 @@ class _ReportsBodyState extends State<_ReportsBody> {
               ),
               const SizedBox(height: 10),
               const Text(
-                "Selecciona un rango de fechas para exportar las ventas, planes y ganancias.",
+                "Selecciona un rango de fechas para exportar las ventas de planes, inventario y ganancias.",
                 style: TextStyle(color: Colors.grey),
               ),
               const SizedBox(height: 30),
@@ -184,6 +184,7 @@ class _ReportsBodyState extends State<_ReportsBody> {
                         },
                   style: FilledButton.styleFrom(
                     backgroundColor: Colors.green[800],
+                    foregroundColor: Colors.white,
                   ),
                   icon: isLoading
                       ? const SizedBox(
@@ -194,8 +195,11 @@ class _ReportsBodyState extends State<_ReportsBody> {
                             color: Colors.white,
                           ),
                         )
-                      : const Icon(Icons.file_download),
-                  label: Text(isLoading ? "PROCESANDO..." : "DESCARGAR EXCEL"),
+                      : const Icon(Icons.file_download, color: Colors.white),
+                  label: Text(
+                    isLoading ? "PROCESANDO..." : "DESCARGAR EXCEL",
+                    style: const TextStyle(color: Colors.white),
+                  ),
                 ),
               ),
               if (_startDate != null && _endDate != null)
@@ -229,13 +233,24 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
       onSelected: (_) => onTap(),
-      selectedColor: Theme.of(context).primaryColor.withValues(alpha: 0.2),
+      backgroundColor: isDark ? Colors.grey[800] : Colors.grey[200],
+      selectedColor: Colors.red.withValues(alpha: 0.25),
+      showCheckmark: false,
+      side: BorderSide(
+        color: isSelected
+            ? Colors.red
+            : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
+      ),
       labelStyle: TextStyle(
-        color: isSelected ? Theme.of(context).primaryColor : Colors.black,
+        color: isSelected
+            ? (isDark ? Colors.redAccent : Colors.red)
+            : (isDark ? Colors.white70 : Colors.black),
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
       ),
     );
