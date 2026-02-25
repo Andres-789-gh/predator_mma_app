@@ -38,7 +38,7 @@ class _CoachScreenState extends State<CoachScreen> {
     try {
       final now = DateTime.now();
       final startOfToday = DateTime(now.year, now.month, now.day);
-      const int daysToFetch = 14;
+      const int daysToFetch = 7;
       final endWindow = startOfToday.add(const Duration(days: daysToFetch));
       final allClasses = await context.read<ScheduleRepository>().getClasses(
         fromDate: startOfToday,
@@ -189,16 +189,12 @@ class _CoachScreenState extends State<CoachScreen> {
 class _DayAgendaCard extends StatelessWidget {
   final DateTime date;
   final List<ClassModel> classes;
-
   const _DayAgendaCard({required this.date, required this.classes});
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final isToday = date.isAtSameMomentAs(today);
-    final headerColor = const Color(0xFF4CAF50);
+    const headerColor = Color(0xFF4CAF50);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -275,18 +271,18 @@ class _DayAgendaCard extends StatelessWidget {
     );
   }
 
-  // fecha a texto natural
+  // fecha a txt
   String _formatDateHeader(DateTime targetDate) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final tomorrow = today.add(const Duration(days: 1));
-
+    final dateStr = DateFormat("d 'de' MMMM", 'es').format(targetDate);
     if (targetDate == today) {
-      return "Hoy";
+      return "Hoy, $dateStr";
     } else if (targetDate == tomorrow) {
-      return "Mañana";
+      return "Mañana, $dateStr";
     } else {
-      final rawStr = DateFormat('EEEE, d MMMM', 'es').format(targetDate);
+      final rawStr = DateFormat("EEEE, d 'de' MMMM", 'es').format(targetDate);
       return rawStr[0].toUpperCase() + rawStr.substring(1).toLowerCase();
     }
   }

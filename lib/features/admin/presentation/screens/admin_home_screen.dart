@@ -11,6 +11,7 @@ import '../../../../features/notifications/presentation/cubit/admin_notification
 import '../../../../features/notifications/presentation/screens/admin_notifications_screen.dart';
 import '../../../../injection_container.dart';
 import '../../../reports/presentation/screens/reports_screen.dart';
+import '../../../../features/schedule/presentation/screens/coach_screen.dart';
 
 class AdminHomeScreen extends StatelessWidget {
   const AdminHomeScreen({super.key});
@@ -174,6 +175,21 @@ class AdminHomeScreen extends StatelessWidget {
                             );
                           },
                         ),
+                        // agenda si admin es coach
+                        if (user.isInstructor)
+                          _AdminMenuCard(
+                            icon: Icons.event_note,
+                            title: "Mis Clases\n(Coach)",
+                            color: Colors.redAccent,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const CoachScreen(),
+                                ),
+                              );
+                            },
+                          ),
                       ],
                     ),
                   ),
