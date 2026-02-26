@@ -83,7 +83,7 @@ class AuthRepository {
     await _firebaseAuth.signOut();
   }
 
-  // valida clave registro
+  // valida clave de registro
   Future<bool> verifyRegistrationKey(String key) async {
     try {
       final doc = await _firestore
@@ -93,7 +93,6 @@ class AuthRepository {
 
       if (doc.exists) {
         final currentKey = doc.data()?['registration_key'] as String?;
-        // compara clave guardada
         return key.trim() == currentKey?.trim();
       }
 
@@ -103,16 +102,17 @@ class AuthRepository {
     }
   }
 
-  // extrae datos usuario
+  // extrae datos de usuario y limpia historial
   Future<UserModel?> getUserData(String uid) async {
     final doc = await _firestore.collection('users').doc(uid).get();
     if (doc.exists && doc.data() != null) {
-      return UserMapper.fromMap(doc.data()!, doc.id);
+      final user = UserMapper.fromMap(doc.data()!, doc.id);
+      return await _autoCleanExpiredPlans(user);
     }
     return null;
   }
 
-  // verifica duplicidad documento
+  // verifica duplicidad de documento
   Future<bool> _checkDocumentExists(String documentId) async {
     final query = await _firestore
         .collection('users')
@@ -134,12 +134,11 @@ class AuthRepository {
           .map((doc) => UserMapper.fromMap(doc.data(), doc.id))
           .toList();
     } catch (e) {
-      print('Error obteniendo instructores: $e');
       return [];
     }
   }
 
-  // obtiene todos usuarios
+  // obtiene todos los usuarios
   Future<List<UserModel>> getAllUsers() async {
     try {
       final snapshot = await _firestore
@@ -155,16 +154,66 @@ class AuthRepository {
     }
   }
 
-  // actualiza datos usuario
+  // actualiza datos usuario y envia vencidos al historial
   Future<void> updateUser(UserModel user) async {
     try {
-      await _firestore
-          .collection('users')
-          .doc(user.userId)
-          .update(UserMapper.toMap(user));
+      final now = DateTime.now();
+      final expiredPlans = user.currentPlans
+          .where((p) => p.isExpired(now))
+          .toList();
+      final validPlans = user.currentPlans
+          .where((p) => !p.isExpired(now))
+          .toList();
+
+      final batch = _firestore.batch();
+      final userRef = _firestore.collection('users').doc(user.userId);
+
+      final userToSave = user.copyWith(currentPlans: validPlans);
+      batch.update(userRef, UserMapper.toMap(userToSave));
+
+      for (var plan in expiredPlans) {
+        final historyRef = userRef
+            .collection('plan_history')
+            .doc(plan.subscriptionId);
+        batch.set(historyRef, UserPlanMapper.toMap(plan));
+      }
+
+      await batch.commit();
     } catch (e) {
       throw Exception('Error actualizando usuario: $e');
     }
+  }
+
+  // traslada planes vencidos a subcoleccion
+  Future<UserModel> _autoCleanExpiredPlans(UserModel user) async {
+    final now = DateTime.now();
+    final expiredPlans = user.currentPlans
+        .where((p) => p.isExpired(now))
+        .toList();
+
+    if (expiredPlans.isEmpty) return user;
+
+    final validPlans = user.currentPlans
+        .where((p) => !p.isExpired(now))
+        .toList();
+    final cleanedUser = user.copyWith(currentPlans: validPlans);
+
+    final batch = _firestore.batch();
+    final userRef = _firestore.collection('users').doc(user.userId);
+
+    batch.update(userRef, {
+      'current_plans': validPlans.map((p) => UserPlanMapper.toMap(p)).toList(),
+    });
+
+    for (var plan in expiredPlans) {
+      final historyRef = userRef
+          .collection('plan_history')
+          .doc(plan.subscriptionId);
+      batch.set(historyRef, UserPlanMapper.toMap(plan));
+    }
+
+    await batch.commit();
+    return cleanedUser;
   }
 
   // pausa global

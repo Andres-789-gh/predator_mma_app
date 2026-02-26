@@ -46,10 +46,7 @@ class AssignPlanAndRecordSaleUseCase {
         'plan_id': newPlan.planId,
         'name': newPlan.name,
         'price': newPlan.price,
-        'consumption_type': newPlan.consumptionType
-            .toString()
-            .split('.')
-            .last,
+        'consumption_type': newPlan.consumptionType.toString().split('.').last,
         'schedule_rules': newPlan.scheduleRules
             .map(
               (e) => {
@@ -70,7 +67,7 @@ class AssignPlanAndRecordSaleUseCase {
       };
 
       await userRef.update({
-        'active_plans': FieldValue.arrayUnion([planMap]),
+        'current_plans': FieldValue.arrayUnion([planMap]),
       });
     } catch (e) {
       throw Exception('Fallo asignación: $e');
