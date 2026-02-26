@@ -27,12 +27,12 @@ class UserMapper {
     );
 
     List<UserPlan> parsedPlans = [];
-    if (map['active_plans'] != null && map['active_plans'] is List) {
-      parsedPlans = (map['active_plans'] as List)
-          .map((x) => _UserPlanMapper.fromMap(x as Map<String, dynamic>))
+    if (map['current_plans'] != null && map['current_plans'] is List) {
+      parsedPlans = (map['current_plans'] as List)
+          .map((x) => UserPlanMapper.fromMap(x as Map<String, dynamic>))
           .toList();
-    } else if (map['active_plan'] != null && map['active_plan'] is Map) {
-      parsedPlans = [_UserPlanMapper.fromMap(map['active_plan'])];
+    } else if (map['current_plan'] != null && map['current_plan'] is Map) {
+      parsedPlans = [UserPlanMapper.fromMap(map['current_plan'])];
     }
 
     return UserModel(
@@ -53,7 +53,7 @@ class UserMapper {
           ? _getDateSafe(map['legal']['signed_at'])
           : null,
       waiverSignatureUrl: map['legal']?['signature_url'],
-      activePlans: parsedPlans,
+      currentPlans: parsedPlans,
       emergencyContact: map['emergency_contact'] ?? '',
       accessExceptions: safeExceptions,
     );
@@ -84,8 +84,8 @@ class UserMapper {
         'signature_url': user.waiverSignatureUrl,
       },
 
-      'active_plans': user.activePlans
-          .map((x) => _UserPlanMapper.toMap(x))
+      'current_plans': user.currentPlans
+          .map((x) => UserPlanMapper.toMap(x))
           .toList(),
 
       'emergency_contact': user.emergencyContact,
@@ -103,7 +103,7 @@ class UserMapper {
   }
 }
 
-class _UserPlanMapper {
+class UserPlanMapper {
   static UserPlan fromMap(Map<String, dynamic> map) {
     return UserPlan(
       subscriptionId: map['subscription_id'] ?? map['plan_id'] ?? 'unknown_sub',
@@ -125,7 +125,7 @@ class _UserPlanMapper {
       remainingClasses: map['remaining_classes'] as int?,
       pauses:
           (map['pauses'] as List<dynamic>?)
-              ?.map((x) => _PlanPauseMapper.fromMap(x))
+              ?.map((x) => PlanPauseMapper.fromMap(x))
               .toList() ??
           [],
     );
@@ -145,12 +145,12 @@ class _UserPlanMapper {
       'start_date': Timestamp.fromDate(plan.startDate),
       'end_date': Timestamp.fromDate(plan.endDate),
       'remaining_classes': plan.remainingClasses,
-      'pauses': plan.pauses.map((e) => _PlanPauseMapper.toMap(e)).toList(),
+      'pauses': plan.pauses.map((e) => PlanPauseMapper.toMap(e)).toList(),
     };
   }
 }
 
-class _PlanPauseMapper {
+class PlanPauseMapper {
   static PlanPause fromMap(Map<String, dynamic> map) {
     return PlanPause(
       startDate: UserMapper._getDateSafe(map['start_date']),

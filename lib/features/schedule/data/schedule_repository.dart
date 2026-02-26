@@ -20,7 +20,7 @@ class ScheduleRepository {
   ScheduleRepository({FirebaseFirestore? firestore})
     : _firestore = firestore ?? FirebaseFirestore.instance;
 
-  // lectura de clases por rango de fechas
+  // obtiene clases por rango
   Future<List<ClassModel>> getClasses({
     required DateTime fromDate,
     required DateTime toDate,
@@ -44,7 +44,7 @@ class ScheduleRepository {
     }
   }
 
-  // verifica conflictos de horario
+  // valida cruces de horario
   Future<ClassModel?> checkConflict(ClassModel newClass) async {
     try {
       final startOfDay = DateTime(
@@ -67,6 +67,7 @@ class ScheduleRepository {
     }
   }
 
+  // obtiene estado de reserva para usuario
   Future<ClassStatus> getClassStatus(
     UserModel user,
     ClassModel classModel,
@@ -80,13 +81,13 @@ class ScheduleRepository {
       return ClassStatus.full;
     }
 
-    // verifica plan reservar
+    // busca plan valido
     final validPlan = await _findValidPlanForClass(user, classModel);
     if (validPlan != null) {
       return ClassStatus.available;
     }
 
-    // validacion ticket
+    // busca ticket valido
     final hasValidTicket = user.accessExceptions.any(
       (exc) => _isValidException(exc, classModel, DateTime.now()),
     );
@@ -98,7 +99,7 @@ class ScheduleRepository {
     return ClassStatus.blockedByPlan;
   }
 
-  // reserva
+  // ejecuta reserva
   Future<BookingStatus> reserveClass({
     required String classId,
     required String userId,
@@ -222,7 +223,7 @@ class ScheduleRepository {
     }
   }
 
-  // cancelacion de reserva
+  // cancela reserva existente
   Future<void> cancelReservation({
     required String classId,
     required String userId,
@@ -259,7 +260,7 @@ class ScheduleRepository {
           throw Exception('No estás inscrito en esta clase');
         }
 
-        // logica de reembolso
+        // procesa reembolso
         if (isInAttendees) {
           final planUsedId = classModel.getPlanUsedByUser(userId);
           if (planUsedId == null) {
@@ -283,7 +284,7 @@ class ScheduleRepository {
           }
         }
 
-        // retiro de lista de espera
+        // remueve de lista de espera
         if (isInWaitlist) {
           final newWaitlistPlans = Map<String, String>.from(
             classModel.waitlistPlans,
@@ -339,7 +340,7 @@ class ScheduleRepository {
     }
   }
 
-  // crea tipo de clase
+  // crea tipo de clase nuevo
   Future<void> createClassType(ClassTypeModel classType) async {
     try {
       final docRef = _firestore.collection('class_types').doc();
@@ -349,7 +350,7 @@ class ScheduleRepository {
     }
   }
 
-  // obtiene tipos de clase activos
+  // obtiene listado de tipos de clase
   Future<List<ClassTypeModel>> getClassTypes() async {
     try {
       final snapshot = await _firestore
@@ -365,7 +366,7 @@ class ScheduleRepository {
     }
   }
 
-  // agenda una clase individual
+  // crea clase individual
   Future<void> createScheduleClass(ClassModel classModel) async {
     try {
       final docRef = _firestore.collection('classes').doc();
@@ -375,12 +376,12 @@ class ScheduleRepository {
     }
   }
 
-  // genera id para nuevo patron
+  // genera identificador de patron
   String generateNewPatternId() {
     return _firestore.collection('schedule_patterns').doc().id;
   }
 
-  // guarda patron de horario
+  // registra patron de clases recurrentes
   Future<void> saveSchedulePattern(SchedulePatternModel pattern) async {
     try {
       await _firestore
@@ -392,7 +393,7 @@ class ScheduleRepository {
     }
   }
 
-  // obtiene patrones activos
+  // obtiene patrones registrados
   Future<List<SchedulePatternModel>> getSchedulePatterns() async {
     try {
       final snapshot = await _firestore
@@ -407,7 +408,7 @@ class ScheduleRepository {
     }
   }
 
-  // actualiza tipo de clase
+  // actualiza configuracion de tipo de clase
   Future<void> updateClassType(ClassTypeModel type) async {
     try {
       await _firestore
@@ -419,7 +420,7 @@ class ScheduleRepository {
     }
   }
 
-  // elimina tipo de clase
+  // oculta tipo de clase
   Future<void> deleteClassType(String id) async {
     try {
       await _firestore.collection('class_types').doc(id).update({
@@ -430,7 +431,7 @@ class ScheduleRepository {
     }
   }
 
-  // actualiza patrones coincidentes
+  // sincroniza cambios en patrones
   Future<void> updateMatchingPatterns({
     required String classTypeId,
     required Map<String, dynamic> updates,
@@ -480,7 +481,7 @@ class ScheduleRepository {
     }
   }
 
-  // validacion interna de conflictos
+  // verifica superposicion de horarios
   Future<void> _validateConflictOrThrow(
     ClassModel classModel, {
     String? excludeClassId,
@@ -536,7 +537,7 @@ class ScheduleRepository {
     }
   }
 
-  // edita clase unica
+  // actualiza clase especifica
   Future<void> editClassSingle(
     ClassModel updatedClass, {
     bool force = false,
@@ -561,7 +562,7 @@ class ScheduleRepository {
     }
   }
 
-  // edita clases similares
+  // actualiza patron recurrente
   Future<void> editClassSimilar({
     required ClassModel originalClass,
     required ClassModel updatedClass,
@@ -607,7 +608,7 @@ class ScheduleRepository {
     }
   }
 
-  // edita todas las clases
+  // edita patron general
   Future<void> editClassAll(ClassModel updatedClass) async {
     return editClassSimilar(
       originalClass: updatedClass,
@@ -615,7 +616,7 @@ class ScheduleRepository {
     );
   }
 
-  // regenera clases futuras tras edicion de patron
+  // reconstruye clases por edicion
   Future<void> _regenerateAtomicPattern(
     String patternId,
     ClassModel sourceClass,
@@ -695,7 +696,7 @@ class ScheduleRepository {
     await batch.commit();
   }
 
-  // elimina clases segun modo
+  // procesa eliminacion de clase
   Future<void> deleteClasses({
     required ClassModel classModel,
     required ClassEditMode mode,
@@ -732,7 +733,7 @@ class ScheduleRepository {
     }
   }
 
-  // validacion de ticket
+  // valida ticket en sistema
   bool _isValidException(
     AccessExceptionModel exception,
     ClassModel classModel,
@@ -748,7 +749,7 @@ class ScheduleRepository {
     );
   }
 
-  // validacion ticket reembolso
+  // valida devolucion de ticket
   bool _isValidExceptionForRefund(
     AccessExceptionModel exception,
     ClassModel classModel,
@@ -758,16 +759,17 @@ class ScheduleRepository {
     );
   }
 
+  // busca plan compatible
   Future<UserPlan?> _findValidPlanForClass(
     UserModel user,
     ClassModel classModel,
   ) async {
-    if (user.activePlans.isEmpty) return null;
+    if (user.currentPlans.isEmpty) return null;
     if (!classModel.canReserveNow) return null;
 
     final now = DateTime.now();
 
-    final candidatePlans = user.activePlans.where((plan) {
+    final candidatePlans = user.currentPlans.where((plan) {
       if (plan.endDate.isBefore(now)) return false;
       if (plan.isPaused(now)) return false;
       return plan.scheduleRules.any(
@@ -777,15 +779,12 @@ class ScheduleRepository {
 
     if (candidatePlans.isEmpty) return null;
 
-    // validar limites
     for (final plan in candidatePlans) {
-      // ilimitado/legacy
       if (user.isLegacyUser ||
           plan.consumptionType == PlanConsumptionType.unlimited) {
         return plan;
       }
 
-      // limite diario por plan especifico
       if (plan.consumptionType == PlanConsumptionType.limitedDaily) {
         final startOfClassDay = DateTime(
           classModel.startTime.year,
@@ -826,13 +825,13 @@ class ScheduleRepository {
     return null;
   }
 
-  // valida un plan especifico elegido por el usuario
+  // evalua plan manual
   Future<UserPlan?> _validateSpecificPlan(
     UserModel user,
     ClassModel classModel,
     String planId,
   ) async {
-    final tryPlan = user.activePlans.firstWhere(
+    final tryPlan = user.currentPlans.firstWhere(
       (p) => p.planId == planId,
       orElse: () =>
           throw Exception('El plan seleccionado no existe en tu perfil.'),

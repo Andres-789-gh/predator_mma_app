@@ -19,20 +19,20 @@ extension UserBusinessRules on UserModel {
     return age;
   }
 
-  // verifica si tiene al menos un plan activo
+  // verifica existencia de plan activo
   bool get hasActivePlan {
-    if (activePlans.isEmpty) return false;
+    if (currentPlans.isEmpty) return false;
 
     final now = DateTime.now();
-    return activePlans.any((plan) => plan.isActive(now));
+    return currentPlans.any((plan) => plan.isActive(now));
   }
 
-  // calcula dias hasta vencimiento del plan mas proximo
+  // calcula dias restantes del plan mas cercano
   int get daysUntilExpiration {
-    if (activePlans.isEmpty) return 0;
+    if (currentPlans.isEmpty) return 0;
 
     final now = DateTime.now();
-    final validPlans = activePlans.where((p) => p.isActive(now)).toList();
+    final validPlans = currentPlans.where((p) => p.isActive(now)).toList();
 
     if (validPlans.isEmpty) return 0;
 
@@ -40,14 +40,14 @@ extension UserBusinessRules on UserModel {
     return validPlans.first.effectiveEndDate.difference(now).inDays;
   }
 
-  // determina si mostrar alerta de vencimiento
+  // evalua necesidad de mostrar alerta
   bool get shouldShowExpirationWarning {
     if (!hasActivePlan) return false;
     final days = daysUntilExpiration;
     return days >= 0 && days <= 5;
   }
 
-  // valida si cumple requisitos para reservar
+  // valida requisitos de reserva
   bool get canReserveClass {
     if (!hasActivePlan) return false;
     if (!isWaiverSigned) return false;

@@ -35,8 +35,8 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
     with SingleTickerProviderStateMixin {
   late UserModel _editedUser;
   late TabController _tabController;
-  List<PendingPlanSale> _pendingPlans = [];
-  List<PendingTicketSale> _pendingTickets = [];
+  final List<PendingPlanSale> _pendingPlans = [];
+  final List<PendingTicketSale> _pendingTickets = [];
 
   @override
   void initState() {
@@ -56,7 +56,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
           _editedUser = updatedUser;
         });
       } catch (e) {
-        // Si no encuentra no hace nada
+        // ignora si no encuentra
       }
     }
   }
@@ -65,12 +65,12 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
     final u1 = widget.user;
     final u2 = _editedUser;
 
-    if (u1.activePlans.length != u2.activePlans.length) return true;
+    if (u1.currentPlans.length != u2.currentPlans.length) return true;
 
     bool plansContentChanged = false;
-    for (int i = 0; i < u1.activePlans.length; i++) {
-      final p1 = u1.activePlans[i];
-      final p2 = u2.activePlans[i];
+    for (int i = 0; i < u1.currentPlans.length; i++) {
+      final p1 = u1.currentPlans[i];
+      final p2 = u2.currentPlans[i];
 
       if (p1.planId != p2.planId ||
           p1.effectiveEndDate != p2.effectiveEndDate ||
@@ -167,7 +167,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    // Tab Suscripciones
+                    // panel suscripciones
                     UserSubscriptionsTab(
                       activePlans: _editedUser.validPlans,
                       onAssignNewPlan: _showAssignPlanDialog,
@@ -175,7 +175,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
                       onPausePlan: (plan) => _showPauseDialog(plan),
                       onCancelPlan: (plan) => _showCancelPlanDialog(plan),
                     ),
-                    // Tab Tickets
+                    // panel tickets
                     UserTicketsTab(
                       tickets: _editedUser.accessExceptions,
                       onAddTicket: _showAddTicketDialog,
@@ -202,7 +202,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
     );
   }
 
-  // log planes
+  // asigna nuevo plan
   void _showAssignPlanDialog() {
     showDialog(
       context: context,
@@ -217,16 +217,16 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
 
           setState(() {
             _pendingPlans.add(pendingSale);
-            final updatedPlans = List<UserPlan>.from(_editedUser.activePlans)
+            final updatedPlans = List<UserPlan>.from(_editedUser.currentPlans)
               ..add(newPlan);
-            _editedUser = _editedUser.copyWith(activePlans: updatedPlans);
+            _editedUser = _editedUser.copyWith(currentPlans: updatedPlans);
           });
         },
       ),
     );
   }
 
-  // log tickets
+  // agrega ticket
   void _showAddTicketDialog() {
     final authState = context.read<AuthCubit>().state;
     final String currentAdminName = (authState is AuthAuthenticated)
@@ -284,6 +284,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
     );
   }
 
+  // pausa plan individual
   void _showPauseDialog(UserPlan targetPlan) {
     final authState = context.read<AuthCubit>().state;
     final String currentAdminName = (authState is AuthAuthenticated)
@@ -299,20 +300,21 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
             ..add(newPause);
           final updatedPlan = targetPlan.copyWith(pauses: updatedPauses);
 
-          final updatedList = _editedUser.activePlans.map((p) {
+          final updatedList = _editedUser.currentPlans.map((p) {
             return p.subscriptionId == targetPlan.subscriptionId
                 ? updatedPlan
                 : p;
           }).toList();
 
           setState(() {
-            _editedUser = _editedUser.copyWith(activePlans: updatedList);
+            _editedUser = _editedUser.copyWith(currentPlans: updatedList);
           });
         },
       ),
     );
   }
 
+  // reactiva plan pausado
   Future<void> _resumePlan(UserPlan targetPlan) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -341,16 +343,17 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
 
       final updatedPlan = targetPlan.copyWith(pauses: updatedPauses);
 
-      final updatedList = _editedUser.activePlans.map((p) {
+      final updatedList = _editedUser.currentPlans.map((p) {
         return p.subscriptionId == targetPlan.subscriptionId ? updatedPlan : p;
       }).toList();
 
       setState(() {
-        _editedUser = _editedUser.copyWith(activePlans: updatedList);
+        _editedUser = _editedUser.copyWith(currentPlans: updatedList);
       });
     }
   }
 
+  // cancela plan activo
   Future<void> _showCancelPlanDialog(UserPlan targetPlan) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -388,17 +391,18 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
           endDate: DateTime.now().subtract(const Duration(days: 1)),
         );
 
-        final updatedList = _editedUser.activePlans.map((p) {
+        final updatedList = _editedUser.currentPlans.map((p) {
           return p.subscriptionId == targetPlan.subscriptionId
               ? expiredPlan
               : p;
         }).toList();
 
-        _editedUser = _editedUser.copyWith(activePlans: updatedList);
+        _editedUser = _editedUser.copyWith(currentPlans: updatedList);
       });
     }
   }
 
+  // muestra detalle ticket
   void _showTicketDetailDialog(AccessExceptionModel ticket) {
     showDialog(
       context: context,
@@ -406,6 +410,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
     );
   }
 
+  // advertencia de salida sin guardar
   Future<bool> _showExitConfirmation() async {
     return await showDialog<bool>(
           context: context,
@@ -430,6 +435,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
         false;
   }
 
+  // confirmacion guardado
   Future<void> _confirmSave() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -456,13 +462,14 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
     }
   }
 
+  // guarda info
   void _saveChanges() {
     final authState = context.read<AuthCubit>().state;
     final String currentAdminName = (authState is AuthAuthenticated)
         ? authState.user.fullName
         : "admin";
 
-    final cleanPlans = _editedUser.activePlans.where((p) {
+    final cleanPlans = _editedUser.currentPlans.where((p) {
       return !_pendingPlans.any(
         (draft) => draft.plan.subscriptionId == p.subscriptionId,
       );
@@ -473,7 +480,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
     }).toList();
 
     final cleanUser = _editedUser.copyWith(
-      activePlans: cleanPlans,
+      currentPlans: cleanPlans,
       accessExceptions: cleanTickets,
     );
 

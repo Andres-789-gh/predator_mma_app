@@ -18,7 +18,7 @@ class UserModel {
   final bool isWaiverSigned;
   final DateTime? waiverSignedAt;
   final String? waiverSignatureUrl;
-  final List<UserPlan> activePlans; // historial de suscripciones
+  final List<UserPlan> currentPlans; // planes vigentes
   final String emergencyContact;
   final List<AccessExceptionModel> accessExceptions;
 
@@ -38,29 +38,21 @@ class UserModel {
     this.isWaiverSigned = false,
     this.waiverSignedAt,
     this.waiverSignatureUrl,
-    this.activePlans = const [],
+    this.currentPlans = const [],
     required this.emergencyContact,
     List<AccessExceptionModel> accessExceptions = const [],
   }) : accessExceptions = List.unmodifiable(accessExceptions);
 
   String get fullName => '$firstName $lastName';
 
-  // planes vigentes
   List<UserPlan> get validPlans {
     final now = DateTime.now();
-    return activePlans.where((p) => !p.isExpired(now)).toList();
+    return currentPlans.where((p) => !p.isExpired(now)).toList();
   }
 
-  // historial planes vencidos
-  List<UserPlan> get expiredPlans {
-    final now = DateTime.now();
-    return activePlans.where((p) => p.isExpired(now)).toList();
-  }
-
-  // al menos un plan activo
   bool get hasActivePlan {
     final now = DateTime.now();
-    return activePlans.any((p) => p.isActive(now));
+    return currentPlans.any((p) => p.isActive(now));
   }
 
   UserModel copyWith({
@@ -79,7 +71,7 @@ class UserModel {
     bool? isWaiverSigned,
     DateTime? waiverSignedAt,
     String? waiverSignatureUrl,
-    List<UserPlan>? activePlans,
+    List<UserPlan>? currentPlans,
     String? emergencyContact,
     List<AccessExceptionModel>? accessExceptions,
   }) {
@@ -99,7 +91,7 @@ class UserModel {
       isWaiverSigned: isWaiverSigned ?? this.isWaiverSigned,
       waiverSignedAt: waiverSignedAt ?? this.waiverSignedAt,
       waiverSignatureUrl: waiverSignatureUrl ?? this.waiverSignatureUrl,
-      activePlans: activePlans ?? this.activePlans,
+      currentPlans: currentPlans ?? this.currentPlans,
       emergencyContact: emergencyContact ?? this.emergencyContact,
       accessExceptions: accessExceptions ?? this.accessExceptions,
     );

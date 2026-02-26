@@ -198,9 +198,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                           Color planColor = Colors.grey;
 
                           if (validPlans.isEmpty) {
-                            if (user.activePlans.isNotEmpty) {
-                              planText =
-                                  "Vencido";
+                            if (user.currentPlans.isNotEmpty) {
+                              planText = "Vencido";
                               planColor = Colors.red.shade300;
                             } else {
                               planText = "Sin planes";
@@ -501,9 +500,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
 
     if (state is AdminUsersLoaded) {
       for (var user in state.users) {
-        if (user.activePlans.isEmpty) continue;
+        if (user.currentPlans.isEmpty) continue;
 
-        for (var plan in user.activePlans) {
+        for (var plan in user.currentPlans) {
           for (var pause in plan.pauses) {
             if (pause.createdBy.startsWith("MASIVA_")) {
               final tag = pause.createdBy.split(' ').first;

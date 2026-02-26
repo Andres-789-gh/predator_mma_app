@@ -767,13 +767,13 @@ class AdminCubit extends Cubit<AdminState> {
       for (final user in usersToUpdate) {
         if (isClosed) return;
 
-        if (user.activePlans.isEmpty) continue;
+        if (user.currentPlans.isEmpty) continue;
 
         bool hasChanges = false;
         List<UserPlan> updatedPlans = [];
 
         // itera cada plan y pausa si es activo
-        for (var plan in user.activePlans) {
+        for (var plan in user.currentPlans) {
           final now = DateTime.now();
 
           // pausa si plan es activo
@@ -804,7 +804,7 @@ class AdminCubit extends Cubit<AdminState> {
         }
 
         if (hasChanges) {
-          final updatedUser = user.copyWith(activePlans: updatedPlans);
+          final updatedUser = user.copyWith(currentPlans: updatedPlans);
           await _authRepository.updateUser(updatedUser);
           updatedCount++;
         }
@@ -839,12 +839,12 @@ class AdminCubit extends Cubit<AdminState> {
       for (final user in users) {
         if (isClosed) return;
 
-        if (user.activePlans.isEmpty) continue;
+        if (user.currentPlans.isEmpty) continue;
 
         bool hasChanges = false;
         List<UserPlan> updatedPlans = [];
 
-        for (var plan in user.activePlans) {
+        for (var plan in user.currentPlans) {
           final filteredPauses = plan.pauses.where((p) {
             return !p.createdBy.startsWith(targetTag);
           }).toList();
@@ -858,7 +858,7 @@ class AdminCubit extends Cubit<AdminState> {
         }
 
         if (hasChanges) {
-          final updatedUser = user.copyWith(activePlans: updatedPlans);
+          final updatedUser = user.copyWith(currentPlans: updatedPlans);
           await _authRepository.updateUser(updatedUser);
         }
       }

@@ -36,7 +36,7 @@ class _UserManagementDialogState extends State<UserManagementDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final activePlans = widget.user.activePlans;
+    final activePlans = widget.user.currentPlans;
     final hasActivePlans = activePlans.isNotEmpty;
 
     return AlertDialog(
@@ -195,10 +195,10 @@ class _UserManagementDialogState extends State<UserManagementDialog> {
         pauses: [],
       );
 
-      final updatedPlans = List<UserPlan>.from(updatedUser.activePlans)
+      final updatedPlans = List<UserPlan>.from(updatedUser.currentPlans)
         ..add(newUserPlan);
 
-      updatedUser = updatedUser.copyWith(activePlans: updatedPlans);
+      updatedUser = updatedUser.copyWith(currentPlans: updatedPlans);
     }
 
     widget.onSave(updatedUser);
@@ -223,11 +223,11 @@ class _UserManagementDialogState extends State<UserManagementDialog> {
       final updatedPauses = List<PlanPause>.from(targetPlan.pauses)
         ..add(newPause);
       final updatedPlan = targetPlan.copyWith(pauses: updatedPauses);
-      final updatedList = widget.user.activePlans.map((p) {
+      final updatedList = widget.user.currentPlans.map((p) {
         return p.subscriptionId == targetPlan.subscriptionId ? updatedPlan : p;
       }).toList();
 
-      final userWithPause = widget.user.copyWith(activePlans: updatedList);
+      final userWithPause = widget.user.copyWith(currentPlans: updatedList);
 
       widget.onSave(userWithPause);
       if (mounted) Navigator.pop(context);

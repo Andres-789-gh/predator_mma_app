@@ -11,7 +11,7 @@ class AuthRepository {
     : _firebaseAuth = auth ?? FirebaseAuth.instance,
       _firestore = firestore ?? FirebaseFirestore.instance;
 
-  // Obtener usuario actual
+  // obtiene usuario actual
   Future<UserModel?> getCurrentUser() async {
     final user = _firebaseAuth.currentUser;
     if (user != null) {
@@ -20,18 +20,16 @@ class AuthRepository {
     return null;
   }
 
-  // login
+  // autentica usuario
   Future<UserModel> signIn({
     required String email,
     required String password,
   }) async {
-    // Auth de Firebase
     final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
       email: email,
       password: password,
     );
 
-    // Buscar datos en Firestore
     final userData = await getUserData(userCredential.user!.uid);
 
     if (userData == null) {
@@ -43,7 +41,7 @@ class AuthRepository {
     return userData;
   }
 
-  // registro
+  // registra usuario nuevo
   Future<UserModel> signUp({
     required String email,
     required String password,
@@ -80,10 +78,12 @@ class AuthRepository {
     }
   }
 
+  // cierra sesion
   Future<void> signOut() async {
     await _firebaseAuth.signOut();
   }
 
+  // valida clave registro
   Future<bool> verifyRegistrationKey(String key) async {
     try {
       final doc = await _firestore
@@ -93,18 +93,17 @@ class AuthRepository {
 
       if (doc.exists) {
         final currentKey = doc.data()?['registration_key'] as String?;
-        // Compara clave ingresada con la de bd
+        // compara clave guardada
         return key.trim() == currentKey?.trim();
       }
 
-      // si no hay config en la BD, nadie entra
       return false;
     } catch (e) {
-      return false; // Si falla la conexión, deniega el acceso por seguridad
+      return false;
     }
   }
 
-  // Helper privado
+  // extrae datos usuario
   Future<UserModel?> getUserData(String uid) async {
     final doc = await _firestore.collection('users').doc(uid).get();
     if (doc.exists && doc.data() != null) {
@@ -113,7 +112,7 @@ class AuthRepository {
     return null;
   }
 
-  // Doble documento
+  // verifica duplicidad documento
   Future<bool> _checkDocumentExists(String documentId) async {
     final query = await _firestore
         .collection('users')
@@ -123,6 +122,7 @@ class AuthRepository {
     return query.docs.isNotEmpty;
   }
 
+  // obtiene instructores
   Future<List<UserModel>> getInstructors() async {
     try {
       final snapshot = await _firestore
@@ -139,8 +139,7 @@ class AuthRepository {
     }
   }
 
-  // GESTION USUARIOS ADMIN:
-  // Traer todos los usuarios
+  // obtiene todos usuarios
   Future<List<UserModel>> getAllUsers() async {
     try {
       final snapshot = await _firestore
@@ -156,7 +155,7 @@ class AuthRepository {
     }
   }
 
-  // Actualizar usuario
+  // actualiza datos usuario
   Future<void> updateUser(UserModel user) async {
     try {
       await _firestore
@@ -168,7 +167,7 @@ class AuthRepository {
     }
   }
 
-  // Pausa Masiva
+  // pausa global
   Future<int> applyGlobalPause({
     required DateTime startDate,
     required DateTime endDate,
@@ -181,13 +180,11 @@ class AuthRepository {
 
       for (var doc in snapshot.docs) {
         final userData = UserMapper.fromMap(doc.data(), doc.id);
-        
-        // valida si tiene planes para pausar
-        if (userData.activePlans.isNotEmpty) {
+
+        if (userData.currentPlans.isNotEmpty) {
           bool userModified = false;
-          
-          // itera sobre cada plan del usuario
-          final updatedPlans = userData.activePlans.map((plan) {
+
+          final updatedPlans = userData.currentPlans.map((plan) {
             if (plan.isActive(DateTime.now())) {
               userModified = true;
               final newPause = PlanPause(
@@ -195,15 +192,16 @@ class AuthRepository {
                 endDate: endDate,
                 createdBy: 'Global: $adminName',
               );
-              
-              final updatedPauses = List<PlanPause>.from(plan.pauses)..add(newPause);
+
+              final updatedPauses = List<PlanPause>.from(plan.pauses)
+                ..add(newPause);
               return plan.copyWith(pauses: updatedPauses);
             }
             return plan;
           }).toList();
 
           if (userModified) {
-            final updatedUser = userData.copyWith(activePlans: updatedPlans);
+            final updatedUser = userData.copyWith(currentPlans: updatedPlans);
             batch.update(doc.reference, UserMapper.toMap(updatedUser));
             count++;
           }
