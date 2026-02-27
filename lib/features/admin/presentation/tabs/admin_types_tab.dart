@@ -39,9 +39,7 @@ class _AdminTypesTabState extends State<AdminTypesTab> {
       child: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.only(
-            bottom: 50,
-          ), 
+          padding: const EdgeInsets.only(bottom: 50),
           child: Form(
             key: _formKey,
             child: Column(
@@ -77,7 +75,7 @@ class _AdminTypesTabState extends State<AdminTypesTab> {
                       ),
                       const SizedBox(height: 15),
                       DropdownButtonFormField<ClassCategory>(
-                        value: _selectedCategory,
+                        initialValue: _selectedCategory,
                         decoration: const InputDecoration(
                           labelText: "Categoría",
                           border: OutlineInputBorder(),
@@ -322,7 +320,7 @@ class _AdminTypesTabState extends State<AdminTypesTab> {
 
                   // dropdown de edicion
                   DropdownButtonFormField<ClassCategory>(
-                    value: selectedCat,
+                    initialValue: selectedCat,
                     decoration: const InputDecoration(
                       labelText: "Categoría",
                       border: OutlineInputBorder(),

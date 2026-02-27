@@ -425,8 +425,9 @@ class _EditClassDialogState extends State<EditClassDialog> {
                     onChanged: isHistory
                         ? null
                         : (val) {
-                            if (val != null)
+                            if (val != null) {
                               setState(() => _selectedCoach = val);
+                            }
                           },
                   ),
                 ),
@@ -473,7 +474,7 @@ class _EditClassDialogState extends State<EditClassDialog> {
 
   Widget _buildScopeOption(ClassEditMode mode, String label, IconData icon) {
     final isSelected = _selectedMode == mode;
-    final color = Colors.blue;
+    const color = Colors.blue;
 
     return Expanded(
       child: GestureDetector(
@@ -538,7 +539,7 @@ class _EditClassDialogState extends State<EditClassDialog> {
                 const TextSpan(text: " clases.\n\n"),
               ] else
                 const TextSpan(text: "esta clase.\n\n"),
-                
+
               const TextSpan(text: "Esta acción no se puede deshacer."),
             ],
           ),
@@ -578,14 +579,14 @@ class _EditClassDialogState extends State<EditClassDialog> {
     if (updated == null) return;
 
     final bool isBulk = _selectedMode != ClassEditMode.single;
-    
+
     final String titleText = isBulk ? "Cambio Masivo" : "¿Guardar Cambios?";
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: isBulk 
+        title: isBulk
             ? Row(
                 children: [
                   const Icon(Icons.warning, color: Colors.orange),
@@ -593,16 +594,16 @@ class _EditClassDialogState extends State<EditClassDialog> {
                   Text(titleText),
                 ],
               )
-            : Text(titleText), 
-            
-        content: isBulk 
-            ? Text.rich(
+            : Text(titleText),
+
+        content: isBulk
+            ? const Text.rich(
                 TextSpan(
-                  style: const TextStyle(fontSize: 16),
-                  children: const [
+                  style: TextStyle(fontSize: 16),
+                  children: [
                     TextSpan(text: "Estás a punto de modificar "),
                     TextSpan(
-                      text: "MÚLTIPLES", 
+                      text: "MÚLTIPLES",
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     TextSpan(text: " clases.\n\n¿Confirmar cambios?"),
@@ -610,7 +611,7 @@ class _EditClassDialogState extends State<EditClassDialog> {
                 ),
               )
             : const Text("¿Estás seguro de guardar los cambios en esta clase?"),
-            
+
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),

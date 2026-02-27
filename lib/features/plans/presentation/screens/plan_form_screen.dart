@@ -70,11 +70,11 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: isDark ? Colors.grey[900] : Colors.white,
-            boxShadow: [
+            boxShadow: const [
               BoxShadow(
                 color: Colors.black12,
                 blurRadius: 5,
-                offset: const Offset(0, -2),
+                offset: Offset(0, -2),
               ),
             ],
           ),
@@ -89,7 +89,9 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
 
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryColor,
-                    disabledBackgroundColor: primaryColor.withValues(alpha: 0.6),
+                    disabledBackgroundColor: primaryColor.withValues(
+                      alpha: 0.6,
+                    ),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -201,8 +203,9 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
                           ),
                         ],
                         onChanged: (val) {
-                          if (val != null)
+                          if (val != null) {
                             setState(() => _consumptionType = val);
+                          }
                         },
                       ),
                     ),
@@ -222,10 +225,12 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
                         prefixIcon: Icon(Icons.rule),
                       ),
                       validator: (v) {
-                        if (v == null || v.isEmpty)
+                        if (v == null || v.isEmpty) {
                           return 'Indica el límite diario';
-                        if (int.tryParse(v) == null || int.parse(v) < 1)
+                        }
+                        if (int.tryParse(v) == null || int.parse(v) < 1) {
                           return 'Mínimo 1';
+                        }
                         return null;
                       },
                     ),
@@ -245,8 +250,9 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
                         prefixIcon: Icon(Icons.layers_outlined),
                       ),
                       validator: (v) {
-                        if (v == null || v.isEmpty)
+                        if (v == null || v.isEmpty) {
                           return 'Debes indicar la cantidad de clases';
+                        }
                         return null;
                       },
                     ),
@@ -285,8 +291,8 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.orange.shade200),
                       ),
-                      child: Row(
-                        children: const [
+                      child: const Row(
+                        children: [
                           Icon(
                             Icons.warning_amber_rounded,
                             color: Colors.orange,
@@ -591,7 +597,9 @@ class _RuleEditorDialogState extends State<_RuleEditorDialog> {
                   decoration: BoxDecoration(
                     color: Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
+                    border: Border.all(
+                      color: Colors.red.withValues(alpha: 0.5),
+                    ),
                   ),
                   child: Row(
                     children: [

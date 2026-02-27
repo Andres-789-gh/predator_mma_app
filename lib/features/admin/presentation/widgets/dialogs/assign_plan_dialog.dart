@@ -75,7 +75,7 @@ class _AssignPlanDialogState extends State<AssignPlanDialog> {
           children: [
             // Select plan
             DropdownButtonFormField<PlanModel>(
-              value: selectedPlan,
+              initialValue: selectedPlan,
               decoration: const InputDecoration(
                 labelText: "Selecciona el Plan",
                 border: OutlineInputBorder(),
@@ -98,7 +98,7 @@ class _AssignPlanDialogState extends State<AssignPlanDialog> {
 
             // Duracion
             DropdownButtonFormField<int>(
-              value: durationMonths,
+              initialValue: durationMonths,
               decoration: const InputDecoration(
                 labelText: "Duración",
                 border: OutlineInputBorder(),
@@ -202,7 +202,7 @@ class _AssignPlanDialogState extends State<AssignPlanDialog> {
 
             // Método de Pago
             DropdownButtonFormField<String>(
-              value: selectedPaymentMethod,
+              initialValue: selectedPaymentMethod,
               decoration: const InputDecoration(
                 labelText: "Método de Pago",
                 border: OutlineInputBorder(),

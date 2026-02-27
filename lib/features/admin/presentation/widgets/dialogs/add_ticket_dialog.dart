@@ -58,6 +58,13 @@ class _AddTicketDialogState extends State<AddTicketDialog> {
     super.dispose();
   }
 
+  void _updatePrice() {
+    if (selectedPlan != null) {
+      price = selectedPlan!.price * quantity;
+      _priceController.text = price.toStringAsFixed(0);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isValid = selectedPlan != null;
@@ -70,7 +77,7 @@ class _AddTicketDialogState extends State<AddTicketDialog> {
           children: [
             DropdownButtonFormField<PlanModel>(
               isExpanded: true,
-              value: selectedPlan,
+              initialValue: selectedPlan,
               decoration: const InputDecoration(
                 labelText: "Plan Base (Obligatorio)",
                 border: OutlineInputBorder(),
@@ -82,8 +89,8 @@ class _AddTicketDialogState extends State<AddTicketDialog> {
               onChanged: (val) {
                 setState(() {
                   selectedPlan = val;
-                  price = val?.price ?? 0;
-                  _priceController.text = price.toStringAsFixed(0);
+                  quantity = 1;
+                  _updatePrice();
                 });
               },
             ),
@@ -97,7 +104,10 @@ class _AddTicketDialogState extends State<AddTicketDialog> {
                   children: [
                     IconButton(
                       onPressed: () => setState(() {
-                        if (quantity > 1) quantity--;
+                        if (quantity > 1) {
+                          quantity--;
+                          _updatePrice();
+                        }
                       }),
                       icon: const Icon(Icons.remove_circle_outline),
                     ),
@@ -111,6 +121,7 @@ class _AddTicketDialogState extends State<AddTicketDialog> {
                     IconButton(
                       onPressed: () => setState(() {
                         quantity++;
+                        _updatePrice();
                       }),
                       icon: const Icon(Icons.add_circle_outline),
                     ),
@@ -160,7 +171,7 @@ class _AddTicketDialogState extends State<AddTicketDialog> {
             const SizedBox(height: 15),
 
             DropdownButtonFormField<String>(
-              value: selectedPaymentMethod,
+              initialValue: selectedPaymentMethod,
               decoration: const InputDecoration(
                 labelText: "Método de Pago",
                 border: OutlineInputBorder(),

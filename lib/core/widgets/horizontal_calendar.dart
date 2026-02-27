@@ -17,7 +17,7 @@ class HorizontalCalendar extends StatelessWidget {
   Widget build(BuildContext context) {
     // control de tema oscuro
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final selectedColor = Colors.red;
+    const selectedColor = Colors.red;
     final unselectedTextColor = isDark ? Colors.white70 : Colors.black54;
     final monthFormat = DateFormat('MMMM yyyy', 'es');
 
@@ -32,12 +32,12 @@ class HorizontalCalendar extends StatelessWidget {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.black87
+              color: isDark ? Colors.white : Colors.black87,
             ),
           ),
         ),
         const SizedBox(height: 10),
-        
+
         // tira de fechas
         SizedBox(
           height: 85,
@@ -47,12 +47,16 @@ class HorizontalCalendar extends StatelessWidget {
             itemCount: daysCount,
             itemBuilder: (context, index) {
               final date = DateTime.now().add(Duration(days: index));
-              
-              final isSelected = date.day == selectedDate.day && 
-                                 date.month == selectedDate.month &&
-                                 date.year == selectedDate.year;
-              
-              final dayName = DateFormat('E', 'es').format(date).toUpperCase().replaceAll('.', '');
+
+              final isSelected =
+                  date.day == selectedDate.day &&
+                  date.month == selectedDate.month &&
+                  date.year == selectedDate.year;
+
+              final dayName = DateFormat(
+                'E',
+                'es',
+              ).format(date).toUpperCase().replaceAll('.', '');
               final dayNumber = date.day.toString();
 
               return GestureDetector(
@@ -61,13 +65,16 @@ class HorizontalCalendar extends StatelessWidget {
                   width: 60,
                   margin: EdgeInsets.only(
                     left: index == 0 ? 20 : 5,
-                    right: index == daysCount - 1 ? 20 : 5, 
-                    top: 5, bottom: 5
+                    right: index == daysCount - 1 ? 20 : 5,
+                    top: 5,
+                    bottom: 5,
                   ),
                   decoration: BoxDecoration(
                     color: isSelected ? selectedColor : Colors.transparent,
                     borderRadius: BorderRadius.circular(16),
-                    border: isSelected ? null : Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                    border: isSelected
+                        ? null
+                        : Border.all(color: Colors.grey.withValues(alpha: 0.3)),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -75,7 +82,9 @@ class HorizontalCalendar extends StatelessWidget {
                       Text(
                         dayName,
                         style: TextStyle(
-                          color: isSelected ? Colors.white : unselectedTextColor,
+                          color: isSelected
+                              ? Colors.white
+                              : unselectedTextColor,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
@@ -84,15 +93,20 @@ class HorizontalCalendar extends StatelessWidget {
                       Text(
                         dayNumber,
                         style: TextStyle(
-                          color: isSelected ? Colors.white : (isDark ? Colors.white : Colors.black),
+                          color: isSelected
+                              ? Colors.white
+                              : (isDark ? Colors.white : Colors.black),
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       if (index == 0 && !isSelected) ...[
-                          const SizedBox(height: 4),
-                          CircleAvatar(radius: 2, backgroundColor: selectedColor),
-                      ]
+                        const SizedBox(height: 4),
+                        const CircleAvatar(
+                          radius: 2,
+                          backgroundColor: selectedColor,
+                        ),
+                      ],
                     ],
                   ),
                 ),

@@ -13,10 +13,12 @@ class ManageProductUseCase {
   ManageProductUseCase(this._repository);
 
   Future<void> executeSave(ProductEntity product) async {
-    if (product.costPrice < 0)
+    if (product.costPrice < 0) {
       throw Exception('El costo no puede ser negativo.');
-    if (product.salePrice < 0)
+    }
+    if (product.salePrice < 0) {
       throw Exception('El precio no puede ser negativo.');
+    }
     if (product.salePrice < product.costPrice) {
       throw Exception('El precio de venta no puede ser menor al costo.');
     }

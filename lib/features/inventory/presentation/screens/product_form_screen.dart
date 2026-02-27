@@ -329,8 +329,9 @@ class _ProductFormViewState extends State<_ProductFormView> {
                     ),
                     validator: (v) {
                       if (_hasInfiniteStock) return null;
-                      if (v == null || v.isEmpty)
+                      if (v == null || v.isEmpty) {
                         return 'Requerido si maneja stock';
+                      }
                       return null;
                     },
                   ),

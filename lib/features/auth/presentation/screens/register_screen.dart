@@ -44,7 +44,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<DateTime?> _pickDate(BuildContext context) async {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     return await showDatePicker(
       context: context,
       initialDate: DateTime.now().subtract(const Duration(days: 365 * 18)),
@@ -53,20 +53,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
       builder: (context, child) {
         return Theme(
           data: theme.copyWith(
-            colorScheme: isDark 
-              ? ColorScheme.dark(
-                  primary: theme.colorScheme.primary,
-                  onPrimary: Colors.white,
-                  surface: const Color(0xFF1E1E1E),
-                  onSurface: Colors.white,
-                )
-              : ColorScheme.light(
-                  primary: theme.colorScheme.primary,
-                  onPrimary: Colors.white,
-                  surface: Colors.white,
-                  onSurface: Colors.black,
-                ),
-            dialogBackgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+            colorScheme: isDark
+                ? ColorScheme.dark(
+                    primary: theme.colorScheme.primary,
+                    onPrimary: Colors.white,
+                    surface: const Color(0xFF1E1E1E),
+                    onSurface: Colors.white,
+                  )
+                : ColorScheme.light(
+                    primary: theme.colorScheme.primary,
+                    onPrimary: Colors.white,
+                    surface: Colors.white,
+                    onSurface: Colors.black,
+                  ),
+            dialogTheme: DialogThemeData(
+              backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+            ),
           ),
           child: child!,
         );
@@ -88,12 +90,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         title: Text('Registro', style: TextStyle(color: textColor)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        scrolledUnderElevation: 0, 
+        scrolledUnderElevation: 0,
         iconTheme: IconThemeData(color: textColor),
         systemOverlayStyle: SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
-          statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark, 
-          statusBarBrightness: isDark ? Brightness.dark : Brightness.light, // iOS
+          statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+          statusBarBrightness: isDark
+              ? Brightness.dark
+              : Brightness.light, // iOS
         ),
       ),
       body: GestureDetector(
@@ -102,14 +106,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
           listener: (context, state) {
             if (state is AuthError) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.message), backgroundColor: theme.colorScheme.error),
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: theme.colorScheme.error,
+                ),
               );
             }
             if (state is AuthAuthenticated) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('¡Registro Exitoso!'), backgroundColor: Colors.green),
+                const SnackBar(
+                  content: Text('¡Registro Exitoso!'),
+                  backgroundColor: Colors.green,
+                ),
               );
-              Navigator.of(context).pop(); 
+              Navigator.of(context).pop();
             }
           },
           builder: (context, state) {
@@ -122,19 +132,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: isDark
-                          ? [
-                              Colors.black.withValues(alpha: 0.8),
-                              Colors.black, 
-                            ]
-                          : [ 
-                              Colors.white, 
-                              Colors.grey[100]!, 
-                            ],
+                            ? [
+                                Colors.black.withValues(alpha: 0.8),
+                                Colors.black,
+                              ]
+                            : [Colors.white, Colors.grey[100]!],
                       ),
                     ),
                   ),
                 ),
-                
+
                 // Form
                 SingleChildScrollView(
                   padding: const EdgeInsets.all(24.0),
@@ -145,7 +152,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       children: [
                         Text(
                           'Únete a Predator',
-                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: primaryColor),
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: primaryColor,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -153,19 +164,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           style: TextStyle(color: subTextColor, fontSize: 16),
                         ),
                         const SizedBox(height: 30),
-      
+
                         // cod acceso
                         _buildLabel('CÓDIGO DE ACCESO', context),
                         TextFormField(
                           controller: _accessKeyController,
                           style: TextStyle(color: textColor),
-                          decoration: _buildInputDecoration('Digita el código de acceso', Icons.vpn_key, context),
+                          decoration: _buildInputDecoration(
+                            'Digita el código de acceso',
+                            Icons.vpn_key,
+                            context,
+                          ),
                           validator: (v) => v!.isEmpty ? 'Obligatorio' : null,
                         ),
                         const SizedBox(height: 20),
                         const Divider(color: Colors.grey),
                         const SizedBox(height: 20),
-                        
+
                         // nombre y apellido
                         Row(
                           children: [
@@ -177,8 +192,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   TextFormField(
                                     controller: _firstNameController,
                                     style: TextStyle(color: textColor),
-                                    decoration: _buildInputDecoration('Tu nombre', Icons.person_outline, context),
-                                    validator: (v) => v!.isEmpty ? 'Obligatorio' : null,
+                                    decoration: _buildInputDecoration(
+                                      'Tu nombre',
+                                      Icons.person_outline,
+                                      context,
+                                    ),
+                                    validator: (v) =>
+                                        v!.isEmpty ? 'Obligatorio' : null,
                                   ),
                                 ],
                               ),
@@ -192,8 +212,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   TextFormField(
                                     controller: _lastNameController,
                                     style: TextStyle(color: textColor),
-                                    decoration: _buildInputDecoration('Tu apellido', Icons.person_outline, context),
-                                    validator: (v) => v!.isEmpty ? 'Obligatorio' : null,
+                                    decoration: _buildInputDecoration(
+                                      'Tu apellido',
+                                      Icons.person_outline,
+                                      context,
+                                    ),
+                                    validator: (v) =>
+                                        v!.isEmpty ? 'Obligatorio' : null,
                                   ),
                                 ],
                               ),
@@ -201,11 +226,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ],
                         ),
                         const SizedBox(height: 20),
-      
+
                         _buildLabel('FECHA DE NACIMIENTO', context),
                         FormField<DateTime>(
                           validator: (value) {
-                            if (_selectedBirthDate == null) return 'Obligatorio';
+                            if (_selectedBirthDate == null) {
+                              return 'Obligatorio';
+                            }
                             return null;
                           },
                           builder: (FormFieldState<DateTime> state) {
@@ -223,25 +250,43 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     }
                                   },
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 18,
+                                      horizontal: 20,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: theme.inputDecorationTheme.fillColor ?? (isDark ? const Color(0xFF1E1E1E) : Colors.grey[200]),
+                                      color:
+                                          theme
+                                              .inputDecorationTheme
+                                              .fillColor ??
+                                          (isDark
+                                              ? const Color(0xFF1E1E1E)
+                                              : Colors.grey[200]),
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: state.hasError ? Colors.red : Colors.transparent,
+                                        color: state.hasError
+                                            ? Colors.red
+                                            : Colors.transparent,
                                         width: state.hasError ? 1.0 : 0.0,
                                       ),
                                     ),
                                     child: Row(
                                       children: [
-                                        Icon(Icons.calendar_today, color: state.hasError ? Colors.red : primaryColor),
+                                        Icon(
+                                          Icons.calendar_today,
+                                          color: state.hasError
+                                              ? Colors.red
+                                              : primaryColor,
+                                        ),
                                         const SizedBox(width: 12),
                                         Text(
                                           _selectedBirthDate == null
                                               ? 'Seleccionar Fecha'
                                               : '${_selectedBirthDate!.day}/${_selectedBirthDate!.month}/${_selectedBirthDate!.year}',
                                           style: TextStyle(
-                                            color: _selectedBirthDate == null ? Colors.grey[600] : textColor,
+                                            color: _selectedBirthDate == null
+                                                ? Colors.grey[600]
+                                                : textColor,
                                             fontSize: 16,
                                           ),
                                         ),
@@ -251,10 +296,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                                 if (state.hasError)
                                   Padding(
-                                    padding: const EdgeInsets.only(top: 8.0, left: 12.0),
+                                    padding: const EdgeInsets.only(
+                                      top: 8.0,
+                                      left: 12.0,
+                                    ),
                                     child: Text(
                                       state.errorText ?? '',
-                                      style: const TextStyle(color: Colors.red, fontSize: 12),
+                                      style: const TextStyle(
+                                        color: Colors.red,
+                                        fontSize: 12,
+                                      ),
                                     ),
                                   ),
                               ],
@@ -262,33 +313,43 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           },
                         ),
                         const SizedBox(height: 20),
-      
+
                         // doc
                         _buildLabel('DOCUMENTO DE IDENTIDAD', context),
                         TextFormField(
                           controller: _documentController,
                           style: TextStyle(color: textColor),
-                          decoration: _buildInputDecoration('Número de documento', Icons.badge_outlined, context),
+                          decoration: _buildInputDecoration(
+                            'Número de documento',
+                            Icons.badge_outlined,
+                            context,
+                          ),
                           validator: (v) => v!.isEmpty ? 'Obligatorio' : null,
                         ),
                         const SizedBox(height: 20),
-      
+
                         // email
                         _buildLabel('CORREO ELECTRÓNICO', context),
                         TextFormField(
                           controller: _emailController,
                           style: TextStyle(color: textColor),
                           keyboardType: TextInputType.emailAddress,
-                          decoration: _buildInputDecoration('ejemplo@correo.com', Icons.email_outlined, context),
+                          decoration: _buildInputDecoration(
+                            'ejemplo@correo.com',
+                            Icons.email_outlined,
+                            context,
+                          ),
                           validator: (v) {
-                             if (v == null || v.isEmpty) return 'Obligatorio';
-                             final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-                             if (!emailRegex.hasMatch(v)) return 'Correo inválido';
-                             return null;
+                            if (v == null || v.isEmpty) return 'Obligatorio';
+                            final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+                            if (!emailRegex.hasMatch(v)) {
+                              return 'Correo inválido';
+                            }
+                            return null;
                           },
                         ),
-                        
-                        const SizedBox(height: 20), 
+
+                        const SizedBox(height: 20),
 
                         // tel
                         _buildLabel('TELÉFONO', context),
@@ -296,32 +357,49 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           controller: _phoneController,
                           style: TextStyle(color: textColor),
                           keyboardType: TextInputType.phone,
-                          decoration: _buildInputDecoration('Número de contacto', Icons.phone_outlined, context),
+                          decoration: _buildInputDecoration(
+                            'Número de contacto',
+                            Icons.phone_outlined,
+                            context,
+                          ),
                           validator: (v) => v!.isEmpty ? 'Obligatorio' : null,
                         ),
                         const SizedBox(height: 20),
-      
+
                         // dirreccion
                         _buildLabel('DIRECCIÓN', context),
                         TextFormField(
                           controller: _addressController,
                           style: TextStyle(color: textColor),
-                          decoration: _buildInputDecoration('Dirección de residencia', Icons.home_outlined, context),
+                          decoration: _buildInputDecoration(
+                            'Dirección de residencia',
+                            Icons.home_outlined,
+                            context,
+                          ),
                           validator: (v) => v!.isEmpty ? 'Obligatorio' : null,
                         ),
                         const SizedBox(height: 20),
-      
+
                         // contacto emergencia
-                        _buildLabel('CONTACTO DE EMERGENCIA', context, isUrgent: true),
+                        _buildLabel(
+                          'CONTACTO DE EMERGENCIA',
+                          context,
+                          isUrgent: true,
+                        ),
                         TextFormField(
                           controller: _emergencyController,
                           style: TextStyle(color: textColor),
                           keyboardType: TextInputType.phone,
-                          decoration: _buildInputDecoration('Número de un familiar/amigo', Icons.contact_phone_outlined, context, isUrgent: true),
+                          decoration: _buildInputDecoration(
+                            'Número de un familiar/amigo',
+                            Icons.contact_phone_outlined,
+                            context,
+                            isUrgent: true,
+                          ),
                           validator: (v) => v!.isEmpty ? 'Obligatorio' : null,
                         ),
                         const SizedBox(height: 40),
-      
+
                         // btn registrar
                         SizedBox(
                           width: double.infinity,
@@ -336,35 +414,60 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            onPressed: state is AuthLoading 
-                              ? null 
-                              : () {
-                                if (_formKey.currentState!.validate()) {
-      
-                                  final newUserModel = UserModel(
-                                    userId: '',
-                                    email: _emailController.text.trim().toLowerCase(),
-                                    firstName: _firstNameController.text.trim(),
-                                    lastName: _lastNameController.text.trim(),
-                                    documentId: _documentController.text.trim(),
-                                    phoneNumber: _phoneController.text.trim(),
-                                    address: _addressController.text.trim(),
-                                    birthDate: _selectedBirthDate!,
-                                    emergencyContact: _emergencyController.text.trim(),
-                                    accessExceptions: [],
-                                  );
-      
-                                  context.read<AuthCubit>().signUp(
-                                        email: _emailController.text.trim().toLowerCase(),
-                                        documentId: _documentController.text.trim(),
-                                        accessKey: _accessKeyController.text.trim(),
+                            onPressed: state is AuthLoading
+                                ? null
+                                : () {
+                                    if (_formKey.currentState!.validate()) {
+                                      final newUserModel = UserModel(
+                                        userId: '',
+                                        email: _emailController.text
+                                            .trim()
+                                            .toLowerCase(),
+                                        firstName: _firstNameController.text
+                                            .trim(),
+                                        lastName: _lastNameController.text
+                                            .trim(),
+                                        documentId: _documentController.text
+                                            .trim(),
+                                        phoneNumber: _phoneController.text
+                                            .trim(),
+                                        address: _addressController.text.trim(),
+                                        birthDate: _selectedBirthDate!,
+                                        emergencyContact: _emergencyController
+                                            .text
+                                            .trim(),
+                                        accessExceptions: [],
+                                      );
+
+                                      context.read<AuthCubit>().signUp(
+                                        email: _emailController.text
+                                            .trim()
+                                            .toLowerCase(),
+                                        documentId: _documentController.text
+                                            .trim(),
+                                        accessKey: _accessKeyController.text
+                                            .trim(),
                                         userModel: newUserModel,
                                       );
-                                }
-                              },
+                                    }
+                                  },
                             child: state is AuthLoading
-                                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                : const Text('CREAR CUENTA', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text(
+                                    'CREAR CUENTA',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1,
+                                    ),
+                                  ),
                           ),
                         ),
                         const SizedBox(height: 30),
@@ -380,7 +483,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _buildLabel(String text, BuildContext context, {bool isUrgent = false}) {
+  Widget _buildLabel(
+    String text,
+    BuildContext context, {
+    bool isUrgent = false,
+  }) {
     final theme = Theme.of(context);
     final textColor = theme.colorScheme.onSurface.withValues(alpha: 0.7);
 
@@ -398,14 +505,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  InputDecoration _buildInputDecoration(String hint, IconData icon, BuildContext context, {bool isUrgent = false}) {
+  InputDecoration _buildInputDecoration(
+    String hint,
+    IconData icon,
+    BuildContext context, {
+    bool isUrgent = false,
+  }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     final primaryColor = theme.colorScheme.primary;
-    final iconColor = isUrgent ? Colors.red : primaryColor; 
-    
-    final fillColor = theme.inputDecorationTheme.fillColor ?? (isDark ? const Color(0xFF1E1E1E) : Colors.grey[200]);
+    final iconColor = isUrgent ? Colors.red : primaryColor;
+
+    final fillColor =
+        theme.inputDecorationTheme.fillColor ??
+        (isDark ? const Color(0xFF1E1E1E) : Colors.grey[200]);
 
     return InputDecoration(
       filled: true,
@@ -428,7 +542,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.red), 
+        borderSide: const BorderSide(color: Colors.red),
       ),
     );
   }

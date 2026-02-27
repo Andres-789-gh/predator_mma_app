@@ -26,7 +26,7 @@ class _ApprovePlanDialogState extends State<ApprovePlanDialog> {
   late DateTime _startDate;
   late DateTime _endDate;
   late double _basePrice;
-  
+
   // estado para metodo de pago
   String _selectedPaymentMethod = 'Efectivo';
   final List<String> _paymentMethods = [
@@ -41,7 +41,7 @@ class _ApprovePlanDialogState extends State<ApprovePlanDialog> {
     super.initState();
     final payload = widget.notification.payload;
     _basePrice = (payload['plan_price'] as num).toDouble();
-    
+
     final currencyFormat = NumberFormat('#,###', 'es_CO');
     _priceCtrl = TextEditingController(text: currencyFormat.format(_basePrice));
     _noteCtrl = TextEditingController();
@@ -77,9 +77,12 @@ class _ApprovePlanDialogState extends State<ApprovePlanDialog> {
           children: [
             _buildInfoRow("Cliente:", widget.notification.fromUserName),
             const SizedBox(height: 5),
-            _buildInfoRow("Plan:", widget.notification.payload['plan_name'] ?? 'N/A'),
+            _buildInfoRow(
+              "Plan:",
+              widget.notification.payload['plan_name'] ?? 'N/A',
+            ),
             const Divider(height: 20),
-            
+
             const Text(
               "Detalles de la Venta",
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
@@ -88,15 +91,21 @@ class _ApprovePlanDialogState extends State<ApprovePlanDialog> {
 
             // metodo de pago (obligatorio para reportes)
             DropdownButtonFormField<String>(
-              value: _selectedPaymentMethod,
+              initialValue: _selectedPaymentMethod,
               decoration: const InputDecoration(
                 labelText: "Método de Pago",
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.payment, size: 20),
-                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 10,
+                ),
               ),
               items: _paymentMethods.map((m) {
-                return DropdownMenuItem(value: m, child: Text(m, style: const TextStyle(fontSize: 14)));
+                return DropdownMenuItem(
+                  value: m,
+                  child: Text(m, style: const TextStyle(fontSize: 14)),
+                );
               }).toList(),
               onChanged: (val) {
                 if (val != null) setState(() => _selectedPaymentMethod = val);
@@ -161,10 +170,7 @@ class _ApprovePlanDialogState extends State<ApprovePlanDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text("Cancelar"),
         ),
-        FilledButton(
-          onPressed: _submit,
-          child: const Text("Aprobar"),
-        ),
+        FilledButton(onPressed: _submit, child: const Text("Aprobar")),
       ],
     );
   }
@@ -199,7 +205,10 @@ class _ApprovePlanDialogState extends State<ApprovePlanDialog> {
         decoration: InputDecoration(
           labelText: label,
           border: const OutlineInputBorder(),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 5,
+          ),
         ),
         child: Text(
           DateFormat('dd/MM/yyyy').format(date),
@@ -214,7 +223,13 @@ class _ApprovePlanDialogState extends State<ApprovePlanDialog> {
     final finalPrice = double.tryParse(rawPrice) ?? 0.0;
 
     // enviamos todos los datos incluido el metodo de pago
-    widget.onApprove(finalPrice, _startDate, _endDate, _selectedPaymentMethod, _noteCtrl.text);
+    widget.onApprove(
+      finalPrice,
+      _startDate,
+      _endDate,
+      _selectedPaymentMethod,
+      _noteCtrl.text,
+    );
     Navigator.pop(context);
   }
 }
