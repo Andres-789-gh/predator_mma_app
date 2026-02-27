@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/enums/inventory_sort_type.dart';
 import '../../domain/usecases/get_inventory_usecase.dart';
@@ -6,11 +7,11 @@ import 'inventory_state.dart';
 
 class InventoryCubit extends Cubit<InventoryState> {
   final GetInventoryUseCase _getInventoryUseCase;
-  Timer? _debounceTimer; // timer pa retrasar busqueda
+  Timer? _debounceTimer;
 
   InventoryCubit(this._getInventoryUseCase) : super(const InventoryState());
 
-  // carga inicial productos
+  // obtiene carga inicial
   Future<void> loadInitialData() async {
     if (isClosed) return;
 
@@ -36,8 +37,7 @@ class InventoryCubit extends Cubit<InventoryState> {
         state.copyWith(
           status: InventoryStatus.success,
           products: newProducts,
-          hasReachedMax:
-              newProducts.length < 15, // si trae menos de 15 es el final
+          hasReachedMax: newProducts.length < 15,
         ),
       );
     } catch (e) {
@@ -51,12 +51,13 @@ class InventoryCubit extends Cubit<InventoryState> {
     }
   }
 
-  // carga siguiente pagina de productos
+  // obtiene siguiente pagina
   Future<void> loadNextPage() async {
     if (state.hasReachedMax ||
         state.status == InventoryStatus.loading ||
-        isClosed)
+        isClosed) {
       return;
+    }
 
     try {
       final lastProduct = state.products.isNotEmpty
@@ -78,10 +79,12 @@ class InventoryCubit extends Cubit<InventoryState> {
           hasReachedMax: nextProducts.length < 15,
         ),
       );
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('Error en paginacion: $e');
+    }
   }
 
-  // cambia criterio de ordenamiento y recarga
+  // actualiza ordenamiento
   void changeSort(InventorySortType newSort) {
     if (state.currentSort == newSort) return;
 
@@ -89,7 +92,7 @@ class InventoryCubit extends Cubit<InventoryState> {
     loadInitialData();
   }
 
-  // maneja busqueda con debounce
+  // controla busqueda en tiempo real
   void onSearchChanged(String query) {
     if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
 

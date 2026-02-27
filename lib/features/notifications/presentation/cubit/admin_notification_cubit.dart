@@ -6,7 +6,6 @@ import '../../domain/models/notification_model.dart';
 import '../../data/repositories/notification_repository.dart';
 import '../../domain/usecases/resolve_plan_request_usecase.dart';
 
-// Estados
 abstract class AdminNotificationState extends Equatable {
   const AdminNotificationState();
   @override
@@ -36,7 +35,6 @@ class AdminNotificationError extends AdminNotificationState {
   List<Object?> get props => [message];
 }
 
-// Cubit
 class AdminNotificationCubit extends Cubit<AdminNotificationState> {
   final NotificationRepository _notificationRepository;
   final ResolvePlanRequestUseCase _resolveUseCase;
@@ -51,28 +49,31 @@ class AdminNotificationCubit extends Cubit<AdminNotificationState> {
     _subscribeToNotifications();
   }
 
+  // escucha flujo bd
   void _subscribeToNotifications() {
     emit(AdminNotificationLoading());
     _subscription = _notificationRepository
         .getNotificationsStream('admin')
         .listen(
           (notifications) {
+            if (isClosed) return;
             emit(AdminNotificationLoaded(notifications));
           },
           onError: (e) {
-            emit(AdminNotificationError("Error cargando notificaciones: $e"));
+            if (isClosed) return;
+            emit(AdminNotificationError("error cargando notificaciones: $e"));
           },
         );
   }
 
-  // admin abre la bandeja
+  // registra lectura visual
   Future<void> markAsRead(String notificationId) async {
     try {
       await _notificationRepository.markAsRead(notificationId);
     } catch (_) {}
   }
 
-  // Aprobar
+  // aprueba solicitud
   Future<void> approveRequest({
     required NotificationModel notification,
     required double finalPrice,
@@ -91,11 +92,13 @@ class AdminNotificationCubit extends Cubit<AdminNotificationState> {
         adminNote: note,
       );
     } catch (e) {
+      if (isClosed) return;
       emit(AdminNotificationError(e.toString()));
       _subscribeToNotifications();
     }
   }
 
+  // rechaza solicitud
   Future<void> rejectRequest(
     NotificationModel notification,
     String reason,
@@ -105,18 +108,20 @@ class AdminNotificationCubit extends Cubit<AdminNotificationState> {
         notification: notification,
         reason: reason,
       );
-
+      if (isClosed) return;
       _subscribeToNotifications();
     } catch (e) {
+      if (isClosed) return;
       emit(AdminNotificationError("error al rechazar: $e"));
     }
   }
 
-  // eliminar
+  // archiva registro
   Future<void> archiveNotification(String notificationId) async {
     try {
       await _resolveUseCase.executeArchive(notificationId);
     } catch (e) {
+      if (isClosed) return;
       emit(AdminNotificationError("error al borrar: $e"));
     }
   }

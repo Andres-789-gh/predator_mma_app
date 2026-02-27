@@ -9,6 +9,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   ProductFormCubit(this._manageProductUseCase)
     : super(const ProductFormState());
 
+  // guardado
   Future<void> saveProduct(ProductEntity product) async {
     if (isClosed) return;
     emit(const ProductFormState(status: ProductFormStatus.loading));
@@ -18,6 +19,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       if (isClosed) return;
       emit(const ProductFormState(status: ProductFormStatus.success));
     } on ProductInactiveException catch (e) {
+      if (isClosed) return;
       emit(
         ProductFormState(
           status: ProductFormStatus.askRevive,
@@ -29,8 +31,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       emit(
         ProductFormState(
           status: ProductFormStatus.failure,
-          errorMessage: e
-              .toString(),
+          errorMessage: e.toString(),
         ),
       );
     }
@@ -42,6 +43,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     await saveProduct(revivedProduct);
   }
 
+  // borrado
   Future<void> deleteProduct(String productId) async {
     if (isClosed) return;
     emit(const ProductFormState(status: ProductFormStatus.loading));

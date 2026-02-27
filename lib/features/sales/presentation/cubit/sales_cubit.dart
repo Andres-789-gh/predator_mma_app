@@ -12,17 +12,19 @@ class SalesCubit extends Cubit<SalesState> {
   SalesCubit(this._registerSaleUseCase, this._authRepository)
     : super(const SalesState());
 
+  // obtiene listado de clientes
   Future<void> loadUsers() async {
     if (isClosed) return;
     emit(state.copyWith(status: SalesStatus.loadingUsers));
 
     try {
       final allUsers = await _authRepository.getAllUsers();
+      if (isClosed) return;
+
       final clientsOnly = allUsers
           .where((u) => u.role != UserRole.admin)
           .toList();
 
-      if (isClosed) return;
       emit(state.copyWith(status: SalesStatus.ready, users: clientsOnly));
     } catch (e) {
       if (isClosed) return;
@@ -35,6 +37,7 @@ class SalesCubit extends Cubit<SalesState> {
     }
   }
 
+  // registra venta en sistema
   Future<void> submitSale(SaleEntity sale) async {
     if (isClosed) return;
     emit(state.copyWith(status: SalesStatus.processing));

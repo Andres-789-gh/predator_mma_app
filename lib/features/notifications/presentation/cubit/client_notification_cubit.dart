@@ -44,24 +44,34 @@ class ClientNotificationCubit extends Cubit<ClientNotificationState> {
     _subscribe();
   }
 
+  // escucha flujo de base de datos
   void _subscribe() {
     emit(ClientNotificationLoading());
     _subscription = _repository
         .getNotificationsStream('client', userId: _userId)
-        .listen((notifications) {
-          final visibleNotifications = notifications
-              .where((n) => !n.hiddenFor.contains(_userId))
-              .toList();
-          emit(ClientNotificationLoaded(visibleNotifications));
-        }, onError: (e) => emit(ClientNotificationError(e.toString())));
+        .listen(
+          (notifications) {
+            if (isClosed) return;
+            final visibleNotifications = notifications
+                .where((n) => !n.hiddenFor.contains(_userId))
+                .toList();
+            emit(ClientNotificationLoaded(visibleNotifications));
+          },
+          onError: (e) {
+            if (isClosed) return;
+            emit(ClientNotificationError(e.toString()));
+          },
+        );
   }
 
+  // registra lectura visual
   Future<void> markAsRead(String notificationId) async {
     try {
       await _repository.markAsRead(notificationId);
     } catch (_) {}
   }
 
+  // registra lectura total
   Future<void> markAllAsRead(List<NotificationModel> notifications) async {
     final unreadIds = notifications
         .where((n) => !n.isRead)
@@ -75,6 +85,7 @@ class ClientNotificationCubit extends Cubit<ClientNotificationState> {
     } catch (_) {}
   }
 
+  // oculta registro
   Future<void> deleteNotification(String notificationId) async {
     try {
       await _repository.hideNotification(notificationId, _userId);

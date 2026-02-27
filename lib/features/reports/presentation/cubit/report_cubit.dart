@@ -2,7 +2,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../domain/usecases/generate_excel_report_usecase.dart';
 
-// estados
 abstract class ReportState extends Equatable {
   @override
   List<Object?> get props => [];
@@ -26,6 +25,7 @@ class ReportCubit extends Cubit<ReportState> {
 
   ReportCubit(this._generateExcelUseCase) : super(ReportInitial());
 
+  // genera archivo excel
   Future<void> generateReport(DateTime start, DateTime end) async {
     if (end.difference(start).inDays > 90) {
       emit(
@@ -37,8 +37,10 @@ class ReportCubit extends Cubit<ReportState> {
     try {
       emit(ReportLoading());
       await _generateExcelUseCase.execute(startDate: start, endDate: end);
+      if (isClosed) return;
       emit(ReportSuccess());
     } catch (e) {
+      if (isClosed) return;
       emit(ReportError(e.toString().replaceAll('Exception: ', '')));
     }
   }

@@ -13,7 +13,7 @@ class ScheduleCubit extends Cubit<ScheduleState> {
     : _repository = repository,
       super(ScheduleInitial());
 
-  // helper privado
+  // cruza clases con estado
   Future<List<ScheduleItem>> _mapClassesToItems(
     List<ClassModel> classes,
     UserModel user,
@@ -26,7 +26,7 @@ class ScheduleCubit extends Cubit<ScheduleState> {
     return Future.wait(futures);
   }
 
-  // cargar horario
+  // inicializa listado
   Future<void> loadSchedule(DateTime from, DateTime to, UserModel user) async {
     try {
       if (isClosed) return;
@@ -45,7 +45,7 @@ class ScheduleCubit extends Cubit<ScheduleState> {
     }
   }
 
-  // refrescar horario
+  // actualiza vista en silencio
   Future<void> refreshSchedule(
     DateTime from,
     DateTime to,
@@ -74,7 +74,7 @@ class ScheduleCubit extends Cubit<ScheduleState> {
     }
   }
 
-  // reservar clase
+  // procesa confirmacion de asitencia
   Future<void> reserveClass({
     required String classId,
     required UserModel user,
@@ -98,18 +98,15 @@ class ScheduleCubit extends Cubit<ScheduleState> {
         userId: user.userId,
         planId: planId,
       );
-
       if (isClosed) return;
 
       final updatedClasses = await _repository.getClasses(
         fromDate: currentFromDate,
         toDate: currentToDate,
       );
-
       if (isClosed) return;
 
       final updatedItems = await _mapClassesToItems(updatedClasses, user);
-
       if (isClosed) return;
 
       emit(
@@ -142,7 +139,7 @@ class ScheduleCubit extends Cubit<ScheduleState> {
     }
   }
 
-  // cancelar clase
+  // procesa retiro de clase
   Future<void> cancelClass({
     required String classId,
     required UserModel user,
@@ -164,18 +161,15 @@ class ScheduleCubit extends Cubit<ScheduleState> {
         classId: classId,
         userId: user.userId,
       );
-
       if (isClosed) return;
 
       final updatedClasses = await _repository.getClasses(
         fromDate: currentFromDate,
         toDate: currentToDate,
       );
-
       if (isClosed) return;
 
       final updatedItems = await _mapClassesToItems(updatedClasses, user);
-
       if (isClosed) return;
 
       emit(

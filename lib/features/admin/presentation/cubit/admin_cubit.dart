@@ -114,6 +114,7 @@ class AdminCubit extends Cubit<AdminState> {
       emit(AdminLoading());
 
       await _authRepository.updateUser(userToUpdate);
+      if (isClosed) return;
 
       for (final pendingPlan in pendingPlans) {
         final note = pendingPlan.note != null
@@ -125,6 +126,7 @@ class AdminCubit extends Cubit<AdminState> {
           paymentMethod: pendingPlan.paymentMethod,
           note: note,
         );
+        if (isClosed) return;
       }
 
       for (final pendingTicket in pendingTickets) {
@@ -139,9 +141,9 @@ class AdminCubit extends Cubit<AdminState> {
           note: pendingTicket.note,
           validUntil: pendingTicket.validUntil,
         );
+        if (isClosed) return;
       }
 
-      if (isClosed) return;
       emit(const AdminOperationSuccess("Cambios guardados exitosamente"));
       await loadUsersManagement();
     } catch (e) {
@@ -203,10 +205,9 @@ class AdminCubit extends Cubit<AdminState> {
 
           if (state is AdminConflictDetected) return;
           await _scheduleRepository.saveSchedulePattern(atomicPattern);
+          if (isClosed) return;
         }
       }
-
-      if (isClosed) return;
 
       emit(const AdminOperationSuccess("Horario guardado correctamente."));
       await loadFormData(silent: true);
@@ -240,6 +241,7 @@ class AdminCubit extends Cubit<AdminState> {
         fromDate: nextMonthDate,
         toDate: nextMonthDate.add(const Duration(days: 7)),
       );
+      if (isClosed) return;
 
       DateTime? targetStartDate;
 
@@ -424,6 +426,7 @@ class AdminCubit extends Cubit<AdminState> {
                   classModel: oldClass,
                   mode: ClassEditMode.single,
                 );
+                if (isClosed) return;
               }
 
               if (migratedAttendees.isNotEmpty || migratedWaitlist.isNotEmpty) {
@@ -550,6 +553,7 @@ class AdminCubit extends Cubit<AdminState> {
         } catch (_) {}
       }
 
+      if (isClosed) return;
       await _scheduleRepository.createScheduleClass(newClass);
 
       if (isClosed) return;
@@ -702,7 +706,7 @@ class AdminCubit extends Cubit<AdminState> {
     }
   }
 
-  // GESTIÓN DE USUARIOS:
+  // gestion users:
   // Cargar lista de usuarios y planes disponibles
   Future<void> loadUsersManagement() async {
     try {
@@ -806,6 +810,7 @@ class AdminCubit extends Cubit<AdminState> {
         if (hasChanges) {
           final updatedUser = user.copyWith(currentPlans: updatedPlans);
           await _authRepository.updateUser(updatedUser);
+          if (isClosed) return;
           updatedCount++;
         }
       }
@@ -860,6 +865,7 @@ class AdminCubit extends Cubit<AdminState> {
         if (hasChanges) {
           final updatedUser = user.copyWith(currentPlans: updatedPlans);
           await _authRepository.updateUser(updatedUser);
+          if (isClosed) return;
         }
       }
 
@@ -892,9 +898,11 @@ class AdminCubit extends Cubit<AdminState> {
         note: finalNote,
       );
 
+      if (isClosed) return;
       emit(const AdminOperationSuccess("Plan vendido correctamente"));
       await loadUsersManagement();
     } catch (e) {
+      if (isClosed) return;
       emit(AdminError(e.toString()));
       await loadUsersManagement();
     }
@@ -927,12 +935,14 @@ class AdminCubit extends Cubit<AdminState> {
         validUntil: validUntil,
       );
 
+      if (isClosed) return;
       emit(
         const AdminOperationSuccess("ingresos extra asignados correctamente"),
       );
 
       await loadUsersManagement();
     } catch (e) {
+      if (isClosed) return;
       emit(AdminError(e.toString()));
       await loadUsersManagement();
     }
