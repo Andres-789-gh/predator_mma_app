@@ -1,20 +1,51 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/constants/enums.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
+import '../../../notifications/data/repositories/notification_repository.dart';
+import '../../../notifications/presentation/cubit/client_notification_cubit.dart';
+import '../../../notifications/presentation/screens/client_notifications_screen.dart';
 import '../../data/schedule_repository.dart';
 import '../../domain/models/class_model.dart';
 
-class CoachScreen extends StatefulWidget {
+class CoachScreen extends StatelessWidget {
   const CoachScreen({super.key});
 
   @override
-  State<CoachScreen> createState() => _CoachScreenState();
+  Widget build(BuildContext context) {
+    final authState = context.read<AuthCubit>().state;
+
+    if (authState is! AuthAuthenticated) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator(color: Colors.red)),
+      );
+    }
+
+    if (authState.user.role == UserRole.admin) {
+      return const _CoachScreenContent();
+    }
+
+    return BlocProvider(
+      create: (context) => ClientNotificationCubit(
+        repository: NotificationRepositoryImpl(),
+        userId: authState.user.userId,
+      ),
+      child: const _CoachScreenContent(),
+    );
+  }
 }
 
-class _CoachScreenState extends State<CoachScreen> {
-  // lista de dias con sus clases
+class _CoachScreenContent extends StatefulWidget {
+  const _CoachScreenContent();
+
+  @override
+  State<_CoachScreenContent> createState() => _CoachScreenContentState();
+}
+
+class _CoachScreenContentState extends State<_CoachScreenContent> {
+  // agrupa dias con sus clases
   List<MapEntry<DateTime, List<ClassModel>>> _groupedClasses = [];
   bool _isLoading = false;
 
@@ -26,7 +57,7 @@ class _CoachScreenState extends State<CoachScreen> {
     });
   }
 
-  // agrupa clases futuras profesor
+  // consulta bd
   Future<void> _fetchAgenda() async {
     final authState = context.read<AuthCubit>().state;
     if (authState is! AuthAuthenticated) return;
@@ -40,18 +71,17 @@ class _CoachScreenState extends State<CoachScreen> {
       final startOfToday = DateTime(now.year, now.month, now.day);
       const int daysToFetch = 7;
       final endWindow = startOfToday.add(const Duration(days: daysToFetch));
+
       final allClasses = await context.read<ScheduleRepository>().getClasses(
         fromDate: startOfToday,
         toDate: endWindow,
       );
 
       if (mounted) {
-        // clases profe actual
         final myClasses = allClasses
             .where((c) => c.coachId == currentUserId)
             .toList();
 
-        // clases por dia exacto
         final Map<DateTime, List<ClassModel>> grouped = {};
         for (var c in myClasses) {
           final dateKey = DateTime(
@@ -101,6 +131,7 @@ class _CoachScreenState extends State<CoachScreen> {
         backgroundColor: bgColor,
         foregroundColor: isDark ? Colors.white : Colors.black,
         actions: [
+          _buildNotificationBell(context),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () => _showLogoutDialog(context),
@@ -130,7 +161,64 @@ class _CoachScreenState extends State<CoachScreen> {
     );
   }
 
-  // agenda sin eventos
+  // campana
+  Widget _buildNotificationBell(BuildContext context) {
+    final authState = context.read<AuthCubit>().state;
+    if (authState is! AuthAuthenticated) return const SizedBox.shrink();
+
+    if (authState.user.role == UserRole.admin) return const SizedBox.shrink();
+
+    return BlocBuilder<ClientNotificationCubit, ClientNotificationState>(
+      builder: (context, state) {
+        int unreadCount = 0;
+        if (state is ClientNotificationLoaded) {
+          unreadCount = state.unreadCount;
+        }
+
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.notifications_none),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => BlocProvider.value(
+                      value: context.read<ClientNotificationCubit>(),
+                      child: const ClientNotificationsScreen(),
+                    ),
+                  ),
+                );
+              },
+            ),
+            if (unreadCount > 0)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    unreadCount > 9 ? '9+' : unreadCount.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  // estado vacio
   Widget _buildEmptyState() {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -160,7 +248,7 @@ class _CoachScreenState extends State<CoachScreen> {
     );
   }
 
-  // confirmacion salida
+  // dialogo salida
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -185,7 +273,6 @@ class _CoachScreenState extends State<CoachScreen> {
   }
 }
 
-// tarjeta dia completo
 class _DayAgendaCard extends StatelessWidget {
   final DateTime date;
   final List<ClassModel> classes;
@@ -211,7 +298,6 @@ class _DayAgendaCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // fecha
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
@@ -241,7 +327,6 @@ class _DayAgendaCard extends StatelessWidget {
             ),
           ),
 
-          // lista interna clases del dia
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -288,7 +373,6 @@ class _DayAgendaCard extends StatelessWidget {
   }
 }
 
-// fila individual pa clase especifica
 class _ClassRow extends StatelessWidget {
   final ClassModel classModel;
 
@@ -315,7 +399,7 @@ class _ClassRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // tiempo
+          // bloque hora
           SizedBox(
             width: 75,
             child: Column(
@@ -356,7 +440,7 @@ class _ClassRow extends StatelessWidget {
 
           const SizedBox(width: 12),
 
-          // info principal
+          // info extra
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

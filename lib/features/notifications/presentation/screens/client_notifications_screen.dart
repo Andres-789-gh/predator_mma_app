@@ -250,6 +250,14 @@ class _ClientNotificationCard extends StatelessWidget {
         icon = Icons.info_outline;
         color = Colors.blue;
         break;
+      case NotificationType.planExpiring:
+        icon = Icons.access_time;
+        color = Colors.orange;
+        break;
+      case NotificationType.classClosed:
+        icon = Icons.event_available;
+        color = Colors.purple;
+        break;
     }
 
     return CircleAvatar(
@@ -259,10 +267,27 @@ class _ClientNotificationCard extends StatelessWidget {
   }
 
   String _getTitle(NotificationType type) {
-    return "Actualización";
+    switch (type) {
+      case NotificationType.planRequest:
+        return "Respuesta a Solicitud";
+      case NotificationType.paymentDue:
+        return "Recordatorio de Pago";
+      case NotificationType.planExpiring:
+        return "Plan por Vencer";
+      case NotificationType.classClosed:
+        return "Clase Cerrada";
+      case NotificationType.systemInfo:
+        return "Aviso del Sistema";
+    }
   }
 
   String _getMessage(NotificationModel n) {
+    if (n.type == NotificationType.planExpiring ||
+        n.type == NotificationType.classClosed ||
+        n.type == NotificationType.systemInfo) {
+      return n.body.isNotEmpty ? n.body : "Tienes una nueva notificación.";
+    }
+
     final status = n.status;
     final planName = n.payload['plan_name'] ?? 'Plan';
 

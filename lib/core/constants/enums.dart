@@ -55,7 +55,13 @@ extension ClassCategoryExtension on ClassCategory {
 }
 
 // tipos de notificaciones
-enum NotificationType { planRequest, paymentDue, systemInfo }
+enum NotificationType {
+  planRequest,
+  paymentDue,
+  systemInfo,
+  planExpiring,
+  classClosed,
+}
 
 // estado de notificaciones
 enum NotificationStatus { pending, approved, rejected, archived }

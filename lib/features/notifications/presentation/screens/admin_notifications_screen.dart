@@ -13,7 +13,7 @@ class AdminNotificationsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Centro de Solicitudes')),
+      appBar: AppBar(title: const Text('Notificaciones')),
       body: BlocBuilder<AdminNotificationCubit, AdminNotificationState>(
         builder: (context, state) {
           if (state is AdminNotificationLoading) {
@@ -28,7 +28,7 @@ class AdminNotificationsScreen extends StatelessWidget {
                 .toList();
 
             if (list.isEmpty) {
-              return const Center(child: Text('No hay notificaciones activas'));
+              return const Center(child: Text('No tienes notificaciones'));
             }
             return ListView.separated(
               padding: const EdgeInsets.all(16),
@@ -83,7 +83,7 @@ class _NotificationCard extends StatelessWidget {
                       color: isDark ? Colors.white : Colors.black,
                     ),
                   ),
-                  backgroundColor: theme.highlightColor,
+                  backgroundColor: _getChipColor(notification.type, theme),
                   padding: EdgeInsets.zero,
                   visualDensity: VisualDensity.compact,
                 ),
@@ -109,7 +109,9 @@ class _NotificationCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'De: ${notification.fromUserName}',
+              notification.title.isNotEmpty
+                  ? notification.title
+                  : 'De: ${notification.fromUserName}',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
@@ -120,7 +122,7 @@ class _NotificationCard extends StatelessWidget {
             _buildDetailText(context),
             const SizedBox(height: 12),
 
-            if (isPending)
+            if (isPending && notification.type == NotificationType.planRequest)
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -138,7 +140,7 @@ class _NotificationCard extends StatelessWidget {
                   ),
                 ],
               )
-            else
+            else if (notification.type == NotificationType.planRequest)
               Align(
                 alignment: Alignment.centerRight,
                 child: Text(
@@ -181,17 +183,38 @@ class _NotificationCard extends StatelessWidget {
         ],
       );
     }
-    return const Text('Sin detalles adicionales');
+
+    return Text(
+      notification.body.isNotEmpty
+          ? notification.body
+          : 'Sin detalles adicionales',
+      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+    );
   }
 
   String _getLabel(NotificationType type) {
     switch (type) {
       case NotificationType.planRequest:
-        return 'SOLICITUD DE PLAN';
+        return 'SOLICITUD';
       case NotificationType.paymentDue:
         return 'PAGO VENCIDO';
       case NotificationType.systemInfo:
         return 'SISTEMA';
+      case NotificationType.planExpiring:
+        return 'VENCIMIENTO';
+      case NotificationType.classClosed:
+        return 'CLASE CERRADA';
+    }
+  }
+
+  Color _getChipColor(NotificationType type, ThemeData theme) {
+    switch (type) {
+      case NotificationType.planExpiring:
+        return Colors.orange.withValues(alpha: 0.3);
+      case NotificationType.classClosed:
+        return Colors.green.withValues(alpha: 0.3);
+      default:
+        return theme.highlightColor;
     }
   }
 
@@ -204,7 +227,7 @@ class _NotificationCard extends StatelessWidget {
       case NotificationStatus.rejected:
         return 'RECHAZADO';
       case NotificationStatus.archived:
-        return 'ARCHIVADO/ELIMINADO';
+        return 'ELIMINADO';
     }
   }
 
@@ -219,7 +242,7 @@ class _NotificationCard extends StatelessWidget {
     }
   }
 
-  // ACCIONES
+  // aprobacion
   void _showApproveDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -239,6 +262,7 @@ class _NotificationCard extends StatelessWidget {
     );
   }
 
+  // rechazo
   void _showRejectDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -254,6 +278,7 @@ class _NotificationCard extends StatelessWidget {
     );
   }
 
+  // borrado
   void _confirmDelete(BuildContext context) {
     showDialog(
       context: context,
