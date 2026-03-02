@@ -33,7 +33,6 @@ class _AdminGeneratorTabState extends State<AdminGeneratorTab> {
 
   void _clearForms() {
     setState(() {
-      // Solo limpiamos si fue éxito total, no en error
       _selectedClassTypeId = null;
       _selectedInstructorId = null;
       _capacityController.clear();
@@ -65,7 +64,6 @@ class _AdminGeneratorTabState extends State<AdminGeneratorTab> {
                 backgroundColor: Colors.red,
               ),
             );
-            // NO llamamos a _clearForms() aquí
           }
           if (state is AdminConflictDetected) {
             _showConflictDialog(context, state);

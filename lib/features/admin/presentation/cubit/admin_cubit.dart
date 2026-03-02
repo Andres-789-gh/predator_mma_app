@@ -349,14 +349,16 @@ class AdminCubit extends Cubit<AdminState> {
     if (type == null || coach == null) return;
 
     final startDate = startDateOverride ?? DateTime.now();
+    DateTime current = DateTime(startDate.year, startDate.month, startDate.day);
+    
     final endDate = DateTime(
-      startDate.year,
-      startDate.month + months,
-      startDate.day,
+      current.year,
+      current.month + months,
+      current.day,
     );
 
     final existingClasses = await _scheduleRepository.getClasses(
-      fromDate: startDate,
+      fromDate: current,
       toDate: endDate,
     );
 
@@ -364,8 +366,6 @@ class AdminCubit extends Cubit<AdminState> {
 
     final List<ClassModel> classesToCreate = [];
     final List<ClassModel> allDbConflicts = [];
-
-    DateTime current = startDate;
 
     while (current.isBefore(endDate)) {
       if (pattern.weekDays.contains(current.weekday)) {
@@ -378,9 +378,9 @@ class AdminCubit extends Cubit<AdminState> {
             current.year,
             current.month,
             current.day,
-            current.hour,
-            current.minute,
-          ).add(Duration(hours: hour, minutes: minute));
+            hour,
+            minute,
+          );
 
           final endDateTime = startDateTime.add(Duration(minutes: duration));
 
@@ -706,7 +706,6 @@ class AdminCubit extends Cubit<AdminState> {
     }
   }
 
-  // gestion users:
   // Cargar lista de usuarios y planes disponibles
   Future<void> loadUsersManagement() async {
     try {
@@ -776,13 +775,10 @@ class AdminCubit extends Cubit<AdminState> {
         bool hasChanges = false;
         List<UserPlan> updatedPlans = [];
 
-        // itera cada plan y pausa si es activo
         for (var plan in user.currentPlans) {
           final now = DateTime.now();
 
-          // pausa si plan es activo
           if (plan.isActive(now)) {
-            // Proteccion duplicados
             final alreadyHasThisPause = plan.pauses.any(
               (p) =>
                   p.createdBy.startsWith(pauseTag) &&
