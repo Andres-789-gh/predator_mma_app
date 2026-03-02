@@ -69,4 +69,12 @@ firebase-service-account.json
 # SEGURIDAD FIREBASE - NUNCA SUBIR
 serviceAccountKey.json
 *.json
+
+# excepciones obligatorias
+!firebase.json
+!functions/package.json
+!functions/package-lock.json
+!functions/tsconfig.json
+!.firebaserc
+
 predator_seeder/

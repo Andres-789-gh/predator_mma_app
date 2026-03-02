@@ -1,1 +1,39 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"predator-figth-mma","appId":"1:831800848138:android:5c22ba94e97ac767a854f3","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"predator-figth-mma","configurations":{"android":"1:831800848138:android:5c22ba94e97ac767a854f3","ios":"1:831800848138:ios:ee8e9a2bd6e04518a854f3"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "predator-figth-mma",
+          "appId": "1:831800848138:android:5c22ba94e97ac767a854f3",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "predator-figth-mma",
+          "configurations": {
+            "android": "1:831800848138:android:5c22ba94e97ac767a854f3",
+            "ios": "1:831800848138:ios:ee8e9a2bd6e04518a854f3"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    }
+  ]
+}
