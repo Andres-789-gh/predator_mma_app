@@ -38,10 +38,10 @@ export const checkexpiringplans = onSchedule(
                         // valida si vence hoy, mañana, o en 3 dias
                         if (endDate >= startOfDay && endDate <= endOfDay) {
 
-                            // Evita mandar spam si ya se le aviso
+                            // evita mandar spam si ya se le aviso
                             if (plan.notified_expiration === true) continue;
 
-                            // Noti cliente
+                            // noti cliente
                             const notifRefClient = db.collection("notifications").doc();
                             batch.set(notifRefClient, {
                                 from_user_id: "system",
@@ -58,7 +58,7 @@ export const checkexpiringplans = onSchedule(
                                 hidden_for: [],
                             });
 
-                            // Formato a fecha
+                            // formato a fecha
                             const formatter = new Intl.DateTimeFormat('es-CO', {
                                 day: '2-digit',
                                 month: '2-digit',
@@ -67,7 +67,7 @@ export const checkexpiringplans = onSchedule(
                             });
                             const dateString = formatter.format(endDate);
 
-                            // Noti admins
+                            // noti admins
                             const notifRefAdmin = db.collection("notifications").doc();
                             batch.set(notifRefAdmin, {
                                 from_user_id: "system",
@@ -109,7 +109,7 @@ export const checkexpiringplans = onSchedule(
     }
 );
 
-// 2. envia reporte de reservas a profesores
+// envia reporte reservas a profes
 export const sendcoachreports = onSchedule(
     {
         schedule: "0 0,12 * * *",
@@ -118,18 +118,9 @@ export const sendcoachreports = onSchedule(
     async (event) => {
         const db = admin.firestore();
         const now = new Date();
-        const currentHour = now.getHours();
 
-        let windowStart: Date;
-        let windowEnd: Date;
-
-        if (currentHour < 12) {
-            windowStart = new Date(now.setHours(0, 0, 0, 0));
-            windowEnd = new Date(now.setHours(11, 59, 59, 999));
-        } else {
-            windowStart = new Date(now.setHours(12, 0, 0, 0));
-            windowEnd = new Date(now.setHours(23, 59, 59, 999));
-        }
+        const windowStart = new Date(now);
+        const windowEnd = new Date(now.getTime() + 12 * 60 * 60 * 1000);
 
         try {
             const classesSnapshot = await db
@@ -143,6 +134,8 @@ export const sendcoachreports = onSchedule(
 
             classesSnapshot.forEach((doc) => {
                 const classData = doc.data();
+
+                // ignora clases canceladas
                 if (classData.isCancelled === true) return;
 
                 const coachId = classData.coachId;
@@ -150,6 +143,7 @@ export const sendcoachreports = onSchedule(
                 const attendeesCount = (classData.attendees || []).length;
                 const startTimeDate = classData.startTime.toDate();
 
+                // formato a hora
                 const formatter = new Intl.DateTimeFormat('es-CO', {
                     hour: 'numeric',
                     minute: '2-digit',
@@ -157,16 +151,16 @@ export const sendcoachreports = onSchedule(
                     timeZone: 'America/Bogota'
                 });
                 const timeString = formatter.format(startTimeDate);
-
                 const notifRef = db.collection("notifications").doc();
 
+                // empaqueta alerta
                 batch.set(notifRef, {
                     from_user_id: "system",
-                    from_user_name: "Sistema",
+                    from_user_name: "sistema",
                     to_role: "coach",
                     to_user_id: coachId,
-                    title: "Reporte de Clase",
-                    body: `Tu clase de ${classType} a las ${timeString} tiene ${attendeesCount} reservas.`,
+                    title: "reporte de clase",
+                    body: `tu clase de ${classType} a las ${timeString} tiene ${attendeesCount} reservas.`,
                     type: "NotificationType.classReport",
                     status: "NotificationStatus.pending",
                     payload: { class_id: doc.id },
@@ -187,7 +181,7 @@ export const sendcoachreports = onSchedule(
     }
 );
 
-// 3. EL GATILLO: Convierte notificaciones locales en Notificaciones Push
+// getillo, convierte notis locales en notis push
 export const sendpushnotification = onDocumentCreated("notifications/{docId}", async (event) => {
     const snap = event.data;
     if (!snap) return;
@@ -200,34 +194,34 @@ export const sendpushnotification = onDocumentCreated("notifications/{docId}", a
     const tokens: string[] = [];
 
     try {
-        // Caso A: La notificacion es para un rol completo (Ej: "Todos los Admins")
+        // caso a: noti pa un rol completo
         if (notif.to_role === "admin" && (!notif.to_user_id || notif.to_user_id === "")) {
             const adminsSnap = await db.collection("users").where("role", "==", "admin").get();
             adminsSnap.forEach((doc) => {
                 const userData = doc.data();
-                if (userData.notificationToken) {
-                    tokens.push(userData.notificationToken);
+                if (userData.notification_token) {
+                    tokens.push(userData.notification_token);
                 }
             });
         }
-        // Caso B: La notificacion es para un usuario especifico (Coach o Cliente)
+        // caso b: noti pa un usuario especifico
         else if (notif.to_user_id) {
             const userDoc = await db.collection("users").doc(notif.to_user_id).get();
             if (userDoc.exists) {
                 const userData = userDoc.data();
-                if (userData?.notificationToken) {
-                    tokens.push(userData.notificationToken);
+                if (userData?.notification_token) {
+                    tokens.push(userData.notification_token);
                 }
             }
         }
 
-        // Si no hay telefonos registrados, abortamos en silencio
+        // aborta si no hay telefonos registrados
         if (tokens.length === 0) {
             console.log("No hay tokens válidos para enviar esta alerta.");
             return;
         }
 
-        // Empaquetamos y disparamos a los celulares
+        // empaqueta y dispara
         const message = {
             notification: { title, body },
             tokens: tokens,

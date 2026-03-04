@@ -772,6 +772,8 @@ class ScheduleRepository {
     final candidatePlans = user.currentPlans.where((plan) {
       if (plan.endDate.isBefore(now)) return false;
       if (plan.isPaused(now)) return false;
+      if (plan.scheduleRules.isEmpty) return true;
+
       return plan.scheduleRules.any(
         (rule) => rule.matchesClass(classModel.startTime, classModel.category),
       );
@@ -842,10 +844,15 @@ class ScheduleRepository {
     if (tryPlan.endDate.isBefore(now)) return null;
     if (tryPlan.isPaused(now)) return null;
 
-    final matchesRule = tryPlan.scheduleRules.any(
-      (rule) => rule.matchesClass(classModel.startTime, classModel.category),
-    );
+    final matchesRule =
+        tryPlan.scheduleRules.isEmpty ||
+        tryPlan.scheduleRules.any(
+          (rule) =>
+              rule.matchesClass(classModel.startTime, classModel.category),
+        );
+
     if (!matchesRule) return null;
+
     if (user.isLegacyUser ||
         tryPlan.consumptionType == PlanConsumptionType.unlimited) {
       return tryPlan;

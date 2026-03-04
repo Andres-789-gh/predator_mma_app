@@ -159,25 +159,41 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   // obtencion y guardado de token
+  // gestiona obtencion y guardado de token
   Future<void> _handleFcmToken(UserModel user) async {
     try {
+      debugPrint('--- inicia captura de token fcm ---');
       final messaging = FirebaseMessaging.instance;
-
-      // solicita permisos nativos del sistema
-      final settings = await messaging.requestPermission();
-
-      if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+      
+      // solicita permisos (solo hace pop-up en ios y android 13+)
+      final settings = await messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      
+      debugPrint('estado de permisos: ${settings.authorizationStatus}');
+      
+      if (settings.authorizationStatus == AuthorizationStatus.authorized || 
           settings.authorizationStatus == AuthorizationStatus.provisional) {
+        
+        debugPrint('permiso concedido, solicitando token a google...');
+        
         final token = await messaging.getToken();
-
-        // si existe un token nuevo y es diferente al actual en db, lo actualiza
+        debugPrint('token fcm obtenido: $token');
+        
         if (token != null && token != user.notificationToken) {
           final updatedUser = user.copyWith(notificationToken: token);
           await _authRepository.updateUser(updatedUser);
+          debugPrint('token guardado en base de datos con exito.');
+        } else {
+          debugPrint('token repetido o nulo. se ignora guardado.');
         }
+      } else {
+        debugPrint('usuario rechazo permisos de notificacion.');
       }
     } catch (e) {
-      debugPrint('Error gestionando FCM Token: $e');
+      debugPrint('error critico gestionando fcm token: $e');
     }
   }
 

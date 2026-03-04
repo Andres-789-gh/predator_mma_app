@@ -38,15 +38,77 @@ class ClassModel {
     if (endTime.isBefore(startTime)) {
       throw ArgumentError('Error: La clase termina antes de empezar.');
     }
-
     if (maxCapacity <= 0) {
       throw ArgumentError('Error: La capacidad debe ser mayor a 0.');
     }
   }
 
+  // reglas negocio
   bool get isFull => attendees.length >= maxCapacity;
-  int get availableSpots => maxCapacity - attendees.length;
+  int get availableSlots => maxCapacity - attendees.length;
+  bool get hasFinished => DateTime.now().isAfter(endTime);
+  bool get hasValidDuration => endTime.isAfter(startTime);
   bool get canBeModified => DateTime.now().isBefore(endTime);
+
+  bool isUserConfirmed(String userId) => attendees.contains(userId);
+  bool isUserOnWaitlist(String userId) => waitlist.contains(userId);
+
+  BookingStatus getUserBookingStatus(String userId) {
+    if (isUserConfirmed(userId)) return BookingStatus.confirmed;
+    if (isUserOnWaitlist(userId)) return BookingStatus.waitlist;
+    return BookingStatus.none;
+  }
+
+  bool get canReserveNow {
+    final now = DateTime.now();
+    if (isCancelled || now.isAfter(startTime)) return false;
+
+    final today = DateTime(now.year, now.month, now.day);
+    final classDate = DateTime(startTime.year, startTime.month, startTime.day);
+    final daysDifference = classDate.difference(today).inDays;
+
+    if (daysDifference > 1) return false;
+
+    final isSpecial =
+        classType.toLowerCase().contains('virtual') ||
+        classType.toLowerCase().contains('personalizada');
+
+    if (isSpecial && daysDifference == 0) return false;
+
+    final isMorningClass = startTime.hour < 12;
+    DateTime deadline;
+
+    if (isSpecial || isMorningClass) {
+      final dayBefore = startTime.subtract(const Duration(days: 1));
+      deadline = DateTime(
+        dayBefore.year,
+        dayBefore.month,
+        dayBefore.day,
+        23,
+        59,
+        59,
+      );
+    } else {
+      deadline = DateTime(
+        startTime.year,
+        startTime.month,
+        startTime.day,
+        12,
+        0,
+        0,
+      );
+    }
+
+    return now.isBefore(deadline);
+  }
+
+  bool get canCancelNow => DateTime.now().isBefore(startTime);
+
+  String? getPlanUsedByUser(String userId) {
+    if (attendeePlans.containsKey(userId)) return attendeePlans[userId];
+    if (waitlistPlans.containsKey(userId)) return waitlistPlans[userId];
+    return null;
+  }
 
   ClassModel copyWith({
     String? classId,
@@ -87,21 +149,5 @@ class ClassModel {
       attendeePlans: attendeePlans ?? this.attendeePlans,
       waitlistPlans: waitlistPlans ?? this.waitlistPlans,
     );
-  }
-
-  bool isUserConfirmed(String userId) => attendees.contains(userId);
-  bool isUserOnWaitlist(String userId) => waitlist.contains(userId);
-  int get availableSlots => maxCapacity - attendees.length;
-  bool get hasFinished => DateTime.now().isAfter(endTime);
-
-  bool get canReserveNow {
-    final now = DateTime.now();
-    return now.isBefore(startTime) && !isCancelled;
-  }
-
-  String? getPlanUsedByUser(String userId) {
-    if (attendeePlans.containsKey(userId)) return attendeePlans[userId];
-    if (waitlistPlans.containsKey(userId)) return waitlistPlans[userId];
-    return null;
   }
 }

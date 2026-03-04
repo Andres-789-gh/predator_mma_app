@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/enums.dart';
 import '../../domain/models/class_model.dart';
-import '../../domain/class_logic.dart';
 
 class ClassCard extends StatelessWidget {
   final ClassModel classModel;
