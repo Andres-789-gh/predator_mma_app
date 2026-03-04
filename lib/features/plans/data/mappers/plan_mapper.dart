@@ -41,29 +41,32 @@ class PlanMapper {
 
 class ScheduleRuleMapper {
   static ScheduleRule fromMap(Map<String, dynamic> map) {
+    final rawDays = map['allowed_days'] ?? map['days'] ?? [];
+    final rawCategories = map['allowed_categories'] ?? map['categories'] ?? [];
+
     return ScheduleRule(
-      allowedDays: List<int>.from(map['days'] ?? []),
+      allowedDays: List<int>.from(rawDays),
       startMinute: map['start_minute'] ?? 0,
       endMinute: map['end_minute'] ?? 1440,
-      allowedCategories:
-          (map['categories'] as List<dynamic>?)
-              ?.map(
-                (e) => ClassCategory.values.firstWhere(
-                  (c) => c.name == e,
-                  orElse: () => ClassCategory.combat,
-                ),
-              )
-              .toList() ??
-          [],
+      allowedCategories: (rawCategories as List<dynamic>).map((e) {
+        final cleanName = e.toString().contains('.')
+            ? e.toString().split('.').last
+            : e.toString();
+
+        return ClassCategory.values.firstWhere(
+          (c) => c.name == cleanName,
+          orElse: () => ClassCategory.combat,
+        );
+      }).toList(),
     );
   }
 
   static Map<String, dynamic> toMap(ScheduleRule rule) {
     return {
-      'days': rule.allowedDays,
+      'allowed_days': rule.allowedDays,
       'start_minute': rule.startMinute,
       'end_minute': rule.endMinute,
-      'categories': rule.allowedCategories.map((e) => e.name).toList(),
+      'allowed_categories': rule.allowedCategories.map((e) => e.name).toList(),
     };
   }
 }

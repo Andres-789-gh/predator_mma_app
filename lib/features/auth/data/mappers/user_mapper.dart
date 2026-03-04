@@ -8,6 +8,7 @@ import '../../../plans/data/mappers/plan_mapper.dart';
 class UserMapper {
   static UserModel fromMap(Map<String, dynamic> map, String docId) {
     final birthDate = _getDateSafe(map['personal_info']?['birth_date']);
+
     final rawExceptions = map['access_exceptions'];
     final safeExceptions = rawExceptions is List
         ? rawExceptions
@@ -27,12 +28,17 @@ class UserMapper {
     );
 
     List<UserPlan> parsedPlans = [];
-    if (map['current_plans'] != null && map['current_plans'] is List) {
-      parsedPlans = (map['current_plans'] as List)
-          .map((x) => UserPlanMapper.fromMap(x as Map<String, dynamic>))
+    final rawPlans = map['current_plans'];
+
+    if (rawPlans != null && rawPlans is List) {
+      parsedPlans = rawPlans
+          .whereType<Map<String, dynamic>>()
+          .map((x) => UserPlanMapper.fromMap(x))
           .toList();
     } else if (map['current_plan'] != null && map['current_plan'] is Map) {
-      parsedPlans = [UserPlanMapper.fromMap(map['current_plan'])];
+      parsedPlans = [
+        UserPlanMapper.fromMap(map['current_plan'] as Map<String, dynamic>),
+      ];
     }
 
     return UserModel(
@@ -40,9 +46,9 @@ class UserMapper {
       email: map['email'] ?? '',
       firstName: map['personal_info']?['first_name'] ?? '',
       lastName: map['personal_info']?['last_name'] ?? '',
-      documentId: map['personal_info']?['document_id'] ?? 'Sin Documento',
-      phoneNumber: map['personal_info']?['phone_number'] ?? 'Sin Teléfono',
-      address: map['personal_info']?['address'] ?? 'Sin Dirección',
+      documentId: map['personal_info']?['document_id'] ?? 'sin documento',
+      phoneNumber: map['personal_info']?['phone_number'] ?? 'sin teléfono',
+      address: map['personal_info']?['address'] ?? 'sin dirección',
       birthDate: birthDate,
       role: safeRole,
       isInstructor: map['is_instructor'] ?? false,
@@ -66,7 +72,6 @@ class UserMapper {
       'is_instructor': user.isInstructor,
       'is_legacy_user': user.isLegacyUser,
       'notification_token': user.notificationToken,
-
       'personal_info': {
         'first_name': user.firstName,
         'last_name': user.lastName,
@@ -75,7 +80,6 @@ class UserMapper {
         'address': user.address,
         'birth_date': Timestamp.fromDate(user.birthDate),
       },
-
       'legal': {
         'is_signed': user.isWaiverSigned,
         'signed_at': user.waiverSignedAt != null
@@ -83,13 +87,10 @@ class UserMapper {
             : null,
         'signature_url': user.waiverSignatureUrl,
       },
-
       'current_plans': user.currentPlans
           .map((x) => UserPlanMapper.toMap(x))
           .toList(),
-
       'emergency_contact': user.emergencyContact,
-
       'access_exceptions': user.accessExceptions
           .map((x) => AccessExceptionMapper.toMap(x))
           .toList(),
@@ -117,7 +118,8 @@ class UserPlanMapper {
       dailyLimit: map['daily_limit'] as int?,
       scheduleRules:
           (map['schedule_rules'] as List<dynamic>?)
-              ?.map((x) => ScheduleRuleMapper.fromMap(x))
+              ?.whereType<Map<String, dynamic>>()
+              .map((x) => ScheduleRuleMapper.fromMap(x))
               .toList() ??
           [],
       startDate: UserMapper._getDateSafe(map['start_date']),
@@ -125,7 +127,8 @@ class UserPlanMapper {
       remainingClasses: map['remaining_classes'] as int?,
       pauses:
           (map['pauses'] as List<dynamic>?)
-              ?.map((x) => PlanPauseMapper.fromMap(x))
+              ?.whereType<Map<String, dynamic>>()
+              .map((x) => PlanPauseMapper.fromMap(x))
               .toList() ??
           [],
       notifiedExpiration: map['notified_expiration'] ?? false,

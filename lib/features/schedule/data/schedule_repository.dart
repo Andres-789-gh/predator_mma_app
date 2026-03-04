@@ -72,22 +72,29 @@ class ScheduleRepository {
     UserModel user,
     ClassModel classModel,
   ) async {
+    // valida si el usuario ya posee cupo o esta en espera
     if (classModel.isUserConfirmed(user.userId) ||
         classModel.isUserOnWaitlist(user.userId)) {
       return ClassStatus.reserved;
     }
 
+    // controla limite de capacidad
     if (classModel.isFull) {
       return ClassStatus.full;
     }
 
-    // busca plan valido
+    // evalúa ventana de tiempo para reserva
+    if (!classModel.canReserveNow) {
+      return ClassStatus.blockedByPlan;
+    }
+
+    // busca plan que cumpla reglas de acceso
     final validPlan = await _findValidPlanForClass(user, classModel);
     if (validPlan != null) {
       return ClassStatus.available;
     }
 
-    // busca ticket valido
+    // verifica disponibilidad de tiquetes extras
     final hasValidTicket = user.accessExceptions.any(
       (exc) => _isValidException(exc, classModel, DateTime.now()),
     );
@@ -769,11 +776,12 @@ class ScheduleRepository {
 
     final now = DateTime.now();
 
+    // filtra planes vigentes y no pausados
     final candidatePlans = user.currentPlans.where((plan) {
       if (plan.endDate.isBefore(now)) return false;
-      if (plan.isPaused(now)) return false;
-      if (plan.scheduleRules.isEmpty) return true;
+      if (plan.pauses.isNotEmpty && plan.isPaused(now)) return false;
 
+      // exige coincidencia con al menos una regla de horario
       return plan.scheduleRules.any(
         (rule) => rule.matchesClass(classModel.startTime, classModel.category),
       );
@@ -782,11 +790,13 @@ class ScheduleRepository {
     if (candidatePlans.isEmpty) return null;
 
     for (final plan in candidatePlans) {
+      // otorga acceso para planes de consumo ilimitado
       if (user.isLegacyUser ||
           plan.consumptionType == PlanConsumptionType.unlimited) {
         return plan;
       }
 
+      // controla consumo para planes con limite diario
       if (plan.consumptionType == PlanConsumptionType.limitedDaily) {
         final startOfClassDay = DateTime(
           classModel.startTime.year,
@@ -821,6 +831,8 @@ class ScheduleRepository {
         if (classesConsumedWithThisPlan < limit) {
           return plan;
         }
+      } else {
+        return plan;
       }
     }
 
@@ -836,7 +848,7 @@ class ScheduleRepository {
     final tryPlan = user.currentPlans.firstWhere(
       (p) => p.planId == planId,
       orElse: () =>
-          throw Exception('El plan seleccionado no existe en tu perfil.'),
+          throw Exception('el plan seleccionado no existe en tu perfil.'),
     );
 
     final now = DateTime.now();
@@ -844,12 +856,10 @@ class ScheduleRepository {
     if (tryPlan.endDate.isBefore(now)) return null;
     if (tryPlan.isPaused(now)) return null;
 
-    final matchesRule =
-        tryPlan.scheduleRules.isEmpty ||
-        tryPlan.scheduleRules.any(
-          (rule) =>
-              rule.matchesClass(classModel.startTime, classModel.category),
-        );
+    // valida que el plan cumpla con las reglas de horario
+    final matchesRule = tryPlan.scheduleRules.any(
+      (rule) => rule.matchesClass(classModel.startTime, classModel.category),
+    );
 
     if (!matchesRule) return null;
 

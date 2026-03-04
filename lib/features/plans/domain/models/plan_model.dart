@@ -15,10 +15,23 @@ class ScheduleRule extends Equatable {
   });
 
   bool matchesClass(DateTime classDate, ClassCategory category) {
-    if (!allowedCategories.contains(category)) return false;
-    if (!allowedDays.contains(classDate.weekday)) return false;
+    // valida categoría si existen restricciones definidas
+    if (allowedCategories.isNotEmpty && !allowedCategories.contains(category)) {
+      return false;
+    }
+
+    // valida día si existen restricciones definidas
+    if (allowedDays.isNotEmpty && !allowedDays.contains(classDate.weekday)) {
+      return false;
+    }
+
+    // evalúa rango de horario permitido
     final classMinute = classDate.hour * 60 + classDate.minute;
-    if (classMinute < startMinute || classMinute > endMinute) return false;
+
+    if (classMinute < startMinute || classMinute > endMinute) {
+      return false;
+    }
+
     return true;
   }
 

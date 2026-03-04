@@ -159,38 +159,32 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   // obtencion y guardado de token
-  // gestiona obtencion y guardado de token
   Future<void> _handleFcmToken(UserModel user) async {
     try {
       debugPrint('--- inicia captura de token fcm ---');
       final messaging = FirebaseMessaging.instance;
-      
-      // solicita permisos (solo hace pop-up en ios y android 13+)
+
       final settings = await messaging.requestPermission(
         alert: true,
         badge: true,
         sound: true,
       );
-      
-      debugPrint('estado de permisos: ${settings.authorizationStatus}');
-      
-      if (settings.authorizationStatus == AuthorizationStatus.authorized || 
+
+      if (settings.authorizationStatus == AuthorizationStatus.authorized ||
           settings.authorizationStatus == AuthorizationStatus.provisional) {
-        
-        debugPrint('permiso concedido, solicitando token a google...');
-        
         final token = await messaging.getToken();
-        debugPrint('token fcm obtenido: $token');
-        
+
         if (token != null && token != user.notificationToken) {
-          final updatedUser = user.copyWith(notificationToken: token);
-          await _authRepository.updateUser(updatedUser);
-          debugPrint('token guardado en base de datos con exito.');
+          await _authRepository.updateNotificationToken(
+            userId: user.userId,
+            token: token,
+          );
+          debugPrint(
+            'token guardado en base de datos con exito (actualizacion parcial).',
+          );
         } else {
           debugPrint('token repetido o nulo. se ignora guardado.');
         }
-      } else {
-        debugPrint('usuario rechazo permisos de notificacion.');
       }
     } catch (e) {
       debugPrint('error critico gestionando fcm token: $e');
@@ -201,9 +195,10 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> _removeFcmToken(UserModel user) async {
     try {
       await FirebaseMessaging.instance.deleteToken();
-      // inyecta string vacio (copyWith ignora null)
-      final updatedUser = user.copyWith(notificationToken: "");
-      await _authRepository.updateUser(updatedUser);
+      await _authRepository.updateNotificationToken(
+        userId: user.userId,
+        token: "",
+      );
     } catch (e) {
       debugPrint('Error borrando FCM Token: $e');
     }

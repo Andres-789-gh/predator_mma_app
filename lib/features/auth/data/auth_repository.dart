@@ -34,7 +34,7 @@ class AuthRepository {
 
     if (userData == null) {
       throw Exception(
-        'El usuario existe en Auth pero no tiene datos en Firestore.',
+        'el usuario existe en auth pero no tiene datos en firestore.',
       );
     }
 
@@ -48,7 +48,7 @@ class AuthRepository {
     required UserModel userModel,
   }) async {
     const String genericError =
-        'El correo electrónico o el documento de identidad ya están registrados.';
+        'el correo electrónico o el documento de identidad ya están registrados.';
 
     try {
       final documentExists = await _checkDocumentExists(userModel.documentId);
@@ -150,7 +150,20 @@ class AuthRepository {
           .map((doc) => UserMapper.fromMap(doc.data(), doc.id))
           .toList();
     } catch (e) {
-      throw Exception('Error cargando usuarios: $e');
+      throw Exception('error cargando usuarios: $e');
+    }
+  }
+
+  Future<void> updateNotificationToken({
+    required String userId,
+    required String token,
+  }) async {
+    try {
+      await _firestore.collection('users').doc(userId).update({
+        'notification_token': token,
+      });
+    } catch (e) {
+      throw Exception('error al actualizar token push: $e');
     }
   }
 
@@ -169,6 +182,7 @@ class AuthRepository {
       final userRef = _firestore.collection('users').doc(user.userId);
 
       final userToSave = user.copyWith(currentPlans: validPlans);
+
       batch.update(userRef, UserMapper.toMap(userToSave));
 
       for (var plan in expiredPlans) {
@@ -180,7 +194,7 @@ class AuthRepository {
 
       await batch.commit();
     } catch (e) {
-      throw Exception('Error actualizando usuario: $e');
+      throw Exception('error actualizando usuario: $e');
     }
   }
 
@@ -216,7 +230,7 @@ class AuthRepository {
     return cleanedUser;
   }
 
-  // pausa global
+  // aplica pausa global
   Future<int> applyGlobalPause({
     required DateTime startDate,
     required DateTime endDate,
@@ -239,7 +253,7 @@ class AuthRepository {
               final newPause = PlanPause(
                 startDate: startDate,
                 endDate: endDate,
-                createdBy: 'Global: $adminName',
+                createdBy: 'global: $adminName',
               );
 
               final updatedPauses = List<PlanPause>.from(plan.pauses)
