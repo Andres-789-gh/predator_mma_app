@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../data/auth_repository.dart';
 import '../../domain/models/user_model.dart';
 import 'auth_state.dart';
@@ -18,7 +19,7 @@ class AuthCubit extends Cubit<AuthState> {
     return documentId;
   }
 
-  // verifica sesion activa
+  // verifica sesion activa y actualiza token push
   Future<void> checkAuthStatus({bool silent = false}) async {
     try {
       if (!silent) emit(const AuthLoading());
@@ -27,6 +28,7 @@ class AuthCubit extends Cubit<AuthState> {
       if (isClosed) return;
 
       if (user != null) {
+        _handleFcmToken(user);
         emit(AuthAuthenticated(user));
       } else {
         emit(const AuthUnauthenticated());
@@ -124,8 +126,13 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
-  // cierra sesion
+  // limpia token push y cierra sesion
   Future<void> signOut() async {
+    if (state is AuthAuthenticated) {
+      final currentUser = (state as AuthAuthenticated).user;
+      await _removeFcmToken(currentUser);
+    }
+
     await _authRepository.signOut();
     if (isClosed) return;
     emit(const AuthUnauthenticated());
@@ -148,6 +155,41 @@ class AuthCubit extends Cubit<AuthState> {
       }
     } catch (e) {
       debugPrint("Error refrescando usuario: $e");
+    }
+  }
+
+  // obtencion y guardado de token
+  Future<void> _handleFcmToken(UserModel user) async {
+    try {
+      final messaging = FirebaseMessaging.instance;
+
+      // solicita permisos nativos del sistema
+      final settings = await messaging.requestPermission();
+
+      if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional) {
+        final token = await messaging.getToken();
+
+        // si existe un token nuevo y es diferente al actual en db, lo actualiza
+        if (token != null && token != user.notificationToken) {
+          final updatedUser = user.copyWith(notificationToken: token);
+          await _authRepository.updateUser(updatedUser);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error gestionando FCM Token: $e');
+    }
+  }
+
+  // borra rastro de dispositivo en cierre de sesion
+  Future<void> _removeFcmToken(UserModel user) async {
+    try {
+      await FirebaseMessaging.instance.deleteToken();
+      // inyecta string vacio (copyWith ignora null)
+      final updatedUser = user.copyWith(notificationToken: "");
+      await _authRepository.updateUser(updatedUser);
+    } catch (e) {
+      debugPrint('Error borrando FCM Token: $e');
     }
   }
 }

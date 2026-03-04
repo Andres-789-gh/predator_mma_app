@@ -110,6 +110,7 @@ class UserPlan {
   final PlanConsumptionType consumptionType;
   final List<ScheduleRule> scheduleRules;
   final int? dailyLimit;
+  final bool notifiedExpiration;
 
   const UserPlan({
     required this.subscriptionId,
@@ -123,6 +124,7 @@ class UserPlan {
     this.remainingClasses,
     this.pauses = const [],
     this.dailyLimit,
+    this.notifiedExpiration = false,
   });
 
   DateTime get effectiveEndDate {
@@ -171,6 +173,7 @@ class UserPlan {
     int? remainingClasses,
     List<PlanPause>? pauses,
     int? dailyLimit,
+    bool? notifiedExpiration,
   }) {
     return UserPlan(
       subscriptionId: subscriptionId ?? this.subscriptionId,
@@ -184,6 +187,7 @@ class UserPlan {
       remainingClasses: remainingClasses ?? this.remainingClasses,
       pauses: pauses ?? this.pauses,
       dailyLimit: dailyLimit ?? this.dailyLimit,
+      notifiedExpiration: notifiedExpiration ?? this.notifiedExpiration,
     );
   }
 }

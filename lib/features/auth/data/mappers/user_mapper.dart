@@ -128,6 +128,7 @@ class UserPlanMapper {
               ?.map((x) => PlanPauseMapper.fromMap(x))
               .toList() ??
           [],
+      notifiedExpiration: map['notified_expiration'] ?? false,
     );
   }
 
@@ -146,6 +147,7 @@ class UserPlanMapper {
       'end_date': Timestamp.fromDate(plan.endDate),
       'remaining_classes': plan.remainingClasses,
       'pauses': plan.pauses.map((e) => PlanPauseMapper.toMap(e)).toList(),
+      'notified_expiration': plan.notifiedExpiration,
     };
   }
 }
