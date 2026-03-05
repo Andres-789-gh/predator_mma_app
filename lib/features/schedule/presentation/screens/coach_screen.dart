@@ -9,6 +9,7 @@ import '../../../notifications/presentation/cubit/client_notification_cubit.dart
 import '../../../notifications/presentation/screens/client_notifications_screen.dart';
 import '../../data/schedule_repository.dart';
 import '../../domain/models/class_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CoachScreen extends StatelessWidget {
   const CoachScreen({super.key});
@@ -389,112 +390,304 @@ class _ClassRow extends StatelessWidget {
     final startTime = timeFormat.format(classModel.startTime);
     final endTime = timeFormat.format(classModel.endTime);
     final attendeesCount = classModel.attendees.length;
+    final waitlistCount = classModel.waitlist.length;
 
     Color accentColor = const Color(0xFF4CAF50);
     if (isCancelled) accentColor = Colors.red;
     if (isExpired && !isCancelled) accentColor = Colors.grey;
 
-    return Opacity(
-      opacity: rowOpacity,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // bloque hora
-          SizedBox(
-            width: 75,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  startTime,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black87,
-                    decoration: isCancelled ? TextDecoration.lineThrough : null,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _showAttendeesSheet(context),
+      child: Opacity(
+        opacity: rowOpacity,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // bloque hora
+            SizedBox(
+              width: 75,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    startTime,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
+                      decoration: isCancelled
+                          ? TextDecoration.lineThrough
+                          : null,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  endTime,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey[600],
-                    decoration: isCancelled ? TextDecoration.lineThrough : null,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
-          Container(
-            height: 35,
-            width: 3,
-            decoration: BoxDecoration(
-              color: accentColor,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
-          // info extra
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  classModel.classType.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                    fontStyle: FontStyle.italic,
-                    color: isDark ? Colors.white : Colors.black87,
-                    decoration: isCancelled ? TextDecoration.lineThrough : null,
-                  ),
-                ),
-                const SizedBox(height: 4),
-
-                if (isCancelled)
-                  const Text(
-                    "CANCELADA",
+                  const SizedBox(height: 2),
+                  Text(
+                    endTime,
                     style: TextStyle(
                       fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.red,
+                      color: Colors.grey[600],
+                      decoration: isCancelled
+                          ? TextDecoration.lineThrough
+                          : null,
                     ),
-                  )
-                else if (isExpired)
-                  const Text(
-                    "FINALIZADA",
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(width: 12),
+
+            Container(
+              height: 35,
+              width: 3,
+              decoration: BoxDecoration(
+                color: accentColor,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+
+            const SizedBox(width: 12),
+
+            // informacion de clase y cupos
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    classModel.classType.toUpperCase(),
                     style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      fontStyle: FontStyle.italic,
+                      color: isDark ? Colors.white : Colors.black87,
+                      decoration: isCancelled
+                          ? TextDecoration.lineThrough
+                          : null,
                     ),
-                  )
-                else
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.people_alt_rounded,
-                        size: 14,
-                        color: Colors.blue[400],
+                  ),
+                  const SizedBox(height: 4),
+
+                  if (isCancelled)
+                    const Text(
+                      "CANCELADA",
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
                       ),
-                      const SizedBox(width: 4),
+                    )
+                  else if (isExpired)
+                    const Text(
+                      "FINALIZADA",
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
+                    )
+                  else
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.people_alt_rounded,
+                          size: 14,
+                          color: Colors.blue[400],
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$attendeesCount / ${classModel.maxCapacity} Reservas${waitlistCount > 0 ? ' • $waitlistCount Espera' : ''}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.grey[300] : Colors.grey[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // panel asistentes
+  void _showAttendeesSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _AttendeesBottomSheet(classModel: classModel),
+    );
+  }
+}
+
+class _AttendeesBottomSheet extends StatelessWidget {
+  final ClassModel classModel;
+
+  const _AttendeesBottomSheet({required this.classModel});
+
+  // consulta nombres reales en base de datos
+  Future<List<Map<String, String>>> _fetchUserNames(
+    List<String> userIds,
+  ) async {
+    if (userIds.isEmpty) return [];
+    final List<Map<String, String>> users = [];
+    final db = FirebaseFirestore.instance;
+
+    for (String id in userIds) {
+      try {
+        final doc = await db.collection('users').doc(id).get();
+        if (doc.exists && doc.data() != null) {
+          final data = doc.data()!;
+          final info = data['personal_info'] as Map<String, dynamic>?;
+          final name = info?['first_name'] ?? 'Usuario';
+          final last = info?['last_name'] ?? 'Desconocido';
+          users.add({'id': id, 'name': '$name $last'.trim()});
+        } else {
+          users.add({'id': id, 'name': 'Usuario no encontrado'});
+        }
+      } catch (e) {
+        users.add({'id': id, 'name': 'Error de lectura'});
+      }
+    }
+    return users;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.6,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // indicador de arrastre
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(top: 10, bottom: 20),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Text(
+              'Listado de Asistentes',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          Expanded(
+            child: FutureBuilder<List<List<Map<String, String>>>>(
+              future: Future.wait([
+                _fetchUserNames(classModel.attendees),
+                _fetchUserNames(classModel.waitlist),
+              ]),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: Colors.red),
+                  );
+                }
+
+                if (snapshot.hasError) {
+                  return const Center(child: Text('Error cargando asistentes'));
+                }
+
+                final attendees = snapshot.data![0];
+                final waitlist = snapshot.data![1];
+
+                if (attendees.isEmpty && waitlist.isEmpty) {
+                  return const Center(
+                    child: Text('No hay personas inscritas.'),
+                  );
+                }
+
+                return ListView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  children: [
+                    if (attendees.isNotEmpty) ...[
                       Text(
-                        '$attendeesCount / ${classModel.maxCapacity} Reservas',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.grey[300] : Colors.grey[700],
+                        'Confirmados (${attendees.length})',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
                         ),
                       ),
+                      const SizedBox(height: 10),
+                      ...attendees.map(
+                        (user) => _buildUserTile(user['name']!, isDark),
+                      ),
+                      const SizedBox(height: 20),
                     ],
-                  ),
-              ],
+
+                    if (waitlist.isNotEmpty) ...[
+                      Text(
+                        'En Lista de Espera (${waitlist.length})',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      ...waitlist.map(
+                        (user) => _buildUserTile(user['name']!, isDark),
+                      ),
+                    ],
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // fila usuario
+  Widget _buildUserTile(String name, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.black12 : Colors.grey[100],
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.person, size: 20, color: Colors.grey[500]),
+          const SizedBox(width: 10),
+          Text(
+            name,
+            style: TextStyle(
+              fontSize: 14,
+              color: isDark ? Colors.grey[300] : Colors.black87,
             ),
           ),
         ],
