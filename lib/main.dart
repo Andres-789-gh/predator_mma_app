@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:bot_toast/bot_toast.dart';
 import 'injection_container.dart' as di;
 import 'features/auth/presentation/cubit/auth_cubit.dart';
 import 'features/auth/presentation/cubit/auth_state.dart';
@@ -16,6 +18,83 @@ void main() async {
   await Firebase.initializeApp();
   await di.init();
   await initializeDateFormatting('es', null);
+
+  // intercepta mensaje entrante de manera segura
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    if (message.notification != null) {
+      final title = message.notification!.title ?? 'Nueva alerta';
+      final body = message.notification!.body ?? '';
+
+      // despliega recuadro superior sin bloquear interfaz
+      BotToast.showCustomNotification(
+        toastBuilder: (cancelFunc) {
+          return SafeArea(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2C3E50), 
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.notifications_active_outlined, 
+                    color: Colors.white, 
+                    size: 26,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          body,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: cancelFunc,
+                    child: const Padding(
+                      padding: EdgeInsets.only(left: 8),
+                      child: Icon(Icons.close, color: Colors.white54, size: 22),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+        duration: const Duration(hours: 1),
+        onlyOne: true, 
+        crossPage: true,
+      );
+    }
+  });
 
   runApp(
     MultiRepositoryProvider(
@@ -46,6 +125,10 @@ class MyApp extends StatelessWidget {
         title: 'Predator',
         debugShowCheckedModeBanner: false,
         themeMode: ThemeMode.system,
+        
+        // inyecta gestor de toast nativo
+        builder: BotToastInit(),
+        navigatorObservers: [BotToastNavigatorObserver()],
 
         theme: ThemeData(
           brightness: Brightness.light,
@@ -57,7 +140,6 @@ class MyApp extends StatelessWidget {
           ),
           useMaterial3: true,
         ),
-
         darkTheme: ThemeData(
           brightness: Brightness.dark,
           scaffoldBackgroundColor: Colors.black,
@@ -68,7 +150,6 @@ class MyApp extends StatelessWidget {
           ),
           useMaterial3: true,
         ),
-
         home: BlocBuilder<AuthCubit, AuthState>(
           builder: (context, state) {
             if (state is AuthAuthenticated) {

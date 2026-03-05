@@ -4,6 +4,7 @@ import '../../../../core/constants/enums.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../auth/domain/models/user_model.dart';
+import '../../../schedule/domain/models/class_model.dart';
 import '../cubit/schedule_cubit.dart';
 import '../cubit/schedule_state.dart';
 import '../widgets/class_card.dart';
@@ -223,7 +224,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                               ? _getActionCallback(
                                   context,
                                   item.status,
-                                  item.classModel.classId,
+                                  item.classModel,
                                   user,
                                 )
                               : null,
@@ -245,7 +246,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   VoidCallback? _getActionCallback(
     BuildContext context,
     ClassStatus status,
-    String classId,
+    ClassModel classModel,
     UserModel user,
   ) {
     if (status == ClassStatus.blockedByPlan) return null;
@@ -261,14 +262,19 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     if (status == ClassStatus.reserved || status == ClassStatus.waitlist) {
       return () {
+        // configura dialogo de retiro
         _showConfirmationDialog(
           context,
-          title: '¿Cancelar Reserva?',
-          content: 'Si cancelas, liberarás tu cupo.',
+          title: status == ClassStatus.waitlist
+              ? '¿Salir de Lista de Espera?'
+              : '¿Cancelar Reserva?',
+          content: status == ClassStatus.waitlist
+              ? 'Perderás tu lugar en la lista de espera.'
+              : 'Si cancelas, liberarás tu cupo.',
           isDestructive: true,
           onConfirm: () {
             context.read<ScheduleCubit>().cancelClass(
-              classId: classId,
+              classId: classModel.classId,
               user: user,
               currentFromDate: start,
               currentToDate: end,
@@ -283,16 +289,22 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           return;
         }
 
+        final isWaitlist = classModel.isFull;
+
         _showConfirmationDialog(
           context,
-          title: 'Confirmar Reserva',
+          title: isWaitlist ? 'Lista de Espera' : 'Confirmar Reserva',
           content: status == ClassStatus.availableWithTicket
-              ? '¿Usar ingreso extra para reservar esta clase?'
-              : '¿Deseas reservar tu cupo para esta clase?',
+              ? (isWaitlist
+                    ? '¿Usar ingreso extra para ingresar a lista de espera?'
+                    : '¿Usar ingreso extra para reservar esta clase?')
+              : (isWaitlist
+                    ? '¿Deseas entrar a la lista de espera?'
+                    : '¿Deseas reservar tu cupo para esta clase?'),
           isDestructive: false,
           onConfirm: () {
             context.read<ScheduleCubit>().reserveClass(
-              classId: classId,
+              classId: classModel.classId,
               user: user,
               currentFromDate: start,
               currentToDate: end,

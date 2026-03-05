@@ -51,35 +51,40 @@ class ClassCard extends StatelessWidget {
       switch (status) {
         case ClassStatus.available:
         case ClassStatus.availableWithTicket:
-          // logica para reservar
+          // estado de reserva segun cupo y tiempo
           if (!classModel.canReserveNow) {
             statusColor = Colors.grey;
             buttonText = 'RESERVA CERRADA';
             statusIcon = Icons.timer_off;
             isButtonEnabled = false;
           } else {
-            // estado disponible
-            statusColor = status == ClassStatus.availableWithTicket
-                ? Colors.amber
-                : const Color(0xFF4CAF50);
-            buttonText = status == ClassStatus.availableWithTicket
-                ? 'USAR INGRESO EXTRA'
-                : 'RESERVAR';
-            statusIcon = status == ClassStatus.availableWithTicket
-                ? Icons.confirmation_number_outlined
-                : Icons.add_circle_outline;
+            if (classModel.isFull) {
+              statusColor = Colors.orange;
+              buttonText = status == ClassStatus.availableWithTicket
+                  ? 'TICKET PARA LISTA ESPERA'
+                  : 'ENTRAR A LISTA ESPERA';
+              statusIcon = Icons.group_add;
+            } else {
+              statusColor = status == ClassStatus.availableWithTicket
+                  ? Colors.amber
+                  : const Color(0xFF4CAF50);
+              buttonText = status == ClassStatus.availableWithTicket
+                  ? 'USAR INGRESO EXTRA'
+                  : 'RESERVAR';
+              statusIcon = status == ClassStatus.availableWithTicket
+                  ? Icons.confirmation_number_outlined
+                  : Icons.add_circle_outline;
+            }
           }
           break;
 
         case ClassStatus.reserved:
-          // logica para cancelar
           if (!classModel.canCancelNow) {
             statusColor = const Color(0xFF2196F3);
             buttonText = 'NO CANCELABLE';
             statusIcon = Icons.lock_clock;
             isButtonEnabled = false;
           } else {
-            // estado cancelable
             statusColor = const Color(0xFF2196F3);
             buttonText = 'CANCELAR RESERVA';
             statusIcon = Icons.check_circle;
@@ -89,8 +94,8 @@ class ClassCard extends StatelessWidget {
 
         case ClassStatus.waitlist:
           statusColor = Colors.orange;
-          buttonText = 'SALIR DE LISTA';
-          statusIcon = Icons.hourglass_empty;
+          buttonText = 'SALIR DE LISTA DE ESPERA';
+          statusIcon = Icons.list_alt;
           isDestructive = true;
           break;
 

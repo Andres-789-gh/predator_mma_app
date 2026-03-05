@@ -72,15 +72,14 @@ class ScheduleRepository {
     UserModel user,
     ClassModel classModel,
   ) async {
-    // valida si el usuario ya posee cupo o esta en espera
-    if (classModel.isUserConfirmed(user.userId) ||
-        classModel.isUserOnWaitlist(user.userId)) {
+    // cupo confirmado
+    if (classModel.isUserConfirmed(user.userId)) {
       return ClassStatus.reserved;
     }
 
-    // controla limite de capacidad
-    if (classModel.isFull) {
-      return ClassStatus.full;
+    // lista de espera
+    if (classModel.isUserOnWaitlist(user.userId)) {
+      return ClassStatus.waitlist;
     }
 
     // evalúa ventana de tiempo para reserva
