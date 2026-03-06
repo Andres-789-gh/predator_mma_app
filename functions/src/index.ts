@@ -50,7 +50,7 @@ export const checkexpiringplans = onSchedule(
                                 from_user_name: "Sistema",
                                 to_role: "client",
                                 to_user_id: userDoc.id,
-                                title: "¡Atención con tu plan!",
+                                title: "¡Vencimiento de plan!",
                                 body: `Tu plan ${plan.name} está por vencer o ya venció. Renuévalo pronto.`,
                                 type: "NotificationType.planExpiring",
                                 status: "NotificationStatus.pending",

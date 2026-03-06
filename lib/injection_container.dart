@@ -27,6 +27,7 @@ import 'features/reports/domain/usecases/generate_excel_report_usecase.dart';
 import 'features/reports/presentation/cubit/report_cubit.dart';
 import 'features/admin/presentation/cubit/admin_cubit.dart';
 import 'features/sales/domain/usecases/sell_ticket_usecase.dart';
+import 'features/schedule/presentation/cubit/attendees_cubit.dart';
 
 final sl = GetIt.instance;
 
@@ -45,6 +46,7 @@ Future<void> init() async {
   sl.registerLazySingleton<ScheduleRepository>(
     () => ScheduleRepository(firestore: sl()),
   );
+  sl.registerFactory(() => AttendeesCubit(sl()));
 
   // Inventario
   sl.registerLazySingleton<InventoryRepository>(

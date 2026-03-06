@@ -24,7 +24,7 @@ class RequestPlanUseCase {
       'subscription_id': DateTime.now().millisecondsSinceEpoch.toString(),
     };
 
-    final notification = NotificationModel(
+    final adminNotification = NotificationModel(
       id: '',
       fromUserId: user.userId,
       fromUserName: user.fullName,
@@ -38,6 +38,22 @@ class RequestPlanUseCase {
       createdAt: DateTime.now(),
     );
 
-    await _notificationRepository.sendNotification(notification);
+    final clientNotification = NotificationModel(
+      id: '',
+      fromUserId: 'system',
+      fromUserName: 'sistema',
+      toRole: 'client',
+      toUserId: user.userId,
+      type: NotificationType.planRequest,
+      status: NotificationStatus.pending,
+      title: 'Solicitud Enviada',
+      body: 'Tu solicitud para el plan ${plan.name} está en revisión',
+      isRead: false,
+      payload: payload,
+      createdAt: DateTime.now(),
+    );
+
+    await _notificationRepository.sendNotification(adminNotification);
+    await _notificationRepository.sendNotification(clientNotification);
   }
 }

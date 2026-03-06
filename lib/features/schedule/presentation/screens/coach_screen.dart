@@ -9,7 +9,9 @@ import '../../../notifications/presentation/cubit/client_notification_cubit.dart
 import '../../../notifications/presentation/screens/client_notifications_screen.dart';
 import '../../data/schedule_repository.dart';
 import '../../domain/models/class_model.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../../injection_container.dart' as di;
+import '../cubit/attendees_cubit.dart';
+import '../cubit/attendees_state.dart';
 
 class CoachScreen extends StatelessWidget {
   const CoachScreen({super.key});
@@ -495,12 +497,17 @@ class _ClassRow extends StatelessWidget {
                           color: Colors.blue[400],
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          '$attendeesCount / ${classModel.maxCapacity} Reservas${waitlistCount > 0 ? ' • $waitlistCount Espera' : ''}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.grey[300] : Colors.grey[700],
+                        Expanded(
+                          child: Text(
+                            '$attendeesCount / ${classModel.maxCapacity} Reservas${waitlistCount > 0 ? ' • $waitlistCount en Espera' : ''}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isDark
+                                  ? Colors.grey[300]
+                                  : Colors.grey[700],
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -520,7 +527,14 @@ class _ClassRow extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _AttendeesBottomSheet(classModel: classModel),
+      builder: (_) => BlocProvider(
+        create: (_) => di.sl<AttendeesCubit>()
+          ..loadAttendees(
+            attendeeIds: classModel.attendees,
+            waitlistIds: classModel.waitlist,
+          ),
+        child: _AttendeesBottomSheet(classModel: classModel),
+      ),
     );
   }
 }
@@ -529,33 +543,6 @@ class _AttendeesBottomSheet extends StatelessWidget {
   final ClassModel classModel;
 
   const _AttendeesBottomSheet({required this.classModel});
-
-  // consulta nombres reales en base de datos
-  Future<List<Map<String, String>>> _fetchUserNames(
-    List<String> userIds,
-  ) async {
-    if (userIds.isEmpty) return [];
-    final List<Map<String, String>> users = [];
-    final db = FirebaseFirestore.instance;
-
-    for (String id in userIds) {
-      try {
-        final doc = await db.collection('users').doc(id).get();
-        if (doc.exists && doc.data() != null) {
-          final data = doc.data()!;
-          final info = data['personal_info'] as Map<String, dynamic>?;
-          final name = info?['first_name'] ?? 'Usuario';
-          final last = info?['last_name'] ?? 'Desconocido';
-          users.add({'id': id, 'name': '$name $last'.trim()});
-        } else {
-          users.add({'id': id, 'name': 'Usuario no encontrado'});
-        }
-      } catch (e) {
-        users.add({'id': id, 'name': 'Error de lectura'});
-      }
-    }
-    return users;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -573,7 +560,6 @@ class _AttendeesBottomSheet extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // indicador de arrastre
           Center(
             child: Container(
               margin: const EdgeInsets.only(top: 10, bottom: 20),
@@ -600,68 +586,71 @@ class _AttendeesBottomSheet extends StatelessWidget {
 
           const SizedBox(height: 10),
 
+          // estado carga visual
           Expanded(
-            child: FutureBuilder<List<List<Map<String, String>>>>(
-              future: Future.wait([
-                _fetchUserNames(classModel.attendees),
-                _fetchUserNames(classModel.waitlist),
-              ]),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+            child: BlocBuilder<AttendeesCubit, AttendeesState>(
+              builder: (context, state) {
+                if (state is AttendeesLoading || state is AttendeesInitial) {
                   return const Center(
                     child: CircularProgressIndicator(color: Colors.red),
                   );
                 }
 
-                if (snapshot.hasError) {
-                  return const Center(child: Text('Error cargando asistentes'));
-                }
-
-                final attendees = snapshot.data![0];
-                final waitlist = snapshot.data![1];
-
-                if (attendees.isEmpty && waitlist.isEmpty) {
-                  return const Center(
-                    child: Text('No hay personas inscritas.'),
+                if (state is AttendeesError) {
+                  return Center(
+                    child: Text(
+                      'Error: ${state.message}',
+                      style: const TextStyle(color: Colors.red),
+                    ),
                   );
                 }
 
-                return ListView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 10,
-                  ),
-                  children: [
-                    if (attendees.isNotEmpty) ...[
-                      Text(
-                        'Confirmados (${attendees.length})',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      ...attendees.map(
-                        (user) => _buildUserTile(user['name']!, isDark),
-                      ),
-                      const SizedBox(height: 20),
-                    ],
+                if (state is AttendeesLoaded) {
+                  if (state.attendees.isEmpty && state.waitlist.isEmpty) {
+                    return const Center(
+                      child: Text('No hay personas inscritas.'),
+                    );
+                  }
 
-                    if (waitlist.isNotEmpty) ...[
-                      Text(
-                        'En Lista de Espera (${waitlist.length})',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.orange,
+                  return ListView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                    children: [
+                      if (state.attendees.isNotEmpty) ...[
+                        Text(
+                          'Confirmados (${state.attendees.length})',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      ...waitlist.map(
-                        (user) => _buildUserTile(user['name']!, isDark),
-                      ),
+                        const SizedBox(height: 10),
+                        ...state.attendees.map(
+                          (user) => _buildUserTile(user.fullName, isDark),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+
+                      if (state.waitlist.isNotEmpty) ...[
+                        Text(
+                          'En Lista de Espera (${state.waitlist.length})',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        ...state.waitlist.map(
+                          (user) => _buildUserTile(user.fullName, isDark),
+                        ),
+                      ],
                     ],
-                  ],
-                );
+                  );
+                }
+
+                return const SizedBox.shrink();
               },
             ),
           ),

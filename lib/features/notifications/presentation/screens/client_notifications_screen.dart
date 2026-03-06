@@ -12,48 +12,48 @@ class ClientNotificationsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Mis Notificaciones")),
-      body: BlocListener<ClientNotificationCubit, ClientNotificationState>(
-        listener: (context, state) {
-          if (state is ClientNotificationLoaded && state.unreadCount > 0) {
-            context.read<ClientNotificationCubit>().markAllAsRead(
-              state.notifications,
-            );
+      body: BlocBuilder<ClientNotificationCubit, ClientNotificationState>(
+        builder: (context, state) {
+          if (state is ClientNotificationLoading) {
+            return const Center(child: CircularProgressIndicator());
           }
-        },
-        child: BlocBuilder<ClientNotificationCubit, ClientNotificationState>(
-          builder: (context, state) {
-            if (state is ClientNotificationLoading) {
-              return const Center(child: CircularProgressIndicator());
+          if (state is ClientNotificationLoaded) {
+            final list = state.notifications;
+
+            // marca leido al renderizar la vista
+            if (state.unreadCount > 0) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                context.read<ClientNotificationCubit>().markAllAsRead(list);
+              });
             }
-            if (state is ClientNotificationLoaded) {
-              final list = state.notifications;
-              if (list.isEmpty) {
-                return const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.notifications_off_outlined,
-                        size: 60,
-                        color: Colors.grey,
-                      ),
-                      SizedBox(height: 10),
-                      Text("No tienes notificaciones nuevas"),
-                    ],
-                  ),
-                );
-              }
-              return ListView.separated(
-                padding: const EdgeInsets.all(15),
-                itemCount: list.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (ctx, i) =>
-                    _ClientNotificationCard(notification: list[i]),
+
+            if (list.isEmpty) {
+              return const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.notifications_off_outlined,
+                      size: 60,
+                      color: Colors.grey,
+                    ),
+                    SizedBox(height: 10),
+                    Text("No tienes notificaciones nuevas"),
+                  ],
+                ),
               );
             }
-            return const SizedBox.shrink();
-          },
-        ),
+
+            return ListView.separated(
+              padding: const EdgeInsets.all(15),
+              itemCount: list.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (ctx, i) =>
+                  _ClientNotificationCard(notification: list[i]),
+            );
+          }
+          return const SizedBox.shrink();
+        },
       ),
     );
   }
@@ -80,65 +80,62 @@ class _ClientNotificationCard extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Stack(
         children: [
-          GestureDetector(
-            onTap: () => cubit.markAsRead(notification.id),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 40, 12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildIcon(notification.type),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _getTitle(notification.type),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 40, 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildIcon(notification.type),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _getTitle(notification.type),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
-                        const SizedBox(height: 5),
-                        Text(
-                          _getMessage(notification),
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isDark ? Colors.white70 : Colors.black87,
-                          ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        _getMessage(notification),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? Colors.white70 : Colors.black87,
                         ),
-                        _buildAdminNote(context),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Text(
-                              DateFormat(
-                                'dd/MM HH:mm',
-                              ).format(notification.createdAt),
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.grey[500],
+                      ),
+                      _buildAdminNote(context),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Text(
+                            DateFormat(
+                              'dd/MM HH:mm',
+                            ).format(notification.createdAt),
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                          if (!notification.isRead) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Colors.blue,
+                                shape: BoxShape.circle,
                               ),
                             ),
-                            if (!notification.isRead) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: Colors.blue,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            ],
                           ],
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
           Positioned(
@@ -159,6 +156,7 @@ class _ClientNotificationCard extends StatelessWidget {
     );
   }
 
+  // borrado
   void _showDeleteConfirmation(
     BuildContext context,
     ClientNotificationCubit cubit,
@@ -258,6 +256,10 @@ class _ClientNotificationCard extends StatelessWidget {
         icon = Icons.event_available;
         color = Colors.purple;
         break;
+      case NotificationType.classBooking:
+        icon = Icons.check_circle_outline;
+        color = Colors.green;
+        break;
     }
 
     return CircleAvatar(
@@ -278,13 +280,16 @@ class _ClientNotificationCard extends StatelessWidget {
         return "Clase Cerrada";
       case NotificationType.systemInfo:
         return "Aviso del Sistema";
+      case NotificationType.classBooking:
+        return "Cupo Liberado";
     }
   }
 
   String _getMessage(NotificationModel n) {
     if (n.type == NotificationType.planExpiring ||
         n.type == NotificationType.classClosed ||
-        n.type == NotificationType.systemInfo) {
+        n.type == NotificationType.systemInfo ||
+        n.type == NotificationType.classBooking) {
       return n.body.isNotEmpty ? n.body : "Tienes una nueva notificación.";
     }
 
@@ -292,7 +297,7 @@ class _ClientNotificationCard extends StatelessWidget {
     final planName = n.payload['plan_name'] ?? 'Plan';
 
     if (status == NotificationStatus.approved) {
-      return "¡Tu solicitud para '$planName' ha sido APROBADA! Ya puedes reservar.";
+      return "¡Tu solicitud para '$planName' ha sido aprovada! Ya puedes reservar.";
     } else if (status == NotificationStatus.rejected) {
       return "Tu solicitud para '$planName' fue rechazada.";
     } else if (status == NotificationStatus.pending) {

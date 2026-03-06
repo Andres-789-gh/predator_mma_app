@@ -73,6 +73,14 @@ class AdminNotificationCubit extends Cubit<AdminNotificationState> {
     } catch (_) {}
   }
 
+  // marca lote de notificaciones como leido
+  Future<void> markBatchAsRead(List<String> notificationIds) async {
+    if (notificationIds.isEmpty) return;
+    try {
+      await _notificationRepository.markBatchAsRead(notificationIds);
+    } catch (_) {}
+  }
+
   // aprueba solicitud
   Future<void> approveRequest({
     required NotificationModel notification,

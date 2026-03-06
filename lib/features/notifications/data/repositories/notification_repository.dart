@@ -33,6 +33,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
           ? _firestore.collection('notifications').doc()
           : _firestore.collection('notifications').doc(notification.id);
 
+      // guarda noti en bd
       await docRef.set(NotificationMapper.toMap(notification));
     } catch (e) {
       throw Exception('error enviando notificacion: $e');
@@ -44,10 +45,29 @@ class NotificationRepositoryImpl implements NotificationRepository {
     String role, {
     String? userId,
   }) {
-    // por rol
-    final roleStream = _firestore
+    // consulta notificaciones por rol para administrador
+    if (role == 'admin') {
+      return _firestore
+          .collection('notifications')
+          .where('to_role', isEqualTo: role)
+          .orderBy('created_at', descending: true)
+          .snapshots()
+          .map(
+            (snapshot) => snapshot.docs
+                .map((doc) => NotificationMapper.fromFirestore(doc))
+                .toList(),
+          );
+    }
+
+    // bloquea consulta si falta identificador de usuario
+    if (userId == null || userId.isEmpty) {
+      return Stream.value([]);
+    }
+
+    // extrae notificaciones directas del usuario
+    final userStream = _firestore
         .collection('notifications')
-        .where('to_role', isEqualTo: role)
+        .where('to_user_id', isEqualTo: userId)
         .orderBy('created_at', descending: true)
         .snapshots()
         .map(
@@ -56,13 +76,11 @@ class NotificationRepositoryImpl implements NotificationRepository {
               .toList(),
         );
 
-    // admin solo rol
-    if (userId == null || userId.isEmpty) return roleStream;
-
-    // notificaciónes personales
-    final userStream = _firestore
+    // extrae noti globales del rol
+    final globalStream = _firestore
         .collection('notifications')
-        .where('to_user_id', isEqualTo: userId)
+        .where('to_role', isEqualTo: role)
+        .where('to_user_id', isEqualTo: 'all')
         .orderBy('created_at', descending: true)
         .snapshots()
         .map(
@@ -75,8 +93,8 @@ class NotificationRepositoryImpl implements NotificationRepository {
       List<NotificationModel>,
       List<NotificationModel>,
       List<NotificationModel>
-    >(roleStream, userStream, (roleList, userList) {
-      final combined = [...roleList, ...userList];
+    >(globalStream, userStream, (globalList, userList) {
+      final combined = [...globalList, ...userList];
       final unique = {for (var n in combined) n.id: n}.values.toList();
       unique.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return unique;
@@ -135,6 +153,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
   @override
   Future<void> hideNotification(String notificationId, String userId) async {
     try {
+      // oculta noti pa usuario
       await _firestore.collection('notifications').doc(notificationId).update({
         'hidden_for': FieldValue.arrayUnion([userId]),
       });

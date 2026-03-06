@@ -17,19 +17,42 @@ class AdminNotificationsScreen extends StatelessWidget {
       body: BlocBuilder<AdminNotificationCubit, AdminNotificationState>(
         builder: (context, state) {
           if (state is AdminNotificationLoading) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.red),
+            );
           }
           if (state is AdminNotificationError) {
-            return Center(child: Text(state.message));
+            return Center(
+              child: Text(
+                state.message,
+                style: const TextStyle(color: Colors.red),
+              ),
+            );
           }
           if (state is AdminNotificationLoaded) {
             final list = state.notifications
                 .where((n) => n.status != NotificationStatus.archived)
                 .toList();
 
+            final unreadIds = list
+                .where(
+                  (n) => !n.isRead && n.type != NotificationType.planRequest,
+                )
+                .map((n) => n.id)
+                .toList();
+
+            if (unreadIds.isNotEmpty) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                context.read<AdminNotificationCubit>().markBatchAsRead(
+                  unreadIds,
+                );
+              });
+            }
+
             if (list.isEmpty) {
               return const Center(child: Text('No tienes notificaciones'));
             }
+
             return ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: list.length,
@@ -55,6 +78,10 @@ class _NotificationCard extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     final isPending = notification.status == NotificationStatus.pending;
+
+    // identifica si requiere aprobacion obligatoria
+    final isActionableRequest =
+        isPending && notification.type == NotificationType.planRequest;
 
     final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
     final pendingColor = isDark
@@ -93,7 +120,8 @@ class _NotificationCard extends StatelessWidget {
                       dateStr,
                       style: TextStyle(fontSize: 12, color: theme.hintColor),
                     ),
-                    if (!isPending)
+                    // muestra basurero si no es solicitud pendiente
+                    if (!isActionableRequest)
                       IconButton(
                         icon: const Icon(
                           Icons.delete_outline,
@@ -122,12 +150,19 @@ class _NotificationCard extends StatelessWidget {
             _buildDetailText(context),
             const SizedBox(height: 12),
 
-            if (isPending && notification.type == NotificationType.planRequest)
+            if (isActionableRequest)
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    onPressed: () => _showRejectDialog(context),
+                    onPressed: () {
+                      if (!notification.isRead) {
+                        context.read<AdminNotificationCubit>().markAsRead(
+                          notification.id,
+                        );
+                      }
+                      _showRejectDialog(context);
+                    },
                     child: const Text(
                       'Rechazar',
                       style: TextStyle(color: Colors.red),
@@ -135,7 +170,14 @@ class _NotificationCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   FilledButton(
-                    onPressed: () => _showApproveDialog(context),
+                    onPressed: () {
+                      if (!notification.isRead) {
+                        context.read<AdminNotificationCubit>().markAsRead(
+                          notification.id,
+                        );
+                      }
+                      _showApproveDialog(context);
+                    },
                     child: const Text('Revisar'),
                   ),
                 ],
@@ -204,6 +246,8 @@ class _NotificationCard extends StatelessWidget {
         return 'VENCIMIENTO';
       case NotificationType.classClosed:
         return 'CLASE CERRADA';
+      case NotificationType.classBooking:
+        return 'CUPO LIBERADO';
     }
   }
 

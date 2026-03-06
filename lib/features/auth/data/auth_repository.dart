@@ -277,4 +277,33 @@ class AuthRepository {
       throw Exception('error en pausa masiva: $e');
     }
   }
+
+  // obtiene perfiles de usuario agrupados
+  Future<List<UserModel>> getUsersByIds(List<String> userIds) async {
+    if (userIds.isEmpty) return [];
+
+    try {
+      final List<UserModel> users = [];
+
+      // divide consulta en lotes (por limite de bd)
+      for (var i = 0; i < userIds.length; i += 10) {
+        final end = (i + 10 < userIds.length) ? i + 10 : userIds.length;
+        final chunk = userIds.sublist(i, end);
+
+        final snapshot = await _firestore
+            .collection('users')
+            .where(FieldPath.documentId, whereIn: chunk)
+            .get();
+
+        final chunkUsers = snapshot.docs
+            .map((doc) => UserMapper.fromMap(doc.data(), doc.id))
+            .toList();
+
+        users.addAll(chunkUsers);
+      }
+      return users;
+    } catch (e) {
+      throw Exception('error consultando perfiles: $e');
+    }
+  }
 }

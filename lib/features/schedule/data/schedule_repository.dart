@@ -11,6 +11,7 @@ import '../domain/models/class_type_model.dart';
 import 'mappers/class_type_mapper.dart';
 import '../domain/models/schedule_pattern_model.dart';
 import 'mappers/schedule_pattern_mapper.dart';
+import 'package:intl/intl.dart';
 
 class ScheduleRepository {
   final FirebaseFirestore _firestore;
@@ -326,11 +327,35 @@ class ScheduleRepository {
               newWaitlistPlans.remove(nextUser);
             }
 
+            // actualiza documento clase
             transaction.update(classRef, {
               'attendees': newAttendees,
               'attendee_plans': newAttendeePlans,
               'waitlist': FieldValue.arrayRemove([nextUser]),
               'waitlist_plans': newWaitlistPlans,
+            });
+
+            // formatea hora de inicio
+            final timeFormat = DateFormat('h:mm a');
+            final formattedTime = timeFormat.format(classModel.startTime);
+
+            // alerta cupo liberado
+            final notificationRef = _firestore
+                .collection('notifications')
+                .doc();
+            transaction.set(notificationRef, {
+              'from_user_id': 'system',
+              'from_user_name': 'sistema',
+              'to_role': 'client',
+              'to_user_id': nextUser,
+              'title': '¡Cupo liberado!',
+              'body':
+                  'Pasaste de la lista de espera a confirmado en la clase de ${classModel.classType} $formattedTime.',
+              'type': 'NotificationType.classBooking',
+              'status': 'NotificationStatus.pending',
+              'is_read': false,
+              'created_at': FieldValue.serverTimestamp(),
+              'hidden_for': [],
             });
           } else {
             transaction.update(classRef, {

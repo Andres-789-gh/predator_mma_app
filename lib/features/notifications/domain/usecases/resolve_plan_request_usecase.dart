@@ -126,7 +126,7 @@ class ResolvePlanRequestUseCase {
         toUserId: notification.fromUserId,
         toRole: 'client',
         title: 'Solicitud Rechazada',
-        body: 'No pudimos activar tu plan $planName.',
+        body: 'Se rechazo tu solicitud de activar el plan $planName.',
         isRead: false,
         createdAt: DateTime.now(),
         payload: {

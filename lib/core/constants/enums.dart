@@ -61,6 +61,7 @@ enum NotificationType {
   systemInfo,
   planExpiring,
   classClosed,
+  classBooking,
 }
 
 // estado de notificaciones
