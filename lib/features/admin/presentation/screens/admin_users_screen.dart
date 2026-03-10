@@ -8,6 +8,7 @@ import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import 'package:intl/intl.dart';
 import '../../../../features/auth/domain/models/user_model.dart';
+import '../../../../core/widgets/smart_avatar.dart';
 
 class AdminUsersScreen extends StatefulWidget {
   const AdminUsersScreen({super.key});
@@ -219,15 +220,20 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                           }
 
                           return ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: hasAnyPaused
-                                  ? Colors.orange
-                                  : (hasAnyActive ? Colors.green : Colors.grey),
-                              foregroundColor: Colors.white,
-                              child: Text(
-                                user.firstName.isNotEmpty
-                                    ? user.firstName[0].toUpperCase()
-                                    : "-",
+                            leading: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: hasAnyPaused
+                                    ? Colors.orange
+                                    : (hasAnyActive
+                                          ? Colors.green
+                                          : Colors.grey),
+                              ),
+                              child: SmartAvatar(
+                                photoUrl: user.profilePictureUrl,
+                                name: user.firstName,
+                                radius: 20,
                               ),
                             ),
                             title: Text(

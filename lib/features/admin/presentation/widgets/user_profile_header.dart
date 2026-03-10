@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../auth/domain/models/user_model.dart';
+import '../../../../core/widgets/smart_avatar.dart';
 
 class UserProfileHeader extends StatelessWidget {
   final UserModel user;
@@ -20,19 +21,10 @@ class UserProfileHeader extends StatelessWidget {
       color: theme.scaffoldBackgroundColor,
       child: Row(
         children: [
-          CircleAvatar(
+          SmartAvatar(
+            photoUrl: user.profilePictureUrl,
+            name: user.firstName,
             radius: 35,
-            backgroundColor: theme.colorScheme.primary,
-            child: Text(
-              user.firstName.isNotEmpty
-                  ? user.firstName.substring(0, 1).toUpperCase()
-                  : "?",
-              style: const TextStyle(
-                fontSize: 28,
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
           ),
           const SizedBox(width: 15),
 

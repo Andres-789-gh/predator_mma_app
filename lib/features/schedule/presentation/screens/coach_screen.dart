@@ -14,6 +14,7 @@ import '../cubit/attendees_cubit.dart';
 import '../cubit/attendees_state.dart';
 import '../../../../core/widgets/smart_avatar.dart';
 import '../../../auth/presentation/screens/profile_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class CoachScreen extends StatelessWidget {
   const CoachScreen({super.key});
@@ -621,7 +622,7 @@ class _AttendeesBottomSheet extends StatelessWidget {
                         ),
                         const SizedBox(height: 10),
                         ...state.attendees.map(
-                          (user) => _buildUserTile(user.fullName, isDark),
+                          (user) => _buildUserTile(context, user, isDark),
                         ),
                         const SizedBox(height: 20),
                       ],
@@ -636,7 +637,7 @@ class _AttendeesBottomSheet extends StatelessWidget {
                         ),
                         const SizedBox(height: 10),
                         ...state.waitlist.map(
-                          (user) => _buildUserTile(user.fullName, isDark),
+                          (user) => _buildUserTile(context, user, isDark),
                         ),
                       ],
                     ],
@@ -653,7 +654,7 @@ class _AttendeesBottomSheet extends StatelessWidget {
   }
 
   // fila usuario
-  Widget _buildUserTile(String name, bool isDark) {
+  Widget _buildUserTile(BuildContext context, dynamic user, bool isDark) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -663,16 +664,54 @@ class _AttendeesBottomSheet extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.person, size: 20, color: Colors.grey[500]),
+          GestureDetector(
+            onTap: () {
+              if (user.profilePictureUrl != null &&
+                  user.profilePictureUrl!.trim().isNotEmpty) {
+                _showImageDialog(context, user.profilePictureUrl!);
+              }
+            },
+            child: SmartAvatar(
+              photoUrl: user.profilePictureUrl,
+              name: user.firstName,
+              radius: 18,
+            ),
+          ),
           const SizedBox(width: 10),
-          Text(
-            name,
-            style: TextStyle(
-              fontSize: 14,
-              color: isDark ? Colors.grey[300] : Colors.black87,
+          Expanded(
+            child: Text(
+              user.fullName,
+              style: TextStyle(
+                fontSize: 14,
+                color: isDark ? Colors.grey[300] : Colors.black87,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ver foto en grande
+  void _showImageDialog(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: CachedNetworkImage(
+            imageUrl: imageUrl,
+            placeholder: (context, url) => const Center(
+              child: CircularProgressIndicator(color: Colors.red),
+            ),
+            errorWidget: (context, url, error) => Container(
+              color: Colors.black,
+              child: const Icon(Icons.error, color: Colors.white),
+            ),
+          ),
+        ),
       ),
     );
   }
