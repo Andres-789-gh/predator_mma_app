@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../auth/domain/models/user_model.dart';
 import '../../../../core/widgets/smart_avatar.dart';
 
@@ -21,10 +22,18 @@ class UserProfileHeader extends StatelessWidget {
       color: theme.scaffoldBackgroundColor,
       child: Row(
         children: [
-          SmartAvatar(
-            photoUrl: user.profilePictureUrl,
-            name: user.firstName,
-            radius: 35,
+          GestureDetector(
+            onTap: () {
+              if (user.profilePictureUrl != null &&
+                  user.profilePictureUrl!.trim().isNotEmpty) {
+                _showImageDialog(context, user.profilePictureUrl!);
+              }
+            },
+            child: SmartAvatar(
+              photoUrl: user.profilePictureUrl,
+              name: user.firstName,
+              radius: 35,
+            ),
           ),
           const SizedBox(width: 15),
 
@@ -92,6 +101,29 @@ class UserProfileHeader extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ver foto en grande
+  void _showImageDialog(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: CachedNetworkImage(
+            imageUrl: imageUrl,
+            placeholder: (context, url) => const Center(
+              child: CircularProgressIndicator(color: Colors.red),
+            ),
+            errorWidget: (context, url, error) => Container(
+              color: Colors.black,
+              child: const Icon(Icons.error, color: Colors.white),
+            ),
+          ),
+        ),
       ),
     );
   }
