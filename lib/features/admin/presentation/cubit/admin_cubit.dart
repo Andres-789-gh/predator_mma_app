@@ -350,12 +350,8 @@ class AdminCubit extends Cubit<AdminState> {
 
     final startDate = startDateOverride ?? DateTime.now();
     DateTime current = DateTime(startDate.year, startDate.month, startDate.day);
-    
-    final endDate = DateTime(
-      current.year,
-      current.month + months,
-      current.day,
-    );
+
+    final endDate = DateTime(current.year, current.month + months, current.day);
 
     final existingClasses = await _scheduleRepository.getClasses(
       fromDate: current,

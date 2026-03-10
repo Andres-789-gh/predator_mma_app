@@ -19,13 +19,11 @@ void main() async {
   await di.init();
   await initializeDateFormatting('es', null);
 
-  // intercepta mensaje entrante de manera segura
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     if (message.notification != null) {
       final title = message.notification!.title ?? 'Nueva alerta';
       final body = message.notification!.body ?? '';
 
-      // despliega recuadro superior sin bloquear interfaz
       BotToast.showCustomNotification(
         toastBuilder: (cancelFunc) {
           return SafeArea(
@@ -33,7 +31,7 @@ void main() async {
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF2C3E50), 
+                color: const Color(0xFF2C3E50),
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
@@ -47,8 +45,8 @@ void main() async {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Icon(
-                    Icons.notifications_active_outlined, 
-                    color: Colors.white, 
+                    Icons.notifications_active_outlined,
+                    color: Colors.white,
                     size: 26,
                   ),
                   const SizedBox(width: 14),
@@ -90,7 +88,7 @@ void main() async {
           );
         },
         duration: const Duration(hours: 1),
-        onlyOne: true, 
+        onlyOne: true,
         crossPage: true,
       );
     }
@@ -125,8 +123,7 @@ class MyApp extends StatelessWidget {
         title: 'Predator',
         debugShowCheckedModeBanner: false,
         themeMode: ThemeMode.system,
-        
-        // inyecta gestor de toast nativo
+
         builder: BotToastInit(),
         navigatorObservers: [BotToastNavigatorObserver()],
 

@@ -10,12 +10,12 @@ abstract class AuthState extends Equatable {
 
 // Estado inicial
 class AuthInitial extends AuthState {
-  const AuthInitial(); 
+  const AuthInitial();
 }
 
 // Cargando
 class AuthLoading extends AuthState {
-  const AuthLoading(); 
+  const AuthLoading();
 }
 
 // Autenticado
@@ -29,7 +29,7 @@ class AuthAuthenticated extends AuthState {
 
 // No Autenticado
 class AuthUnauthenticated extends AuthState {
-  const AuthUnauthenticated(); 
+  const AuthUnauthenticated();
 }
 
 // Error
