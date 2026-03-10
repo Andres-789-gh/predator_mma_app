@@ -271,7 +271,7 @@ class _ClientNotificationCard extends StatelessWidget {
   String _getTitle(NotificationType type) {
     switch (type) {
       case NotificationType.planRequest:
-        return "Respuesta a Solicitud";
+        return "Respuesta Solicitud";
       case NotificationType.paymentDue:
         return "Recordatorio de Pago";
       case NotificationType.planExpiring:

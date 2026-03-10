@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class WaiverScreen extends StatefulWidget {
   const WaiverScreen({super.key});
@@ -241,26 +242,26 @@ class _WaiverScreenState extends State<WaiverScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                "3132184502 / 3132184504 / 3132184508",
+                                "3132184502 / 3108021266 / 3132184508",
                                 style: docStyle.copyWith(fontSize: 10),
                               ),
                               const SizedBox(height: 2),
                               Row(
                                 children: [
-                                  Icon(
-                                    Icons.public,
+                                  FaIcon(
+                                    FontAwesomeIcons.facebook,
                                     size: 12,
                                     color: textColor,
                                   ),
                                   const SizedBox(width: 4),
-                                  Icon(
-                                    Icons.camera_alt,
+                                  FaIcon(
+                                    FontAwesomeIcons.instagram,
                                     size: 12,
                                     color: textColor,
                                   ),
                                   const SizedBox(width: 4),
-                                  Icon(
-                                    Icons.play_circle_filled,
+                                  FaIcon(
+                                    FontAwesomeIcons.youtube,
                                     size: 12,
                                     color: textColor,
                                   ),
@@ -291,7 +292,9 @@ class _WaiverScreenState extends State<WaiverScreen> {
                         Expanded(
                           flex: 4,
                           child: Image.asset(
-                            'assets/images/predator_waiver_logo.png',
+                            isDark
+                                ? 'assets/images/waiver_claro.png'
+                                : 'assets/images/waiver_oscuro.png',
                             fit: BoxFit.contain,
                             height: 70,
                             errorBuilder: (c, e, s) => const Icon(
