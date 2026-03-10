@@ -5,6 +5,8 @@ import '../../data/auth_repository.dart';
 import '../../domain/models/user_model.dart';
 import 'auth_state.dart';
 import 'package:flutter/foundation.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   final AuthRepository _authRepository;
@@ -233,6 +235,49 @@ class AuthCubit extends Cubit<AuthState> {
       emit(AuthAuthenticated(updatedUser));
     } catch (e) {
       debugPrint('Error actualizando campo: $e');
+    }
+  }
+
+  // subida de foto
+  Future<void> updateProfilePicture() async {
+    if (state is! AuthAuthenticated) return;
+
+    final currentState = state as AuthAuthenticated;
+    final user = currentState.user;
+
+    try {
+      // abre galeria y comprime imagen
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 70,
+        maxWidth: 800,
+      );
+
+      if (pickedFile == null) return;
+
+      emit(const AuthLoading());
+
+      final file = File(pickedFile.path);
+
+      // archivo a storage
+      final downloadUrl = await _authRepository.uploadProfilePicture(
+        user.userId,
+        file,
+      );
+
+      // actualiza url en firestore
+      await _authRepository.updatePartialField(
+        userId: user.userId,
+        field: 'profile_picture_url',
+        value: downloadUrl,
+      );
+
+      final updatedUser = user.copyWith(profilePictureUrl: downloadUrl);
+      emit(AuthAuthenticated(updatedUser));
+    } catch (e) {
+      debugPrint('error actualizando foto: $e');
+      emit(currentState);
     }
   }
 }

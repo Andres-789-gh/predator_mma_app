@@ -2,6 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../domain/models/user_model.dart';
 import 'mappers/user_mapper.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
 
 class AuthRepository {
   final FirebaseAuth _firebaseAuth;
@@ -317,6 +319,19 @@ class AuthRepository {
       await _firestore.collection('users').doc(userId).update({field: value});
     } catch (e) {
       throw Exception('error al actualizar $field: $e');
+    }
+  }
+
+  // img a storage y url publica
+  Future<String> uploadProfilePicture(String userId, File file) async {
+    try {
+      final ref = FirebaseStorage.instance.ref().child(
+        'profile_pictures/$userId.jpg',
+      );
+      await ref.putFile(file);
+      return await ref.getDownloadURL();
+    } catch (e) {
+      throw Exception('error subiendo imagen: $e');
     }
   }
 }

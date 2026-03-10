@@ -54,7 +54,7 @@ class ProfileScreen extends StatelessWidget {
                         right: 0,
                         child: GestureDetector(
                           onTap: () {
-                            // abre galeria
+                            context.read<AuthCubit>().updateProfilePicture();
                           },
                           child: Container(
                             padding: const EdgeInsets.all(8),
@@ -86,8 +86,12 @@ class ProfileScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  user.role.name.toUpperCase(),
-                  style: const TextStyle(color: Colors.grey, letterSpacing: 1),
+                  _translateRole(user.role),
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    letterSpacing: 1,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 40),
 
@@ -99,14 +103,13 @@ class ProfileScreen extends StatelessWidget {
                   isDark,
                   false,
                 ),
-                if (user.role == UserRole.client)
-                  _buildInfoRow(
-                    context,
-                    'No. Documento',
-                    user.documentId,
-                    isDark,
-                    false,
-                  ),
+                _buildInfoRow(
+                  context,
+                  'No. Documento',
+                  user.documentId,
+                  isDark,
+                  false,
+                ),
 
                 // datos editables
                 _buildInfoRow(
@@ -116,14 +119,13 @@ class ProfileScreen extends StatelessWidget {
                   isDark,
                   true,
                 ),
-                if (user.role == UserRole.client)
-                  _buildInfoRow(
-                    context,
-                    'Contacto Emergencia',
-                    user.emergencyContact,
-                    isDark,
-                    true,
-                  ),
+                _buildInfoRow(
+                  context,
+                  'Contacto Emergencia',
+                  user.emergencyContact,
+                  isDark,
+                  true,
+                ),
 
                 const SizedBox(height: 40),
 
@@ -183,6 +185,17 @@ class ProfileScreen extends StatelessWidget {
         );
       },
     );
+  }
+
+  String _translateRole(UserRole role) {
+    switch (role) {
+      case UserRole.admin:
+        return 'ADMINISTRADOR';
+      case UserRole.coach:
+        return 'INSTRUCTOR';
+      case UserRole.client:
+        return 'CLIENTE';
+    }
   }
 
   Widget _buildInfoRow(

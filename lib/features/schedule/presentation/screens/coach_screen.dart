@@ -12,6 +12,8 @@ import '../../domain/models/class_model.dart';
 import '../../../../injection_container.dart' as di;
 import '../cubit/attendees_cubit.dart';
 import '../cubit/attendees_state.dart';
+import '../../../../core/widgets/smart_avatar.dart';
+import '../../../auth/presentation/screens/profile_screen.dart';
 
 class CoachScreen extends StatelessWidget {
   const CoachScreen({super.key});
@@ -122,6 +124,8 @@ class _CoachScreenContentState extends State<_CoachScreenContent> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5);
+    final authState = context.watch<AuthCubit>().state;
+    final user = (authState as AuthAuthenticated).user;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -135,9 +139,22 @@ class _CoachScreenContentState extends State<_CoachScreenContent> {
         foregroundColor: isDark ? Colors.white : Colors.black,
         actions: [
           _buildNotificationBell(context),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => _showLogoutDialog(context),
+          const SizedBox(width: 15),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.only(right: 15),
+              child: SmartAvatar(
+                photoUrl: user.profilePictureUrl,
+                name: user.firstName,
+                radius: 18,
+              ),
+            ),
           ),
         ],
       ),
@@ -248,30 +265,6 @@ class _CoachScreenContentState extends State<_CoachScreenContent> {
           ),
         ),
       ],
-    );
-  }
-
-  // dialogo salida
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Cerrar Sesión"),
-        content: const Text("¿Estás seguro que deseas salir?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancelar"),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.read<AuthCubit>().signOut();
-            },
-            child: const Text("Salir", style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
     );
   }
 }

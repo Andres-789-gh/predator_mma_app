@@ -12,6 +12,8 @@ import '../../../../features/notifications/presentation/screens/admin_notificati
 import '../../../../injection_container.dart';
 import '../../../reports/presentation/screens/reports_screen.dart';
 import '../../../../features/schedule/presentation/screens/coach_screen.dart';
+import '../../../../core/widgets/smart_avatar.dart';
+import '../../../auth/presentation/screens/profile_screen.dart';
 
 class AdminHomeScreen extends StatelessWidget {
   const AdminHomeScreen({super.key});
@@ -70,10 +72,22 @@ class AdminHomeScreen extends StatelessWidget {
                     );
                   },
                 ),
-                IconButton(
-                  icon: const Icon(Icons.logout),
-                  tooltip: "Cerrar Sesión",
-                  onPressed: () => _showLogoutDialog(context),
+                const SizedBox(width: 15),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                    );
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 15),
+                    child: SmartAvatar(
+                      photoUrl: user.profilePictureUrl,
+                      name: user.firstName,
+                      radius: 18,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -198,29 +212,6 @@ class AdminHomeScreen extends StatelessWidget {
             ),
           );
         },
-      ),
-    );
-  }
-
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Cerrar Sesión"),
-        content: const Text("¿Estás seguro que deseas salir?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancelar"),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.read<AuthCubit>().signOut();
-            },
-            child: const Text("Salir", style: TextStyle(color: Colors.red)),
-          ),
-        ],
       ),
     );
   }
