@@ -24,7 +24,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
   bool _isMenuOpen = false;
   final TextEditingController _searchCtrl = TextEditingController();
   String _filterName = "";
-  String _filterRole = "Todos";
+  String _filterRole = "Clientes";
 
   @override
   void initState() {
@@ -106,16 +106,16 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                           ),
                           items: const [
                             DropdownMenuItem(
-                              value: "Todos",
-                              child: Text("Todos los Usuarios"),
-                            ),
-                            DropdownMenuItem(
                               value: "Clientes",
                               child: Text("Clientes"),
                             ),
                             DropdownMenuItem(
                               value: "Profesores",
-                              child: Text("Profesores"),
+                              child: Text("Instructores"),
+                            ),
+                            DropdownMenuItem(
+                              value: "Todos",
+                              child: Text("Todos los Usuarios"),
                             ),
                           ],
                           onChanged: (val) {
@@ -247,7 +247,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                               children: [
                                 Text(
                                   user.role == UserRole.coach
-                                      ? "Profesor - CC: ${user.documentId}"
+                                      ? "Instructor - CC: ${user.documentId}"
                                       : "Cliente - CC: ${user.documentId}",
                                 ),
                                 Text(
