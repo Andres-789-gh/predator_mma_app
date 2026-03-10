@@ -13,6 +13,8 @@ import '../../../../core/constants/enums.dart';
 import '../../../plans/presentation/screens/client_plans_screen.dart';
 import '../../../notifications/presentation/cubit/client_notification_cubit.dart';
 import '../../../notifications/presentation/screens/client_notifications_screen.dart';
+import '../../../../core/widgets/smart_avatar.dart';
+import '../../../auth/presentation/screens/profile_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -119,13 +121,26 @@ class HomeScreen extends StatelessWidget {
                     },
                   ),
 
-                  const SizedBox(width: 5),
+                  const SizedBox(width: 15),
 
-                  IconButton(
-                    icon: const Icon(Icons.logout, color: Colors.red),
-                    onPressed: () {
-                      _showLogoutDialog(context);
+                  // btn perfil
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ProfileScreen(),
+                        ),
+                      );
                     },
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 15),
+                      child: SmartAvatar(
+                        photoUrl: user.profilePictureUrl,
+                        name: user.firstName,
+                        radius: 18,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -735,48 +750,6 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        return AlertDialog(
-          backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-          title: Text(
-            'Cerrar Sesión',
-            style: TextStyle(color: isDark ? Colors.white : Colors.black),
-          ),
-          content: Text(
-            '¿Estás seguro de que quieres salir?',
-            style: TextStyle(color: isDark ? Colors.grey : Colors.black87),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text(
-                'Cancelar',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                context.read<AuthCubit>().signOut();
-              },
-              child: const Text(
-                'Salir',
-                style: TextStyle(
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
     );
   }
 }

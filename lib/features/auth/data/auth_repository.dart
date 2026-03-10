@@ -306,4 +306,17 @@ class AuthRepository {
       throw Exception('error consultando perfiles: $e');
     }
   }
+
+  // actualiza campo especifico
+  Future<void> updatePartialField({
+    required String userId,
+    required String field,
+    required dynamic value,
+  }) async {
+    try {
+      await _firestore.collection('users').doc(userId).update({field: value});
+    } catch (e) {
+      throw Exception('error al actualizar $field: $e');
+    }
+  }
 }

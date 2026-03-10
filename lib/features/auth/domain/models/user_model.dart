@@ -18,6 +18,7 @@ class UserModel {
   final bool isWaiverSigned;
   final DateTime? waiverSignedAt;
   final String? waiverSignatureUrl;
+  final String? profilePictureUrl;
   final List<UserPlan> currentPlans; // planes vigentes
   final String emergencyContact;
   final List<AccessExceptionModel> accessExceptions;
@@ -38,6 +39,7 @@ class UserModel {
     this.isWaiverSigned = false,
     this.waiverSignedAt,
     this.waiverSignatureUrl,
+    this.profilePictureUrl,
     this.currentPlans = const [],
     required this.emergencyContact,
     List<AccessExceptionModel> accessExceptions = const [],
@@ -71,6 +73,7 @@ class UserModel {
     bool? isWaiverSigned,
     DateTime? waiverSignedAt,
     String? waiverSignatureUrl,
+    String? profilePictureUrl,
     List<UserPlan>? currentPlans,
     String? emergencyContact,
     List<AccessExceptionModel>? accessExceptions,
@@ -91,6 +94,7 @@ class UserModel {
       isWaiverSigned: isWaiverSigned ?? this.isWaiverSigned,
       waiverSignedAt: waiverSignedAt ?? this.waiverSignedAt,
       waiverSignatureUrl: waiverSignatureUrl ?? this.waiverSignatureUrl,
+      profilePictureUrl: profilePictureUrl ?? this.profilePictureUrl,
       currentPlans: currentPlans ?? this.currentPlans,
       emergencyContact: emergencyContact ?? this.emergencyContact,
       accessExceptions: accessExceptions ?? this.accessExceptions,

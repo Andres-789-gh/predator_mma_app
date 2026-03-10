@@ -203,6 +203,38 @@ class AuthCubit extends Cubit<AuthState> {
       debugPrint('Error borrando FCM Token: $e');
     }
   }
+
+  // actualiza telefono o contacto de emergencia
+  Future<void> updatePhoneFields({
+    required String fieldName,
+    required String newValue,
+  }) async {
+    if (state is! AuthAuthenticated) return;
+
+    final currentState = state as AuthAuthenticated;
+    final user = currentState.user;
+
+    try {
+      await _authRepository.updatePartialField(
+        userId: user.userId,
+        field: fieldName,
+        value: newValue,
+      );
+
+      UserModel updatedUser;
+      if (fieldName == 'personal_info.phone_number') {
+        updatedUser = user.copyWith(phoneNumber: newValue);
+      } else if (fieldName == 'emergency_contact') {
+        updatedUser = user.copyWith(emergencyContact: newValue);
+      } else {
+        updatedUser = user;
+      }
+
+      emit(AuthAuthenticated(updatedUser));
+    } catch (e) {
+      debugPrint('Error actualizando campo: $e');
+    }
+  }
 }
 
 class InvalidAccessKeyException implements Exception {}

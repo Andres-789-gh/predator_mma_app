@@ -54,6 +54,7 @@ class UserMapper {
       isInstructor: map['is_instructor'] ?? false,
       isLegacyUser: map['is_legacy_user'] ?? false,
       notificationToken: map['notification_token'],
+      profilePictureUrl: map['profile_picture_url'],
       isWaiverSigned: map['legal']?['is_signed'] ?? false,
       waiverSignedAt: map['legal']?['signed_at'] != null
           ? _getDateSafe(map['legal']['signed_at'])
@@ -72,6 +73,7 @@ class UserMapper {
       'is_instructor': user.isInstructor,
       'is_legacy_user': user.isLegacyUser,
       'notification_token': user.notificationToken,
+      'profile_picture_url': user.profilePictureUrl,
       'personal_info': {
         'first_name': user.firstName,
         'last_name': user.lastName,
