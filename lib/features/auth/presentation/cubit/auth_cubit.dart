@@ -1,6 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 import '../../data/auth_repository.dart';
 import '../../domain/models/user_model.dart';
 import 'auth_state.dart';
@@ -10,6 +12,7 @@ import 'package:image_picker/image_picker.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   final AuthRepository _authRepository;
+  StreamSubscription<DocumentSnapshot>? _userSubscription;
 
   AuthCubit(this._authRepository) : super(const AuthInitial());
 
@@ -30,8 +33,19 @@ class AuthCubit extends Cubit<AuthState> {
       if (isClosed) return;
 
       if (user != null) {
+        if (!user.isActive) {
+          await _authRepository.signOut();
+          emit(
+            const AuthError(
+              'Tu cuenta ha sido desactivada por un administrador.',
+            ),
+          );
+          return;
+        }
+
         _handleFcmToken(user);
         emit(AuthAuthenticated(user));
+        _listenToUserChanges(user.userId);
       } else {
         emit(const AuthUnauthenticated());
       }
@@ -47,8 +61,17 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       emit(const AuthLoading());
 
-      await _authRepository.signIn(email: email, password: password);
+      final user = await _authRepository.signIn(
+        email: email,
+        password: password,
+      );
       if (isClosed) return;
+
+      if (!user.isActive) {
+        await _authRepository.signOut();
+        emit(const AuthError('Tu cuenta ha sido desactivada.'));
+        return;
+      }
 
       await checkAuthStatus(silent: true);
     } on FirebaseAuthException catch (e) {
@@ -128,8 +151,10 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
-  // limpia token push y cierra sesion
+  // limpia token push, cancela vigilancia y cierra sesion
   Future<void> signOut() async {
+    _userSubscription?.cancel();
+
     if (state is AuthAuthenticated) {
       final currentUser = (state as AuthAuthenticated).user;
       await _removeFcmToken(currentUser);
@@ -140,7 +165,39 @@ class AuthCubit extends Cubit<AuthState> {
     emit(const AuthUnauthenticated());
   }
 
-  // actualiza datos
+  // vigila documento de usuario en tiempo real
+  void _listenToUserChanges(String userId) {
+    _userSubscription?.cancel();
+
+    _userSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .snapshots()
+        .listen((snapshot) {
+          if (!snapshot.exists) {
+            signOut();
+            return;
+          }
+
+          final data = snapshot.data();
+          if (data != null) {
+            final isActive = data['is_active'] ?? true;
+            if (!isActive) {
+              // detecta desactivacion y echa al usuario
+              signOut();
+              if (!isClosed) {
+                emit(
+                  const AuthError(
+                    'Tu sesión expiró porque la cuenta fue desactivada.',
+                  ),
+                );
+              }
+            }
+          }
+        });
+  }
+
+  // actualiza datos manualmente
   Future<void> refreshUser() async {
     try {
       final firebaseUser = FirebaseAuth.instance.currentUser;
@@ -152,6 +209,11 @@ class AuthCubit extends Cubit<AuthState> {
         if (isClosed) return;
 
         if (freshUserData != null) {
+          if (!freshUserData.isActive) {
+            await signOut();
+            emit(const AuthError('Tu cuenta ha sido desactivada.'));
+            return;
+          }
           emit(AuthAuthenticated(freshUserData));
         }
       }
@@ -279,6 +341,12 @@ class AuthCubit extends Cubit<AuthState> {
       debugPrint('error actualizando foto: $e');
       emit(currentState);
     }
+  }
+
+  @override
+  Future<void> close() {
+    _userSubscription?.cancel();
+    return super.close();
   }
 }
 
