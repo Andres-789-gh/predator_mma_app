@@ -19,9 +19,12 @@ class UserModel {
   final DateTime? waiverSignedAt;
   final String? waiverSignatureUrl;
   final String? profilePictureUrl;
-  final List<UserPlan> currentPlans; // planes vigentes
+  final List<UserPlan> currentPlans;
   final String emergencyContact;
   final List<AccessExceptionModel> accessExceptions;
+  final bool isActive;
+  final DateTime? deletedAt;
+  final String? deletedBy;
 
   UserModel({
     required this.userId,
@@ -43,9 +46,15 @@ class UserModel {
     this.currentPlans = const [],
     required this.emergencyContact,
     List<AccessExceptionModel> accessExceptions = const [],
+    this.isActive = true,
+    this.deletedAt,
+    this.deletedBy,
   }) : accessExceptions = List.unmodifiable(accessExceptions);
 
-  String get fullName => '$firstName $lastName';
+  String get fullName {
+    final baseName = '$firstName $lastName';
+    return isActive ? baseName : '$baseName (Eliminado)';
+  }
 
   List<UserPlan> get validPlans {
     final now = DateTime.now();
@@ -77,6 +86,9 @@ class UserModel {
     List<UserPlan>? currentPlans,
     String? emergencyContact,
     List<AccessExceptionModel>? accessExceptions,
+    bool? isActive,
+    DateTime? deletedAt,
+    String? deletedBy,
   }) {
     return UserModel(
       userId: userId ?? this.userId,
@@ -98,6 +110,9 @@ class UserModel {
       currentPlans: currentPlans ?? this.currentPlans,
       emergencyContact: emergencyContact ?? this.emergencyContact,
       accessExceptions: accessExceptions ?? this.accessExceptions,
+      isActive: isActive ?? this.isActive,
+      deletedAt: deletedAt ?? this.deletedAt,
+      deletedBy: deletedBy ?? this.deletedBy,
     );
   }
 }

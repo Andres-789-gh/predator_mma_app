@@ -262,7 +262,7 @@ class _SaleDialogViewState extends State<_SaleDialogView> {
                         ignoring: _isExternalSale,
                         child: DropdownButtonFormField<UserModel>(
                           decoration: compactInputDecoration.copyWith(
-                            labelText: 'Seleccionar Cliente',
+                            labelText: 'Seleccionar Usuario',
                             prefixIcon: const Icon(Icons.person_outline),
                             filled: _isExternalSale,
                             fillColor: _isExternalSale

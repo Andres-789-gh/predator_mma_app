@@ -130,6 +130,7 @@ class AuthRepository {
       final snapshot = await _firestore
           .collection('users')
           .where('is_instructor', isEqualTo: true)
+          .where('is_active', isEqualTo: true)
           .get();
 
       return snapshot.docs
@@ -145,6 +146,7 @@ class AuthRepository {
     try {
       final snapshot = await _firestore
           .collection('users')
+          .where('is_active', isEqualTo: true)
           .orderBy('personal_info.first_name')
           .get();
 
@@ -239,7 +241,11 @@ class AuthRepository {
     required String adminName,
   }) async {
     try {
-      final snapshot = await _firestore.collection('users').get();
+      final snapshot = await _firestore
+          .collection('users')
+          .where('is_active', isEqualTo: true)
+          .get();
+
       final batch = _firestore.batch();
       int count = 0;
 

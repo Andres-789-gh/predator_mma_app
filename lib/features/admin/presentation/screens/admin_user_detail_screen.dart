@@ -14,6 +14,7 @@ import '../widgets/dialogs/add_ticket_dialog.dart';
 import '../widgets/dialogs/ticket_detail_dialog.dart';
 import '../cubit/admin_cubit.dart';
 import '../cubit/admin_state.dart';
+import '../../../../core/constants/enums.dart';
 
 class AdminUserDetailScreen extends StatefulWidget {
   final UserModel user;
@@ -123,6 +124,13 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
           appBar: AppBar(
             title: const Text("Perfil de Usuario"),
             actions: [
+              // oculta btn si es admin o inactivo
+              if (_editedUser.role != UserRole.admin && _editedUser.isActive)
+                IconButton(
+                  icon: const Icon(Icons.person_off, color: Colors.redAccent),
+                  tooltip: "Eliminar Usuario",
+                  onPressed: _showDeactivateDialog,
+                ),
               Padding(
                 padding: const EdgeInsets.only(right: 16.0),
                 child: TextButton.icon(
@@ -492,5 +500,124 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
     );
 
     Navigator.pop(context);
+  }
+
+  // Borrado logico
+  Future<void> _showDeactivateDialog() async {
+    final authState = context.read<AuthCubit>().state;
+    final currentAdminName = (authState is AuthAuthenticated)
+        ? authState.user.fullName
+        : "admin";
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("¿Eliminar Usuario?"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "El usuario no podrá ingresar y no aparecerá en las listas, pero su historial y reportes financieros se mantendrán intactos.",
+            ),
+            const SizedBox(height: 20),
+            _HoldToConfirmButton(onConfirm: () => Navigator.pop(ctx, true)),
+            const SizedBox(height: 10),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text("Cancelar"),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() {
+        _editedUser = _editedUser.copyWith(
+          isActive: false,
+          deletedAt: DateTime.now(),
+          deletedBy: currentAdminName,
+        );
+      });
+      _saveChanges();
+    }
+  }
+}
+
+class _HoldToConfirmButton extends StatefulWidget {
+  final VoidCallback onConfirm;
+  const _HoldToConfirmButton({required this.onConfirm});
+
+  @override
+  State<_HoldToConfirmButton> createState() => _HoldToConfirmButtonState();
+}
+
+class _HoldToConfirmButtonState extends State<_HoldToConfirmButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    // configura animacion de tres segundos
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    );
+
+    // escucha estado de animacion
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        widget.onConfirm();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      // inicia llenado
+      onTapDown: (_) => _controller.forward(),
+      // revierte si suelta antes
+      onTapUp: (_) => _controller.reverse(),
+      // revierte si mueve el dedo
+      onTapCancel: () => _controller.reverse(),
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          final progress = _controller.value;
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.red.withValues(alpha: 0.1 + (progress * 0.9)),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.red),
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // muestra texto dinamico
+                Text(
+                  progress == 0.0
+                      ? "Mantenga 3s para confirmar"
+                      : "Eliminando...",
+                  style: TextStyle(
+                    color: progress > 0.5 ? Colors.white : Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 }

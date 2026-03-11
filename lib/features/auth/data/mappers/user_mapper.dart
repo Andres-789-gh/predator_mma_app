@@ -55,6 +55,11 @@ class UserMapper {
       isLegacyUser: map['is_legacy_user'] ?? false,
       notificationToken: map['notification_token'],
       profilePictureUrl: map['profile_picture_url'],
+      isActive: map['is_active'] ?? true,
+      deletedAt: map['deleted_at'] != null
+          ? _getDateSafe(map['deleted_at'])
+          : null,
+      deletedBy: map['deleted_by'],
       isWaiverSigned: map['legal']?['is_signed'] ?? false,
       waiverSignedAt: map['legal']?['signed_at'] != null
           ? _getDateSafe(map['legal']['signed_at'])
@@ -74,6 +79,11 @@ class UserMapper {
       'is_legacy_user': user.isLegacyUser,
       'notification_token': user.notificationToken,
       'profile_picture_url': user.profilePictureUrl,
+      'is_active': user.isActive,
+      'deleted_at': user.deletedAt != null
+          ? Timestamp.fromDate(user.deletedAt!)
+          : null,
+      'deleted_by': user.deletedBy,
       'personal_info': {
         'first_name': user.firstName,
         'last_name': user.lastName,
