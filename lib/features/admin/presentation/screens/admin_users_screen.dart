@@ -117,6 +117,13 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                               value: "Todos",
                               child: Text("Todos los Usuarios"),
                             ),
+                            DropdownMenuItem(
+                              value: "Eliminados",
+                              child: Text(
+                                "Usuarios Eliminados",
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ),
                           ],
                           onChanged: (val) {
                             if (val != null) setState(() => _filterRole = val);
@@ -144,18 +151,20 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                                   _filterName,
                                 ) ||
                                 u.documentId.contains(_filterName);
-                            if (!matchesName) {
-                              return false;
-                            }
+                            if (!matchesName) return false;
 
-                            if (_filterRole == "Clientes" &&
-                                u.role != UserRole.client) {
-                              return false;
-                            }
-
-                            if (_filterRole == "Profesores" &&
-                                u.role != UserRole.coach) {
-                              return false;
+                            if (_filterRole == "Eliminados") {
+                              if (u.isActive) return false;
+                            } else {
+                              if (!u.isActive) return false;
+                              if (_filterRole == "Clientes" &&
+                                  u.role != UserRole.client) {
+                                return false;
+                              }
+                              if (_filterRole == "Profesores" &&
+                                  u.role != UserRole.coach) {
+                                return false;
+                              }
                             }
 
                             return true;
@@ -259,28 +268,51 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                                 ),
                               ],
                             ),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () {
-                              final adminCubit = context.read<AdminCubit>();
-
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => BlocProvider.value(
-                                    value: adminCubit,
-                                    child: AdminUserDetailScreen(
-                                      user: user,
-                                      availablePlans: state.availablePlans,
-                                      onSave: (updatedUser) {
-                                        adminCubit.updateUserProfile(
-                                          updatedUser,
-                                        );
-                                      },
+                            // btn restaurar
+                            trailing: user.isActive
+                                ? const Icon(Icons.chevron_right)
+                                : FilledButton.icon(
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: Colors.green,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                      ),
+                                    ),
+                                    onPressed: () => _showRestoreConfirmDialog(
+                                      context,
+                                      user,
+                                    ),
+                                    icon: const Icon(Icons.restore, size: 16),
+                                    label: const Text(
+                                      "Restaurar",
+                                      style: TextStyle(fontSize: 12),
                                     ),
                                   ),
-                                ),
-                              );
-                            },
+                            // bloquea acceso al perfil si es inactivo
+                            onTap: user.isActive
+                                ? () {
+                                    final adminCubit = context
+                                        .read<AdminCubit>();
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => BlocProvider.value(
+                                          value: adminCubit,
+                                          child: AdminUserDetailScreen(
+                                            user: user,
+                                            availablePlans:
+                                                state.availablePlans,
+                                            onSave: (updatedUser) {
+                                              adminCubit.updateUserProfile(
+                                                updatedUser,
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                : null,
                           );
                         },
                       );
@@ -603,6 +635,33 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text("Cerrar"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // confirmacion restauracion
+  void _showRestoreConfirmDialog(BuildContext context, UserModel user) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("¿Restaurar Usuario?"),
+        content: Text(
+          "Se restaurará la cuenta de ${user.firstName}. El usuario podrá volver a iniciar sesión inmediatamente.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancelar"),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.green),
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<AdminCubit>().restoreUser(user);
+            },
+            child: const Text("Sí, Restaurar"),
           ),
         ],
       ),

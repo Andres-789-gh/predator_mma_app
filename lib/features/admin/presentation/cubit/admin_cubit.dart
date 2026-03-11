@@ -13,6 +13,7 @@ import '../../../plans/domain/models/plan_model.dart';
 import 'package:intl/intl.dart';
 import '../../../../features/plans/domain/usecases/assign_plan_and_record_sale_usecase.dart';
 import '../../../../features/sales/domain/usecases/sell_ticket_usecase.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class TimeSlot {
   final TimeOfDay time;
@@ -932,6 +933,40 @@ class AdminCubit extends Cubit<AdminState> {
         const AdminOperationSuccess("ingresos extra asignados correctamente"),
       );
 
+      await loadUsersManagement();
+    } catch (e) {
+      if (isClosed) return;
+      emit(AdminError(e.toString()));
+      await loadUsersManagement();
+    }
+  }
+
+  // restaura usuario eliminado
+  Future<void> restoreUser(UserModel user) async {
+    try {
+      emit(AdminLoading());
+
+      await _authRepository.updatePartialField(
+        userId: user.userId,
+        field: 'is_active',
+        value: true,
+      );
+
+      await _authRepository.updatePartialField(
+        userId: user.userId,
+        field: 'deleted_at',
+        value: FieldValue.delete(),
+      );
+
+      await _authRepository.updatePartialField(
+        userId: user.userId,
+        field: 'deleted_by',
+        value: FieldValue.delete(),
+      );
+
+      if (isClosed) return;
+
+      emit(const AdminOperationSuccess("Usuario restaurado exitosamente"));
       await loadUsersManagement();
     } catch (e) {
       if (isClosed) return;

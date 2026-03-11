@@ -146,7 +146,6 @@ class AuthRepository {
     try {
       final snapshot = await _firestore
           .collection('users')
-          .where('is_active', isEqualTo: true)
           .orderBy('personal_info.first_name')
           .get();
 
