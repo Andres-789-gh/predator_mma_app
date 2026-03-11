@@ -88,7 +88,9 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
         u1.documentId != u2.documentId ||
         u1.phoneNumber != u2.phoneNumber ||
         u1.accessExceptions.length != u2.accessExceptions.length ||
-        u1.isLegacyUser != u2.isLegacyUser;
+        u1.isLegacyUser != u2.isLegacyUser ||
+        u1.role != u2.role ||
+        u1.isInstructor != u2.isInstructor;
   }
 
   @override
@@ -122,7 +124,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
         },
         child: Scaffold(
           appBar: AppBar(
-            title: const Text("Perfil de Usuario"),
+            title: const Text("Perfil"),
             actions: [
               // oculta btn si es admin o inactivo
               if (_editedUser.role != UserRole.admin && _editedUser.isActive)
@@ -161,48 +163,85 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
                     );
                   });
                 },
+                onToggleInstructorStatus: _handleToggleInstructor,
               ),
-              TabBar(
-                controller: _tabController,
-                labelColor: theme.colorScheme.primary,
-                unselectedLabelColor: Colors.grey,
-                tabs: const [
-                  Tab(text: "PLANES"),
-                  Tab(text: "INGRESOS EXTRAS"),
-                ],
-              ),
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    // panel suscripciones
-                    UserSubscriptionsTab(
-                      activePlans: _editedUser.validPlans,
-                      onAssignNewPlan: _showAssignPlanDialog,
-                      onResumePlan: (plan) => _resumePlan(plan),
-                      onPausePlan: (plan) => _showPauseDialog(plan),
-                      onCancelPlan: (plan) => _showCancelPlanDialog(plan),
-                    ),
-                    // panel tickets
-                    UserTicketsTab(
-                      tickets: _editedUser.accessExceptions,
-                      onAddTicket: _showAddTicketDialog,
-                      onTicketTap: (ticket) => _showTicketDetailDialog(ticket),
-                      onRemoveTicket: (index) {
-                        setState(() {
-                          final newList = List<AccessExceptionModel>.from(
-                            _editedUser.accessExceptions,
-                          );
-                          newList.removeAt(index);
-                          _editedUser = _editedUser.copyWith(
-                            accessExceptions: newList,
-                          );
-                        });
-                      },
-                    ),
-                  ],
+              // instructor = oculta planes
+              if (_editedUser.role == UserRole.coach ||
+                  _editedUser.isInstructor)
+                Expanded(
+                  child: Column(
+                    children: [
+                      TabBar(
+                        controller: _tabController,
+                        labelColor: theme.colorScheme.primary,
+                        unselectedLabelColor: Colors.grey,
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        tabs: const [
+                          Tab(text: "CLASES ASIGNADAS"),
+                          Tab(text: ""),
+                        ],
+                      ),
+                      const Expanded(
+                        child: Center(
+                          child: Text(
+                            "Módulo de clases asignadas en construcción.\nAquí se listarán los horarios a cargo de este instructor.",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Expanded(
+                  child: Column(
+                    children: [
+                      TabBar(
+                        controller: _tabController,
+                        labelColor: theme.colorScheme.primary,
+                        unselectedLabelColor: Colors.grey,
+                        tabs: const [
+                          Tab(text: "PLANES"),
+                          Tab(text: "INGRESOS EXTRAS"),
+                        ],
+                      ),
+                      Expanded(
+                        child: TabBarView(
+                          controller: _tabController,
+                          children: [
+                            UserSubscriptionsTab(
+                              activePlans: _editedUser.validPlans,
+                              onAssignNewPlan: _showAssignPlanDialog,
+                              onResumePlan: (plan) => _resumePlan(plan),
+                              onPausePlan: (plan) => _showPauseDialog(plan),
+                              onCancelPlan: (plan) =>
+                                  _showCancelPlanDialog(plan),
+                            ),
+                            UserTicketsTab(
+                              tickets: _editedUser.accessExceptions,
+                              onAddTicket: _showAddTicketDialog,
+                              onTicketTap: (ticket) =>
+                                  _showTicketDetailDialog(ticket),
+                              onRemoveTicket: (index) {
+                                setState(() {
+                                  final newList =
+                                      List<AccessExceptionModel>.from(
+                                        _editedUser.accessExceptions,
+                                      );
+                                  newList.removeAt(index);
+                                  _editedUser = _editedUser.copyWith(
+                                    accessExceptions: newList,
+                                  );
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -540,6 +579,45 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
         );
       });
       _saveChanges();
+    }
+  }
+
+  // conversion de rol
+  Future<void> _handleToggleInstructor() async {
+    final isCurrentlyCoach = _editedUser.role == UserRole.coach || _editedUser.isInstructor;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(isCurrentlyCoach ? "¿Revocar acceso de Instructor?" : "¿Otorgar acceso de Instructor?"),
+        content: Text(
+          isCurrentlyCoach 
+            ? "Esta acción convertira al usuario a cliente. Perderá inmediatamente el acceso al panel de profesores."
+            : "Este usuario se convertirá en instructor. Tendrá privilegios para ver listas de asistencia y gestionar clases.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Cancelar"),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: isCurrentlyCoach ? Colors.red : Colors.blue,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(isCurrentlyCoach ? "Asignar como cliente" : "Asignar como instructor"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() {
+        _editedUser = _editedUser.copyWith(
+          role: isCurrentlyCoach ? UserRole.client : UserRole.coach,
+          isInstructor: !isCurrentlyCoach,
+        );
+      });
     }
   }
 }
