@@ -186,7 +186,7 @@ class AuthRepository {
 
       final userToSave = user.copyWith(currentPlans: validPlans);
 
-      batch.update(userRef, UserMapper.toMap(userToSave));
+      batch.set(userRef, UserMapper.toMap(userToSave), SetOptions(merge: true));
 
       for (var plan in expiredPlans) {
         final historyRef = userRef

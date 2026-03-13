@@ -8,6 +8,8 @@ import '../../../auth/presentation/cubit/auth_state.dart';
 import '../widgets/user_profile_header.dart';
 import '../tabs/user_subscriptions_tab.dart';
 import '../tabs/user_tickets_tab.dart';
+import '../tabs/user_details_tab.dart';
+import '../tabs/instructor_classes_tab.dart';
 import '../widgets/dialogs/assign_plan_dialog.dart';
 import '../widgets/dialogs/pause_plan_dialog.dart';
 import '../widgets/dialogs/add_ticket_dialog.dart';
@@ -15,7 +17,6 @@ import '../widgets/dialogs/ticket_detail_dialog.dart';
 import '../cubit/admin_cubit.dart';
 import '../cubit/admin_state.dart';
 import '../../../../core/constants/enums.dart';
-import '../tabs/instructor_classes_tab.dart';
 
 class AdminUserDetailScreen extends StatefulWidget {
   final UserModel user;
@@ -33,10 +34,8 @@ class AdminUserDetailScreen extends StatefulWidget {
   State<AdminUserDetailScreen> createState() => _AdminUserDetailScreenState();
 }
 
-class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
-    with SingleTickerProviderStateMixin {
+class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
   late UserModel _editedUser;
-  late TabController _tabController;
   final List<PendingPlanSale> _pendingPlans = [];
   final List<PendingTicketSale> _pendingTickets = [];
 
@@ -44,7 +43,6 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
   void initState() {
     super.initState();
     _editedUser = widget.user;
-    _tabController = TabController(length: 2, vsync: this);
   }
 
   void _reloadUser() {
@@ -88,15 +86,26 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
         u1.lastName != u2.lastName ||
         u1.documentId != u2.documentId ||
         u1.phoneNumber != u2.phoneNumber ||
+        u1.email != u2.email ||
+        u1.emergencyContact != u2.emergencyContact ||
         u1.accessExceptions.length != u2.accessExceptions.length ||
         u1.isLegacyUser != u2.isLegacyUser ||
         u1.role != u2.role ||
-        u1.isInstructor != u2.isInstructor;
+        u1.isInstructor != u2.isInstructor ||
+        u1.isActive != u2.isActive;
+  }
+
+  void _updateUserFromTab(UserModel updatedUser) {
+    setState(() {
+      _editedUser = updatedUser;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isCoach =
+        _editedUser.role == UserRole.coach || _editedUser.isInstructor;
 
     return BlocListener<AdminCubit, AdminState>(
       listener: (context, state) {
@@ -123,94 +132,81 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
             Navigator.of(context).pop();
           }
         },
-        child: Scaffold(
-          appBar: AppBar(
-            title: const Text("Perfil"),
-            actions: [
-              // oculta btn si es admin o inactivo
-              if (_editedUser.role != UserRole.admin && _editedUser.isActive)
-                IconButton(
-                  icon: const Icon(Icons.person_off, color: Colors.redAccent),
-                  tooltip: "Eliminar Usuario",
-                  onPressed: _showDeactivateDialog,
-                ),
-              Padding(
-                padding: const EdgeInsets.only(right: 16.0),
-                child: TextButton.icon(
-                  onPressed: _hasChanges ? _confirmSave : null,
-                  icon: const Icon(Icons.save, size: 20),
-                  label: const Text(
-                    "GUARDAR",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  style: TextButton.styleFrom(
-                    foregroundColor: _hasChanges ? Colors.blue : Colors.grey,
-                    backgroundColor: _hasChanges
-                        ? Colors.blue.withValues(alpha: 0.1)
-                        : null,
+        child: DefaultTabController(
+          key: ValueKey(isCoach),
+          length: isCoach ? 2 : 3,
+          child: Scaffold(
+            appBar: AppBar(
+              title: const Text("Perfil"),
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 16.0),
+                  child: TextButton.icon(
+                    onPressed: _hasChanges ? _confirmSave : null,
+                    icon: const Icon(Icons.save, size: 20),
+                    label: const Text(
+                      "GUARDAR",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: _hasChanges ? Colors.blue : Colors.grey,
+                      backgroundColor: _hasChanges
+                          ? Colors.blue.withValues(alpha: 0.1)
+                          : null,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          body: Column(
-            children: [
-              UserProfileHeader(
-                user: _editedUser,
-                onToggleLegacyStatus: () {
-                  setState(() {
-                    _editedUser = _editedUser.copyWith(
-                      isLegacyUser: !_editedUser.isLegacyUser,
-                    );
-                  });
-                },
-                onToggleInstructorStatus: _handleToggleInstructor,
-              ),
-              // instructor = oculta planes
-              if (_editedUser.role == UserRole.coach ||
-                  _editedUser.isInstructor)
-                Expanded(
-                  child: Column(
-                    children: [
-                      TabBar(
-                        controller: _tabController,
-                        labelColor: theme.colorScheme.primary,
-                        unselectedLabelColor: Colors.grey,
-                        indicatorSize: TabBarIndicatorSize.tab,
-                        tabs: const [
+              ],
+            ),
+            body: Column(
+              children: [
+                UserProfileHeader(
+                  user: _editedUser,
+                  onToggleLegacyStatus: () {
+                    setState(() {
+                      _editedUser = _editedUser.copyWith(
+                        isLegacyUser: !_editedUser.isLegacyUser,
+                      );
+                    });
+                  },
+                ),
+                TabBar(
+                  labelColor: theme.colorScheme.primary,
+                  unselectedLabelColor: Colors.grey,
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  tabs: isCoach
+                      ? const [
+                          Tab(text: "DETALLES"),
                           Tab(text: "CLASES ASIGNADAS"),
-                          Tab(text: ""),
+                        ]
+                      : [
+                          const Tab(text: "DETALLES"),
+                          const Tab(text: "PLANES"),
+
+                          const Tab(
+                            child: Text(
+                              "INGRESOS\nEXTRAS",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(height: 1.1, fontSize: 13),
+                            ),
+                          ),
                         ],
-                      ),
-                      Expanded(
-                        child: TabBarView(
-                          controller: _tabController,
-                          children: [
-                            InstructorClassesTab(coachId: _editedUser.userId),
-                            const SizedBox.shrink(),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              else
+                ),
                 Expanded(
-                  child: Column(
-                    children: [
-                      TabBar(
-                        controller: _tabController,
-                        labelColor: theme.colorScheme.primary,
-                        unselectedLabelColor: Colors.grey,
-                        tabs: const [
-                          Tab(text: "PLANES"),
-                          Tab(text: "INGRESOS EXTRAS"),
-                        ],
-                      ),
-                      Expanded(
-                        child: TabBarView(
-                          controller: _tabController,
-                          children: [
+                  child: TabBarView(
+                    children: isCoach
+                        ? [
+                            UserDetailsTab(
+                              user: _editedUser,
+                              onUpdate: _updateUserFromTab,
+                            ),
+                            InstructorClassesTab(coachId: _editedUser.userId),
+                          ]
+                        : [
+                            UserDetailsTab(
+                              user: _editedUser,
+                              onUpdate: _updateUserFromTab,
+                            ),
                             UserSubscriptionsTab(
                               activePlans: _editedUser.validPlans,
                               onAssignNewPlan: _showAssignPlanDialog,
@@ -238,12 +234,10 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
                               },
                             ),
                           ],
-                        ),
-                      ),
-                    ],
                   ),
                 ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -540,172 +534,5 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
     );
 
     Navigator.pop(context);
-  }
-
-  // Borrado logico
-  Future<void> _showDeactivateDialog() async {
-    final authState = context.read<AuthCubit>().state;
-    final currentAdminName = (authState is AuthAuthenticated)
-        ? authState.user.fullName
-        : "admin";
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("¿Eliminar Usuario?"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              "El usuario no podrá ingresar y no aparecerá en las listas, pero su historial y reportes financieros se mantendrán intactos.",
-            ),
-            const SizedBox(height: 20),
-            _HoldToConfirmButton(onConfirm: () => Navigator.pop(ctx, true)),
-            const SizedBox(height: 10),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text("Cancelar"),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (confirm == true) {
-      setState(() {
-        _editedUser = _editedUser.copyWith(
-          isActive: false,
-          deletedAt: DateTime.now(),
-          deletedBy: currentAdminName,
-        );
-      });
-      _saveChanges();
-    }
-  }
-
-  // conversion de rol
-  Future<void> _handleToggleInstructor() async {
-    final isCurrentlyCoach =
-        _editedUser.role == UserRole.coach || _editedUser.isInstructor;
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(
-          isCurrentlyCoach
-              ? "¿Revocar acceso de Instructor?"
-              : "¿Otorgar acceso de Instructor?",
-        ),
-        content: Text(
-          isCurrentlyCoach
-              ? "Esta acción convertira al usuario a cliente. Perderá inmediatamente el acceso al panel de profesores."
-              : "Este usuario se convertirá en instructor. Tendrá privilegios para ver listas de asistencia y gestionar clases.",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text("Cancelar"),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: isCurrentlyCoach ? Colors.red : Colors.blue,
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(
-              isCurrentlyCoach
-                  ? "Asignar como cliente"
-                  : "Asignar como instructor",
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      setState(() {
-        _editedUser = _editedUser.copyWith(
-          role: isCurrentlyCoach ? UserRole.client : UserRole.coach,
-          isInstructor: !isCurrentlyCoach,
-        );
-      });
-    }
-  }
-}
-
-class _HoldToConfirmButton extends StatefulWidget {
-  final VoidCallback onConfirm;
-  const _HoldToConfirmButton({required this.onConfirm});
-
-  @override
-  State<_HoldToConfirmButton> createState() => _HoldToConfirmButtonState();
-}
-
-class _HoldToConfirmButtonState extends State<_HoldToConfirmButton>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    // configura animacion de tres segundos
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 3),
-    );
-
-    // escucha estado de animacion
-    _controller.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        widget.onConfirm();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      // inicia llenado
-      onTapDown: (_) => _controller.forward(),
-      // revierte si suelta antes
-      onTapUp: (_) => _controller.reverse(),
-      // revierte si mueve el dedo
-      onTapCancel: () => _controller.reverse(),
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, child) {
-          final progress = _controller.value;
-          return Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.red.withValues(alpha: 0.1 + (progress * 0.9)),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.red),
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // muestra texto dinamico
-                Text(
-                  progress == 0.0
-                      ? "Mantenga 3s para confirmar"
-                      : "Eliminando...",
-                  style: TextStyle(
-                    color: progress > 0.5 ? Colors.white : Colors.red,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
   }
 }

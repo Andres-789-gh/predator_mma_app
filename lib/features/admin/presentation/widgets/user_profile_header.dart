@@ -2,24 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../auth/domain/models/user_model.dart';
 import '../../../../core/widgets/smart_avatar.dart';
-import '../../../../core/constants/enums.dart';
 
 class UserProfileHeader extends StatelessWidget {
   final UserModel user;
   final VoidCallback onToggleLegacyStatus;
-  final VoidCallback onToggleInstructorStatus;
 
   const UserProfileHeader({
     super.key,
     required this.user,
     required this.onToggleLegacyStatus,
-    required this.onToggleInstructorStatus,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isCoach = user.role == UserRole.coach || user.isInstructor;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -56,98 +52,48 @@ class UserProfileHeader extends StatelessWidget {
                   style: TextStyle(color: theme.textTheme.bodySmall?.color),
                 ),
                 const SizedBox(height: 5),
-                // agrupa btns estado
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    InkWell(
-                      onTap: onToggleLegacyStatus,
+                // boton unico de estado
+                InkWell(
+                  onTap: onToggleLegacyStatus,
+                  borderRadius: BorderRadius.circular(4),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: user.isLegacyUser
+                          ? Colors.amber.withValues(alpha: 0.2)
+                          : Colors.grey.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
+                      border: Border.all(
+                        color: user.isLegacyUser ? Colors.amber : Colors.grey,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          user.isLegacyUser ? Icons.star : Icons.star_border,
+                          size: 16,
                           color: user.isLegacyUser
-                              ? Colors.amber.withValues(alpha: 0.2)
-                              : Colors.grey.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
+                              ? Colors.orange
+                              : Colors.grey,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          "Usuario Antiguo",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
                             color: user.isLegacyUser
-                                ? Colors.amber
+                                ? Colors.orange[800]
                                 : Colors.grey,
                           ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              user.isLegacyUser
-                                  ? Icons.star
-                                  : Icons.star_border,
-                              size: 16,
-                              color: user.isLegacyUser
-                                  ? Colors.orange
-                                  : Colors.grey,
-                            ),
-                            const SizedBox(width: 5),
-                            Text(
-                              "Usuario Antiguo",
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: user.isLegacyUser
-                                    ? Colors.orange[800]
-                                    : Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      ],
                     ),
-                    InkWell(
-                      onTap: onToggleInstructorStatus,
-                      borderRadius: BorderRadius.circular(4),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isCoach
-                              ? Colors.blue.withValues(alpha: 0.2)
-                              : Colors.grey.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: isCoach ? Colors.blue : Colors.grey,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              isCoach
-                                  ? Icons.person_outline
-                                  : Icons.person_outline,
-                              size: 16,
-                              color: isCoach ? Colors.blue : Colors.grey,
-                            ),
-                            const SizedBox(width: 5),
-                            Text(
-                              isCoach ? "Convertir en cliente" : "Convertir en instructor",
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: isCoach ? Colors.blue[800] : Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
