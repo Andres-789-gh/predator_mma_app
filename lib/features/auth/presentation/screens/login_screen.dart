@@ -69,8 +69,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   Positioned.fill(
                     child: Image.asset(
                       isDark
-                          ? 'assets/images/login_background.png'
-                          : 'assets/images/login_background_claro.png',
+                          ? 'assets/images/login_background_claro.png'
+                          : 'assets/images/login_background.png',
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
                         return Container(color: theme.scaffoldBackgroundColor);

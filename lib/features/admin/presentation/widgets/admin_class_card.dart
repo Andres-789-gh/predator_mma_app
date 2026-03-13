@@ -19,23 +19,15 @@ class AdminClassCard extends StatelessWidget {
     final timeFormat = DateFormat('h:mm a');
     final startTime = timeFormat.format(classModel.startTime);
     final endTime = timeFormat.format(classModel.endTime);
-
     final isCancelled = classModel.isCancelled;
     final isExpired = classModel.hasFinished;
-    final enrolledCount = classModel.attendees.length;
     final maxCap = classModel.maxCapacity;
-    final isFull = enrolledCount >= maxCap;
-
-    final occupationColor = isFull
-        ? Colors.red
-        : (enrolledCount > 0 ? Colors.green : Colors.grey);
-
+    const occupationColor = Colors.grey;
     final cardColor = isCancelled
         ? Colors.red.withValues(alpha: 0.05)
         : (isExpired
               ? Colors.grey.withValues(alpha: 0.1)
               : (isDark ? const Color(0xFF1E1E1E) : Colors.white));
-
     final textColor = isCancelled || isExpired
         ? Colors.grey
         : (isDark ? Colors.white : Colors.black87);
@@ -175,25 +167,11 @@ class AdminClassCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 6),
 
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: occupationColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: occupationColor.withValues(alpha: 0.3),
-                            ),
-                          ),
-                          child: Text(
-                            '$enrolledCount / $maxCap INSCRITOS',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: occupationColor,
-                              fontWeight: FontWeight.bold,
-                            ),
+                        Text(
+                          'Capacidad: $maxCap',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? Colors.grey : Colors.grey[700],
                           ),
                         ),
                       ],

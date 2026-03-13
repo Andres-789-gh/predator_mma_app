@@ -930,4 +930,38 @@ class ScheduleRepository {
 
     return null;
   }
+
+  // obtiene tipos de clase asignados a un instructor
+  Future<List<ClassTypeModel>> getCoachClassTypes(String coachId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('schedule_patterns')
+          .where('active', isEqualTo: true)
+          .where('coach_id', isEqualTo: coachId)
+          .get();
+
+      if (snapshot.docs.isEmpty) return [];
+
+      final Set<String> uniqueClassTypeIds = {};
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        if (data['class_type_id'] != null) {
+          uniqueClassTypeIds.add(data['class_type_id']);
+        }
+      }
+
+      if (uniqueClassTypeIds.isEmpty) return [];
+
+      final typesSnapshot = await _firestore
+          .collection('class_types')
+          .where(FieldPath.documentId, whereIn: uniqueClassTypeIds.toList())
+          .get();
+
+      return typesSnapshot.docs
+          .map((doc) => ClassTypeMapper.fromMap(doc.data(), doc.id))
+          .toList();
+    } catch (e) {
+      throw Exception('error obteniendo catalogo del instructor: $e');
+    }
+  }
 }

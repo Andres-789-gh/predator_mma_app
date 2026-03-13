@@ -15,6 +15,7 @@ import '../widgets/dialogs/ticket_detail_dialog.dart';
 import '../cubit/admin_cubit.dart';
 import '../cubit/admin_state.dart';
 import '../../../../core/constants/enums.dart';
+import '../tabs/instructor_classes_tab.dart';
 
 class AdminUserDetailScreen extends StatefulWidget {
   final UserModel user;
@@ -181,13 +182,13 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
                           Tab(text: ""),
                         ],
                       ),
-                      const Expanded(
-                        child: Center(
-                          child: Text(
-                            "Módulo de clases asignadas en construcción.\nAquí se listarán los horarios a cargo de este instructor.",
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.grey),
-                          ),
+                      Expanded(
+                        child: TabBarView(
+                          controller: _tabController,
+                          children: [
+                            InstructorClassesTab(coachId: _editedUser.userId),
+                            const SizedBox.shrink(),
+                          ],
                         ),
                       ),
                     ],
@@ -584,16 +585,21 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
 
   // conversion de rol
   Future<void> _handleToggleInstructor() async {
-    final isCurrentlyCoach = _editedUser.role == UserRole.coach || _editedUser.isInstructor;
+    final isCurrentlyCoach =
+        _editedUser.role == UserRole.coach || _editedUser.isInstructor;
 
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(isCurrentlyCoach ? "¿Revocar acceso de Instructor?" : "¿Otorgar acceso de Instructor?"),
+        title: Text(
+          isCurrentlyCoach
+              ? "¿Revocar acceso de Instructor?"
+              : "¿Otorgar acceso de Instructor?",
+        ),
         content: Text(
-          isCurrentlyCoach 
-            ? "Esta acción convertira al usuario a cliente. Perderá inmediatamente el acceso al panel de profesores."
-            : "Este usuario se convertirá en instructor. Tendrá privilegios para ver listas de asistencia y gestionar clases.",
+          isCurrentlyCoach
+              ? "Esta acción convertira al usuario a cliente. Perderá inmediatamente el acceso al panel de profesores."
+              : "Este usuario se convertirá en instructor. Tendrá privilegios para ver listas de asistencia y gestionar clases.",
         ),
         actions: [
           TextButton(
@@ -605,7 +611,11 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
               backgroundColor: isCurrentlyCoach ? Colors.red : Colors.blue,
             ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(isCurrentlyCoach ? "Asignar como cliente" : "Asignar como instructor"),
+            child: Text(
+              isCurrentlyCoach
+                  ? "Asignar como cliente"
+                  : "Asignar como instructor",
+            ),
           ),
         ],
       ),
