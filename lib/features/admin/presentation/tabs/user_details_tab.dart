@@ -217,59 +217,61 @@ class UserDetailsTab extends StatelessWidget {
         const SizedBox(height: 12),
 
         // Waiver
-        Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            side: BorderSide(color: theme.dividerColor),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "Documentación Legal",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey,
+        if (user.role != UserRole.coach) ...[
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              side: BorderSide(color: theme.dividerColor),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Documentación Legal",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 15),
-                Row(
-                  children: [
-                    Icon(
-                      user.isWaiverSigned ? Icons.check_circle : Icons.cancel,
-                      color: user.isWaiverSigned ? Colors.green : Colors.red,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        user.isWaiverSigned
-                            ? "Exoneración Firmada"
-                            : "Exoneración Pendiente",
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                  const SizedBox(height: 15),
+                  Row(
+                    children: [
+                      Icon(
+                        user.isWaiverSigned ? Icons.check_circle : Icons.cancel,
+                        color: user.isWaiverSigned ? Colors.green : Colors.red,
                       ),
-                    ),
-                    if (user.isWaiverSigned)
-                      TextButton.icon(
-                        icon: const Icon(Icons.remove_red_eye, size: 16),
-                        label: const Text("Ver Documento"),
-                        onPressed: () {
-                          showDialog(
-                            context: context,
-                            builder: (_) =>
-                                ViewWaiverDialog(userId: user.userId),
-                          );
-                        },
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          user.isWaiverSigned
+                              ? "Exoneración Firmada"
+                              : "Exoneración Pendiente",
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ),
-                  ],
-                ),
-              ],
+                      if (user.isWaiverSigned)
+                        TextButton.icon(
+                          icon: const Icon(Icons.remove_red_eye, size: 16),
+                          label: const Text("Ver Documento"),
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (_) =>
+                                  ViewWaiverDialog(userId: user.userId),
+                            );
+                          },
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 25),
+          const SizedBox(height: 25),
+        ],
 
         // panel administrativo
         const Text(
@@ -294,7 +296,9 @@ class UserDetailsTab extends StatelessWidget {
               fontSize: 16,
             ),
           ),
-          trailing: user.role != UserRole.admin ? const Icon(Icons.change_circle) : null,
+          trailing: user.role != UserRole.admin
+              ? const Icon(Icons.change_circle)
+              : null,
           onTap: user.role != UserRole.admin
               ? () => _handleToggleRole(context)
               : null,
