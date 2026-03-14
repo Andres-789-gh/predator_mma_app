@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/enums.dart';
 import '../../../auth/domain/models/user_model.dart';
 import '../widgets/dialogs/hold_to_confirm_button.dart';
-import '../widgets/dialogs/view_waiver_dialog.dart';
 import 'package:intl/intl.dart';
 
 class UserDetailsTab extends StatelessWidget {
@@ -10,6 +10,35 @@ class UserDetailsTab extends StatelessWidget {
   final Function(UserModel) onUpdate;
 
   const UserDetailsTab({super.key, required this.user, required this.onUpdate});
+
+  // abrir pdf
+  Future<void> _downloadPdf(BuildContext context) async {
+    final url = user.waiverSignatureUrl;
+    
+    if (url == null || url.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error: El enlace del documento está dañado o no se encontró en la base de datos.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final uri = Uri.parse(url);
+    try {
+      // LaunchMode.externalApplication le delega el trabajo a Android/iOS para que use el navegador por defecto
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se encontró una aplicación en el celular para abrir este enlace.'),
+          ),
+        );
+      }
+    }
+  }
 
   // cambio rol
   Future<void> _handleToggleRole(BuildContext context) async {
@@ -254,15 +283,9 @@ class UserDetailsTab extends StatelessWidget {
                       ),
                       if (user.isWaiverSigned)
                         TextButton.icon(
-                          icon: const Icon(Icons.remove_red_eye, size: 16),
-                          label: const Text("Ver Documento"),
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (_) =>
-                                  ViewWaiverDialog(userId: user.userId),
-                            );
-                          },
+                          icon: const Icon(Icons.picture_as_pdf, size: 16),
+                          label: const Text("Descargar PDF"),
+                          onPressed: () => _downloadPdf(context),
                         ),
                     ],
                   ),
