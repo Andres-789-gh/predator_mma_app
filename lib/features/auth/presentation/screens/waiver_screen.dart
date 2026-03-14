@@ -1,13 +1,13 @@
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:signature/signature.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../../domain/models/waiver_model.dart';
+import '../../data/services/waiver_service.dart';
 
 class WaiverScreen extends StatefulWidget {
   const WaiverScreen({super.key});
@@ -17,30 +17,22 @@ class WaiverScreen extends StatefulWidget {
 }
 
 class _WaiverScreenState extends State<WaiverScreen> {
-  // controla el panel de firma
   final SignatureController _signatureController = SignatureController(
     penStrokeWidth: 3,
     penColor: Colors.black,
     exportBackgroundColor: Colors.transparent,
   );
-
-  // controladores datos personales
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _idController = TextEditingController();
   final TextEditingController _cityController = TextEditingController();
-
-  // controladores datos menor
   final TextEditingController _minorNameController = TextEditingController();
   final TextEditingController _minorIdController = TextEditingController();
   final TextEditingController _minorCityController = TextEditingController();
-
-  // estado
   bool _isLoading = false;
   bool _isGuardian = false;
   final Map<int, bool> _answers = {};
   final Map<int, TextEditingController> _specsControllers = {};
-
-  // preguntas textuales pdf
+  final WaiverService _waiverService = WaiverService();
   final List<String> _questions = [
     "1. ¿Alguna vez su doctor le ha diagnosticado problemas cardíacos?",
     "2. ¿Tiene dolores en el pecho con frecuencia?",
@@ -65,109 +57,78 @@ class _WaiverScreenState extends State<WaiverScreen> {
     super.dispose();
   }
 
-  // enviar formulario
+  // valida y procesa formulario
   Future<void> _submitWaiver(String userId) async {
-    // valida campos personales
     if (_nameController.text.trim().isEmpty ||
         _idController.text.trim().isEmpty ||
         _cityController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Por favor diligencia todos los campos de la Carta de Aceptación.',
-          ),
-        ),
-      );
+      _showError('Por favor diligencia todos los campos personales.');
       return;
     }
 
-    // valida campos menor
     if (_isGuardian) {
       if (_minorNameController.text.trim().isEmpty ||
           _minorIdController.text.trim().isEmpty ||
           _minorCityController.text.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Debe diligenciar los datos del menor (Nombre, Tarjeta Identidad, Ciudad).',
-            ),
-          ),
-        );
+        _showError('Debe diligenciar los datos del menor completo.');
         return;
       }
     }
 
-    // valida cuestionario
     if (_answers.length < _questions.length) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Por favor responde todas las preguntas del cuestionario.',
-          ),
-        ),
-      );
+      _showError('Por favor responde todas las preguntas del cuestionario.');
       return;
     }
 
-    // valida especificaciones
     for (int i = 0; i < _questions.length; i++) {
       if (_answers[i] == true) {
         if (_specsControllers[i]?.text.trim().isEmpty ?? true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Especifique su respuesta en la pregunta ${i + 1}.',
-              ),
-            ),
-          );
+          _showError('Especifique su respuesta en la pregunta ${i + 1}.');
           return;
         }
       }
     }
 
-    // valida firma
     if (_signatureController.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Falta la firma al final del documento.')),
-      );
+      _showError('Falta la firma al final del documento.');
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      final Uint8List? data = await _signatureController.toPngBytes();
-      if (data == null) throw Exception('Error procesando firma');
-      final String base64Signature = base64Encode(data);
+      final Uint8List? signatureData = await _signatureController.toPngBytes();
+      if (signatureData == null) throw Exception('Error procesando firma');
 
-      Map<String, dynamic> questionnaireData = {};
+      // construye modelo de datos
+      List<WaiverAnswer> builtAnswers = [];
       for (int i = 0; i < _questions.length; i++) {
-        questionnaireData['q${i + 1}'] = {
-          'question': _questions[i],
-          'answer': _answers[i],
-          'specification': _answers[i] == true
-              ? _specsControllers[i]?.text.trim()
-              : null,
-        };
+        builtAnswers.add(
+          WaiverAnswer(
+            question: _questions[i],
+            answer: _answers[i]!,
+            specification: _answers[i] == true
+                ? _specsControllers[i]?.text.trim()
+                : null,
+          ),
+        );
       }
 
-      Map<String, dynamic> personalInfo = {
-        'signer_name': _nameController.text.trim(),
-        'signer_id': _idController.text.trim(),
-        'signer_city': _cityController.text.trim(),
-        'role': _isGuardian ? 'Acudiente' : 'Usuario',
-        'minor_name': _isGuardian ? _minorNameController.text.trim() : null,
-        'minor_id': _isGuardian ? _minorIdController.text.trim() : null,
-        'minor_city': _isGuardian ? _minorCityController.text.trim() : null,
-      };
+      final waiverData = WaiverModel(
+        userId: userId,
+        isGuardian: _isGuardian,
+        signerName: _nameController.text.trim(),
+        signerId: _idController.text.trim(),
+        signerCity: _cityController.text.trim(),
+        minorName: _isGuardian ? _minorNameController.text.trim() : null,
+        minorId: _isGuardian ? _minorIdController.text.trim() : null,
+        minorCity: _isGuardian ? _minorCityController.text.trim() : null,
+        answers: builtAnswers,
+        signatureBytes: signatureData,
+      );
 
-      await FirebaseFirestore.instance.collection('users').doc(userId).update({
-        'legal.is_signed': true,
-        'legal.signature_base64': base64Signature,
-        'legal.signed_at': FieldValue.serverTimestamp(),
-        'waiver_responses': questionnaireData,
-        'waiver_personal_info': personalInfo,
-      });
+      // delega logica al servicio
+      await _waiverService.processAndSaveWaiver(waiverData);
 
       if (mounted) {
         context.read<AuthCubit>().checkAuthStatus();
@@ -179,14 +140,17 @@ class _WaiverScreenState extends State<WaiverScreen> {
         Navigator.pop(context);
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error guardando: $e')));
-      }
+      _showError('Error guardando documento: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  // muestra alertas de error
+  void _showError(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -232,7 +196,6 @@ class _WaiverScreenState extends State<WaiverScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // encabezado
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -355,14 +318,11 @@ class _WaiverScreenState extends State<WaiverScreen> {
                     ),
                     const SizedBox(height: 10),
 
-                    // cita 1
                     _buildQuoteBlock(
                       "\"... fuerza absoluta de sus músculos, así como la rápida y la estática. El atleta adquiere gran cantidad de hábitos motrices especiales, así como el desarrollo de la resistencia...además, gran movilidad de los procesos nerviosos, ya que la actividad del luchador y la cantidad de movimientos posibles (ataques, defensas, contra llaves, tácticas) es muy grande, esto implica que se desarrolle en quienes lo practiquen durante mucho tiempo una gran sensibilidad propioceptiva\".",
                       docStyle,
                     ),
                     const SizedBox(height: 10),
-
-                    // cita 2
                     _buildQuoteBlock(
                       "La enseñanza de los deportes de combate siempre se hará teniendo como base la educación en valores, no se puede obviar que el estudiante valora muy positivamente la práctica de estos deportes como defensa personal... el aprendizaje de las técnicas de combate parece dar confianza y seguridad a sus practicantes. (José Montero, 2009, Enfoque para el estudio del hecho histórico deportivo, con énfasis en los deportes de combate).",
                       docStyle,
@@ -377,8 +337,6 @@ class _WaiverScreenState extends State<WaiverScreen> {
                     const SizedBox(height: 10),
 
                     Divider(color: textColor, thickness: 1, endIndent: 200),
-
-                    // nota
                     RichText(
                       text: TextSpan(
                         style: docStyle.copyWith(
@@ -400,15 +358,30 @@ class _WaiverScreenState extends State<WaiverScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // txt previo cuestionario
-                    Text(
-                      "Las siguientes preguntas deben ser leídas cuidadosamente y respondidas con honestidad; el manifestar que si presenta o ha presentado alguno de los síntomas y/o diagnósticos no le excluye de la participación en el proceso de preparación física, práctica y competencia deportiva desarrollado por PREDATOR FIGHT CLUB. No obstante, el siguiente cuestionario se asume como una declaración por parte del futuro usuario o acudiente del mismo que se encuentra en condición de iniciar un proceso de preparación física y/o entrenamiento deportivo.",
-                      style: docStyle,
+                    RichText(
                       textAlign: TextAlign.justify,
+                      text: TextSpan(
+                        style: docStyle,
+                        children: [
+                          const TextSpan(
+                            text:
+                                "Las siguientes preguntas deben ser leídas cuidadosamente y respondidas con honestidad; el manifestar que si presenta o ha presentado alguno de los síntomas y/o diagnósticos no le excluye de la participación en el proceso de preparación física, práctica y competencia deportiva desarrollado por ",
+                          ),
+                          TextSpan(
+                            text: "PREDATOR FIGHT CLUB",
+                            style: docStyle.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const TextSpan(
+                            text:
+                                ". No obstante, el siguiente cuestionario se asume como una declaración por parte del futuro usuario o acudiente del mismo que se encuentra en condición de iniciar un proceso de preparación física y/o entrenamiento deportivo.",
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 10),
 
-                    // nota
                     RichText(
                       textAlign: TextAlign.justify,
                       text: TextSpan(
@@ -432,7 +405,6 @@ class _WaiverScreenState extends State<WaiverScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // cuestionario par-q
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -462,7 +434,6 @@ class _WaiverScreenState extends State<WaiverScreen> {
                     ),
                     const SizedBox(height: 30),
 
-                    // carta de aceptacion
                     Text(
                       "Carta de Aceptación CONCENTIMIENTO INFORMADO",
                       style: TextStyle(
@@ -474,7 +445,6 @@ class _WaiverScreenState extends State<WaiverScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // formulario yo...
                     Wrap(
                       crossAxisAlignment: WrapCrossAlignment.end,
                       children: [
@@ -516,7 +486,6 @@ class _WaiverScreenState extends State<WaiverScreen> {
                     ),
                     const SizedBox(height: 15),
 
-                    // seleccion rol
                     RadioGroup<bool>(
                       groupValue: _isGuardian,
                       onChanged: (val) => setState(() => _isGuardian = val!),
@@ -560,7 +529,6 @@ class _WaiverScreenState extends State<WaiverScreen> {
                       ),
                     ),
 
-                    // campos menor
                     if (_isGuardian)
                       Padding(
                         padding: const EdgeInsets.only(top: 5),
@@ -603,15 +571,30 @@ class _WaiverScreenState extends State<WaiverScreen> {
 
                     const SizedBox(height: 20),
 
-                    // declaracion final
-                    Text(
-                      "Declaro (a) que en forma voluntaria se ha decidido participar en el proceso de preparación física y/o práctica deportiva desarrollados por PREDATOR FIGHT CLUB además me (nos) comprometo (emos) a atender las recomendaciones del equipo asesor y las siguientes observaciones:",
-                      style: docStyle,
+                    RichText(
                       textAlign: TextAlign.justify,
+                      text: TextSpan(
+                        style: docStyle,
+                        children: [
+                          const TextSpan(
+                            text:
+                                "Declaro (a) que en forma voluntaria se ha decidido participar en el proceso de preparación física y/o práctica deportiva desarrollados por ",
+                          ),
+                          TextSpan(
+                            text: "PREDATOR FIGHT CLUB",
+                            style: docStyle.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const TextSpan(
+                            text:
+                                " además me (nos) comprometo (emos) a atender las recomendaciones del equipo asesor y las siguientes observaciones:",
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 10),
 
-                    // puntos declaracion
                     _buildDeclarationPoint(
                       "Que la información que suministro en este documento es veraz y que toda omisión de parte del usuario puede constituir un atentado contra su integridad personal, exonerando desde ya de toda responsabilidad a ",
                       "PREDATOR FIGHT CLUB.",
@@ -637,7 +620,6 @@ class _WaiverScreenState extends State<WaiverScreen> {
 
                     const SizedBox(height: 30),
 
-                    // footer de datos
                     Container(
                       padding: const EdgeInsets.only(top: 10, bottom: 10),
                       child: Column(
@@ -678,7 +660,6 @@ class _WaiverScreenState extends State<WaiverScreen> {
                       ),
                     ),
 
-                    // pad de firma
                     Text(
                       "Firma:",
                       style: TextStyle(
@@ -717,7 +698,6 @@ class _WaiverScreenState extends State<WaiverScreen> {
 
                     const SizedBox(height: 30),
 
-                    // btn
                     SizedBox(
                       height: 55,
                       child: ElevatedButton(
@@ -746,7 +726,7 @@ class _WaiverScreenState extends State<WaiverScreen> {
     );
   }
 
-  // widgets auxiliares
+  // citas
   Widget _buildQuoteBlock(String text, TextStyle style) {
     return Container(
       padding: const EdgeInsets.only(left: 10),
@@ -761,6 +741,7 @@ class _WaiverScreenState extends State<WaiverScreen> {
     );
   }
 
+  // lista declaracion
   Widget _buildDeclarationPoint(
     String prefix,
     String suffix,
@@ -865,6 +846,7 @@ class _WaiverScreenState extends State<WaiverScreen> {
     );
   }
 
+  // inputs texto
   Widget _buildInlineTextField(
     TextEditingController controller,
     String hint,
@@ -904,6 +886,7 @@ class _WaiverScreenState extends State<WaiverScreen> {
     );
   }
 
+  // opciones cuestionario
   Widget _buildQuestionItem(int index, Color textColor) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
