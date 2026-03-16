@@ -130,6 +130,7 @@ class ProfileScreen extends StatelessWidget {
                 const SizedBox(height: 40),
 
                 // historial cliente
+                /*
                 if (user.role == UserRole.client) ...[
                   SizedBox(
                     width: double.infinity,
@@ -156,6 +157,7 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
                 ],
+                */
 
                 // btn salida
                 SizedBox(

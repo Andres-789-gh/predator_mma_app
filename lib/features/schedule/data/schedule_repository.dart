@@ -445,7 +445,7 @@ class ScheduleRepository {
       await _firestore
           .collection('class_types')
           .doc(type.id)
-          .update(ClassTypeMapper.toMap(type));
+          .set(ClassTypeMapper.toMap(type), SetOptions(merge: true));
     } catch (e) {
       throw Exception('Error actualizando tipo: $e');
     }
@@ -587,7 +587,7 @@ class ScheduleRepository {
       await _firestore
           .collection('classes')
           .doc(updatedClass.classId)
-          .update(ClassMapper.toMap(updatedClass));
+          .set(ClassMapper.toMap(updatedClass), SetOptions(merge: true));
     } catch (e) {
       throw Exception('Error editando clase única: $e');
     }

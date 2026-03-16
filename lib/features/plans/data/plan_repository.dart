@@ -41,6 +41,7 @@ class PlanRepository {
     }
   }
 
+  // actualiza plan
   Future<void> updatePlan(PlanModel plan) async {
     if (plan.scheduleRules.isEmpty) {
       throw Exception(
@@ -52,7 +53,7 @@ class PlanRepository {
       await _firestore
           .collection('plans')
           .doc(plan.id)
-          .update(PlanMapper.toMap(plan));
+          .set(PlanMapper.toMap(plan), SetOptions(merge: true));
     } catch (e) {
       throw Exception('Error actualizando plan: $e');
     }

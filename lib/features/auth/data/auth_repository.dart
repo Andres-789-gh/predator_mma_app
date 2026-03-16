@@ -272,7 +272,11 @@ class AuthRepository {
 
           if (userModified) {
             final updatedUser = userData.copyWith(currentPlans: updatedPlans);
-            batch.update(doc.reference, UserMapper.toMap(updatedUser));
+            batch.set(
+              doc.reference,
+              UserMapper.toMap(updatedUser),
+              SetOptions(merge: true),
+            );
             count++;
           }
         }
