@@ -348,6 +348,22 @@ class AuthCubit extends Cubit<AuthState> {
     _userSubscription?.cancel();
     return super.close();
   }
+
+  // correo recuperacion contraseña
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await _authRepository.sendPasswordResetEmail(email);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found') {
+        throw Exception('No hay ningún usuario registrado con este correo.');
+      } else if (e.code == 'invalid-email') {
+        throw Exception('El formato del correo no es válido.');
+      }
+      throw Exception('Error al enviar el correo de recuperación.');
+    } catch (e) {
+      throw Exception('Ocurrió un error inesperado. Intenta nuevamente.');
+    }
+  }
 }
 
 class InvalidAccessKeyException implements Exception {}

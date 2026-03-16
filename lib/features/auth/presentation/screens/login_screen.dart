@@ -246,7 +246,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                             const SizedBox(height: 24),
 
-                            // link registro
+                            // navega a registro
                             Center(
                               child: TextButton(
                                 onPressed: () {
@@ -272,6 +272,68 @@ class _LoginScreenState extends State<LoginScreen> {
                                         ),
                                       ),
                                     ],
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            // recuperacion contraseña
+                            Center(
+                              child: TextButton(
+                                onPressed: () async {
+                                  final email = _emailController.text.trim();
+                                  if (email.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Por favor, ingrese su correo electrónico en el campo de arriba para enviar el enlace.',
+                                        ),
+                                        backgroundColor: Colors.orange,
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  try {
+                                    await context
+                                        .read<AuthCubit>()
+                                        .sendPasswordResetEmail(email);
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Se ha enviado un enlace de recuperación a $email',
+                                          ),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      final cleanMessage = e
+                                          .toString()
+                                          .replaceAll('Exception: ', '');
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(cleanMessage),
+                                          backgroundColor: Theme.of(
+                                            context,
+                                          ).colorScheme.error,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                                child: Text(
+                                  '¿Olvidaste tu contraseña?',
+                                  style: TextStyle(
+                                    color: isDark ? Colors.red : primaryColor,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
                                   ),
                                 ),
                               ),

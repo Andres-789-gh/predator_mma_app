@@ -159,6 +159,31 @@ class ProfileScreen extends StatelessWidget {
                 ],
                 */
 
+                // btn cambiar contraseña
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: OutlinedButton.icon(
+                    onPressed: () =>
+                        _showPasswordResetDialog(context, user.email),
+                    icon: const Icon(Icons.lock_reset, color: Colors.grey),
+                    label: const Text(
+                      'CAMBIAR CONTRASEÑA',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.grey),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
                 // btn salida
                 SizedBox(
                   width: double.infinity,
@@ -412,6 +437,74 @@ class ProfileScreen extends StatelessWidget {
               },
               child: const Text(
                 'Salir',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // confirmacion correo de recuperacion
+  void _showPasswordResetDialog(BuildContext context, String email) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          title: Text(
+            'Cambiar Contraseña',
+            style: TextStyle(color: isDark ? Colors.white : Colors.black),
+          ),
+          content: Text(
+            'Se enviará un enlace a tu correo electrónico registrado para que cambies tu contraseña. ¿Deseas continuar?',
+            style: TextStyle(color: isDark ? Colors.grey : Colors.black87),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text(
+                'Cancelar',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                try {
+                  await context.read<AuthCubit>().sendPasswordResetEmail(email);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Revisa tu bandeja de entrada. Te hemos enviado un enlace para cambiar tu contraseña.',
+                        ),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    final cleanMessage = e.toString().replaceAll(
+                      'Exception: ',
+                      '',
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(cleanMessage),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text(
+                'Enviar Enlace',
                 style: TextStyle(
                   color: Colors.red,
                   fontWeight: FontWeight.bold,

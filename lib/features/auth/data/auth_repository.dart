@@ -53,19 +53,25 @@ class AuthRepository {
         'el correo electrónico o el documento de identidad ya están registrados.';
 
     try {
-      final documentExists = await _checkDocumentExists(userModel.documentId);
-
-      if (documentExists) {
-        throw Exception(genericError);
-      }
-
+      // crea registro en firebase auth para obtener permisos temporales
       final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
+      // valida si el documento existe ahora que hay sesion activa
+      final documentExists = await _checkDocumentExists(userModel.documentId);
+
+      if (documentExists) {
+        // elimina credencial creada si detecta documento duplicado
+        await userCredential.user!.delete();
+        throw Exception(genericError);
+      }
+
+      // asigna id y prepara modelo final
       final newUser = userModel.copyWith(userId: userCredential.user!.uid);
 
+      // guarda perfil en base de datos
       await _firestore
           .collection('users')
           .doc(newUser.userId)
@@ -342,5 +348,11 @@ class AuthRepository {
     } catch (e) {
       throw Exception('error subiendo imagen: $e');
     }
+  }
+
+  // restablecimiento contraseña
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _firebaseAuth.setLanguageCode("es");
+    await _firebaseAuth.sendPasswordResetEmail(email: email);
   }
 }
