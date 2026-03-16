@@ -6,6 +6,7 @@ import '../tabs/admin_calendar_tab.dart';
 import '../tabs/admin_generator_tab.dart';
 import '../tabs/admin_types_tab.dart';
 import '../../../../injection_container.dart';
+import '../../../../core/utils/custom_snackbar.dart';
 
 class AdminScreen extends StatelessWidget {
   const AdminScreen({super.key});
@@ -63,21 +64,11 @@ class _AdminViewState extends State<_AdminView>
       body: BlocConsumer<AdminCubit, AdminState>(
         listener: (context, state) {
           if (state is AdminOperationSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: Colors.green,
-              ),
-            );
+            CustomSnackBar.showSuccess(context, state.message);
             context.read<AdminCubit>().loadFormData(silent: true);
           }
           if (state is AdminError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: Colors.red,
-              ),
-            );
+            CustomSnackBar.showError(context, state.message);
           }
         },
         builder: (context, state) {

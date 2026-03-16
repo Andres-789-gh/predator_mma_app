@@ -5,6 +5,7 @@ import '../../../../core/constants/enums.dart';
 import '../../../../core/widgets/smart_avatar.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
+import '../../../../core/utils/custom_snackbar.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -479,13 +480,9 @@ class ProfileScreen extends StatelessWidget {
                 try {
                   await context.read<AuthCubit>().sendPasswordResetEmail(email);
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Revisa tu bandeja de entrada. Te hemos enviado un enlace para cambiar tu contraseña.',
-                        ),
-                        backgroundColor: Colors.green,
-                      ),
+                    CustomSnackBar.showSuccess(
+                      context,
+                      'Revisa tu bandeja de entrada. Te hemos enviado un enlace para cambiar tu contraseña.',
                     );
                   }
                 } catch (e) {
@@ -494,12 +491,7 @@ class ProfileScreen extends StatelessWidget {
                       'Exception: ',
                       '',
                     );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(cleanMessage),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
+                    CustomSnackBar.showError(context, cleanMessage);
                   }
                 }
               },

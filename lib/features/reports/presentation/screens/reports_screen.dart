@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../../injection_container.dart';
 import '../cubit/report_cubit.dart';
+import '../../../../core/utils/custom_snackbar.dart';
 
 class ReportsScreen extends StatelessWidget {
   const ReportsScreen({super.key});
@@ -49,16 +50,12 @@ class _ReportsBodyState extends State<_ReportsBody> {
     return BlocConsumer<ReportCubit, ReportState>(
       listener: (context, state) {
         if (state is ReportSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Reporte generado y listo para compartir."),
-              backgroundColor: Colors.green,
-            ),
+          CustomSnackBar.showSuccess(
+            context,
+            "Reporte generado y listo para compartir.",
           );
         } else if (state is ReportError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message), backgroundColor: Colors.red),
-          );
+          CustomSnackBar.showError(context, state.message);
         }
       },
       builder: (context, state) {

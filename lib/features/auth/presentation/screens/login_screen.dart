@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 import 'register_screen.dart';
+import '../../../../core/utils/custom_snackbar.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -47,19 +48,12 @@ class _LoginScreenState extends State<LoginScreen> {
           child: BlocConsumer<AuthCubit, AuthState>(
             listener: (context, state) {
               if (state is AuthError) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(state.message),
-                    backgroundColor: Theme.of(context).colorScheme.error,
-                  ),
-                );
+                CustomSnackBar.showError(context, state.message);
               }
               if (state is AuthAuthenticated) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Bienvenido ${state.user.firstName}'),
-                    backgroundColor: Colors.green,
-                  ),
+                CustomSnackBar.showSuccess(
+                  context,
+                  '¡Bienvenido ${state.user.firstName}!',
                 );
               }
             },
@@ -283,13 +277,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 onPressed: () async {
                                   final email = _emailController.text.trim();
                                   if (email.isEmpty) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Por favor, ingrese su correo electrónico en el campo de arriba para enviar el enlace.',
-                                        ),
-                                        backgroundColor: Colors.orange,
-                                      ),
+                                    CustomSnackBar.showWarning(
+                                      context,
+                                      'Por favor, ingresa tu correo electrónico en el campo de arriba para enviar el enlace.',
                                     );
                                     return;
                                   }
@@ -299,15 +289,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                         .read<AuthCubit>()
                                         .sendPasswordResetEmail(email);
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(
+                                      CustomSnackBar.showSuccess(
                                         context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Se ha enviado un enlace de recuperación a $email',
-                                          ),
-                                          backgroundColor: Colors.green,
-                                        ),
+                                        'Se ha enviado un enlace de recuperación a $email',
                                       );
                                     }
                                   } catch (e) {
@@ -315,15 +299,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                       final cleanMessage = e
                                           .toString()
                                           .replaceAll('Exception: ', '');
-                                      ScaffoldMessenger.of(
+                                      CustomSnackBar.showError(
                                         context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(cleanMessage),
-                                          backgroundColor: Theme.of(
-                                            context,
-                                          ).colorScheme.error,
-                                        ),
+                                        cleanMessage,
                                       );
                                     }
                                   }

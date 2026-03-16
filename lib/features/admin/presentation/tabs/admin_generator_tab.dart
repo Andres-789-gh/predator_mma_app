@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../cubit/admin_cubit.dart';
 import '../cubit/admin_state.dart';
+import '../../../../core/utils/custom_snackbar.dart';
 
 class AdminGeneratorTab extends StatefulWidget {
   final AdminLoadedData data;
@@ -49,21 +50,11 @@ class _AdminGeneratorTabState extends State<AdminGeneratorTab> {
       child: BlocListener<AdminCubit, AdminState>(
         listener: (context, state) {
           if (state is AdminOperationSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: Colors.green,
-              ),
-            );
+            CustomSnackBar.showSuccess(context, state.message);
             _clearForms();
           }
           if (state is AdminError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: Colors.red,
-              ),
-            );
+            CustomSnackBar.showError(context, state.message);
           }
           if (state is AdminConflictDetected) {
             _showConflictDialog(context, state);
@@ -388,29 +379,21 @@ class _AdminGeneratorTabState extends State<AdminGeneratorTab> {
     if (context.read<AdminCubit>().state is AdminLoading) return;
 
     if (_selectedClassTypeId == null || _selectedInstructorId == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Falta Clase o Profesor")));
+      CustomSnackBar.showWarning(context, "Falta Clase o Profesor");
       return;
     }
     if (_selectedWeekDays.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Elige al menos un día")));
+      CustomSnackBar.showWarning(context, "Elige al menos un día");
       return;
     }
     if (_timeSlots.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Agrega al menos un horario (+)")),
-      );
+      CustomSnackBar.showWarning(context, "Agrega al menos un horario (+)");
       return;
     }
 
     final capacity = int.tryParse(_capacityController.text);
     if (capacity == null || capacity <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Ingresa un cupo válido (mayor a 0)")),
-      );
+      CustomSnackBar.showWarning(context, "Ingresa un cupo válido (mayor a 0)");
       return;
     }
 

@@ -7,6 +7,7 @@ import '../../../schedule/domain/models/class_model.dart';
 import '../../../schedule/domain/models/class_type_model.dart';
 import '../cubit/admin_cubit.dart';
 import '../cubit/admin_state.dart';
+import '../../../../core/utils/custom_snackbar.dart';
 
 class EditClassDialog extends StatefulWidget {
   final ClassModel classModel;
@@ -160,9 +161,7 @@ class _EditClassDialogState extends State<EditClassDialog> {
           Navigator.pop(context);
         } else if (state is AdminError) {
           setState(() => _isSaving = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message), backgroundColor: Colors.red),
-          );
+          CustomSnackBar.showError(context, state.message);
         } else if (state is AdminConflictDetected) {
           setState(() => _isSaving = false);
           _showConflictDialog(context, state);

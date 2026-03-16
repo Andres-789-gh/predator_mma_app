@@ -4,6 +4,7 @@ import '../../../../core/constants/enums.dart';
 import '../../../auth/domain/models/user_model.dart';
 import '../widgets/dialogs/hold_to_confirm_button.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/utils/custom_snackbar.dart';
 
 class UserDetailsTab extends StatelessWidget {
   final UserModel user;
@@ -14,13 +15,11 @@ class UserDetailsTab extends StatelessWidget {
   // abrir pdf
   Future<void> _downloadPdf(BuildContext context) async {
     final url = user.waiverSignatureUrl;
-    
+
     if (url == null || url.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error: El enlace del documento está dañado o no se encontró en la base de datos.'),
-          backgroundColor: Colors.red,
-        ),
+      CustomSnackBar.showError(
+        context,
+        'Error: El enlace del documento está dañado o no se encontró en la base de datos.',
       );
       return;
     }
@@ -31,10 +30,9 @@ class UserDetailsTab extends StatelessWidget {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No se encontró una aplicación en el celular para abrir este enlace.'),
-          ),
+        CustomSnackBar.showError(
+          context,
+          'No se encontró una aplicación en el celular para abrir este enlace.',
         );
       }
     }

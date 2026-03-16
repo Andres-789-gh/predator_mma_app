@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/models/user_model.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
+import '../../../../core/utils/custom_snackbar.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -105,20 +106,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: BlocConsumer<AuthCubit, AuthState>(
           listener: (context, state) {
             if (state is AuthError) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.message),
-                  backgroundColor: theme.colorScheme.error,
-                ),
-              );
+              CustomSnackBar.showError(context, state.message);
             }
             if (state is AuthAuthenticated) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('¡Registro Exitoso!'),
-                  backgroundColor: Colors.green,
-                ),
-              );
+              CustomSnackBar.showSuccess(context, '¡Registro Exitoso!');
               Navigator.of(context).pop();
             }
           },

@@ -7,6 +7,7 @@ import '../../../../injection_container.dart';
 import '../../domain/entities/product_entity.dart';
 import '../cubit/product_form_cubit.dart';
 import '../cubit/product_form_state.dart';
+import '../../../../core/utils/custom_snackbar.dart';
 
 class ProductFormScreen extends StatelessWidget {
   final ProductEntity? product;
@@ -173,8 +174,9 @@ class _ProductFormViewState extends State<_ProductFormView> {
         if (state.status == ProductFormStatus.success) {
           Navigator.pop(context, true);
         } else if (state.status == ProductFormStatus.failure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.errorMessage ?? 'Error desconocido')),
+          CustomSnackBar.showError(
+            context,
+            state.errorMessage ?? 'Error desconocido',
           );
         } else if (state.status == ProductFormStatus.askRevive) {
           showDialog(

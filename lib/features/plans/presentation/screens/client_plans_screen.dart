@@ -9,6 +9,7 @@ import '../../presentation/cubit/plan_cubit.dart';
 import '../../presentation/cubit/plan_state.dart';
 import '../../../notifications/domain/usecases/request_plan_usecase.dart';
 import '../../../../core/constants/enums.dart';
+import '../../../../core/utils/custom_snackbar.dart';
 
 class ClientPlansScreen extends StatelessWidget {
   const ClientPlansScreen({super.key});
@@ -276,18 +277,12 @@ class _ClientPlanCard extends StatelessWidget {
       await sl<RequestPlanUseCase>().execute(user: user, plan: plan);
 
       if (parentContext.mounted) {
-        ScaffoldMessenger.of(parentContext).showSnackBar(
-          const SnackBar(
-            content: Text("¡Solicitud enviada!"),
-            backgroundColor: Colors.green,
-          ),
-        );
+        CustomSnackBar.showSuccess(parentContext, "¡Solicitud enviada!");
       }
     } catch (e) {
       if (parentContext.mounted) {
-        ScaffoldMessenger.of(parentContext).showSnackBar(
-          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
-        );
+        final cleanMessage = e.toString().replaceAll('Exception: ', '');
+        CustomSnackBar.showError(parentContext, "Error: $cleanMessage");
       }
     }
   }

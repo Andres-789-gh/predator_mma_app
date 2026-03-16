@@ -8,6 +8,7 @@ import '../../../auth/domain/models/user_model.dart';
 import '../../domain/entities/sale_entity.dart';
 import '../cubit/sales_cubit.dart';
 import '../cubit/sales_state.dart';
+import '../../../../core/utils/custom_snackbar.dart';
 
 class SaleDialog extends StatelessWidget {
   final ProductEntity product;
@@ -72,10 +73,9 @@ class _SaleDialogViewState extends State<_SaleDialogView> {
   void _processSale(BuildContext context) {
     if (!_formKey.currentState!.validate()) return;
     if (!_isExternalSale && _selectedUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Seleccione un cliente o seleccione "Venta Externa".'),
-        ),
+      CustomSnackBar.showWarning(
+        context,
+        'Seleccione un cliente o "Venta Externa".',
       );
       return;
     }
@@ -139,12 +139,11 @@ class _SaleDialogViewState extends State<_SaleDialogView> {
       listener: (context, state) {
         if (state.status == SalesStatus.success) {
           Navigator.pop(context, true);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Venta registrada con éxito')),
-          );
+          CustomSnackBar.showSuccess(context, 'Venta registrada con éxito');
         } else if (state.status == SalesStatus.failure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.errorMessage ?? 'Error al vender')),
+          CustomSnackBar.showError(
+            context,
+            state.errorMessage ?? 'Error al vender',
           );
         }
       },

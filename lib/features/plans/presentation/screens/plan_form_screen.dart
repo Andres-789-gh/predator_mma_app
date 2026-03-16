@@ -6,6 +6,7 @@ import '../../../../core/constants/enums.dart';
 import '../../domain/models/plan_model.dart';
 import '../cubit/plan_cubit.dart';
 import '../cubit/plan_state.dart';
+import '../../../../core/utils/custom_snackbar.dart';
 
 class PlanFormScreen extends StatefulWidget {
   final PlanModel? plan;
@@ -125,12 +126,7 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
                 Navigator.pop(context);
               }
             } else if (state is PlanError) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.message),
-                  backgroundColor: Colors.red,
-                ),
-              );
+              CustomSnackBar.showError(context, state.message);
             }
           },
           child: SingleChildScrollView(
@@ -401,12 +397,7 @@ class _PlanFormScreenState extends State<PlanFormScreen> {
     FocusScope.of(context).unfocus();
 
     if (_rules.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Debes agregar al menos una regla.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      CustomSnackBar.showWarning(context, 'Debes agregar al menos una regla.');
       return;
     }
 

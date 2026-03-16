@@ -8,6 +8,7 @@ import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 import '../../domain/models/waiver_model.dart';
 import '../../data/services/waiver_service.dart';
+import '../../../../core/utils/custom_snackbar.dart';
 
 class WaiverScreen extends StatefulWidget {
   const WaiverScreen({super.key});
@@ -132,10 +133,9 @@ class _WaiverScreenState extends State<WaiverScreen> {
 
       if (mounted) {
         context.read<AuthCubit>().checkAuthStatus();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('¡Documento firmado exitosamente! Bienvenido.'),
-          ),
+        CustomSnackBar.showSuccess(
+          context,
+          '¡Documento firmado exitosamente! Bienvenido.',
         );
         Navigator.pop(context);
       }
@@ -148,9 +148,7 @@ class _WaiverScreenState extends State<WaiverScreen> {
 
   // muestra alertas de error
   void _showError(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    CustomSnackBar.showWarning(context, message);
   }
 
   @override

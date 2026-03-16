@@ -17,6 +17,7 @@ import '../widgets/dialogs/ticket_detail_dialog.dart';
 import '../cubit/admin_cubit.dart';
 import '../cubit/admin_state.dart';
 import '../../../../core/constants/enums.dart';
+import '../../../../core/utils/custom_snackbar.dart';
 
 class AdminUserDetailScreen extends StatefulWidget {
   final UserModel user;
@@ -110,17 +111,10 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
     return BlocListener<AdminCubit, AdminState>(
       listener: (context, state) {
         if (state is AdminOperationSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.green,
-            ),
-          );
+          CustomSnackBar.showSuccess(context, state.message);
           _reloadUser();
         } else if (state is AdminError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message), backgroundColor: Colors.red),
-          );
+          CustomSnackBar.showError(context, state.message);
         }
       },
       child: PopScope(

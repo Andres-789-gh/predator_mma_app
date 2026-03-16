@@ -9,6 +9,7 @@ import '../../../auth/presentation/cubit/auth_state.dart';
 import 'package:intl/intl.dart';
 import '../../../../features/auth/domain/models/user_model.dart';
 import '../../../../core/widgets/smart_avatar.dart';
+import '../../../../core/utils/custom_snackbar.dart';
 
 class AdminUsersScreen extends StatefulWidget {
   const AdminUsersScreen({super.key});
@@ -612,12 +613,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen>
                                     Navigator.pop(confirmCtx);
                                     Navigator.pop(ctx);
 
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          "Restaurando pausa masiva...",
-                                        ),
-                                      ),
+                                    CustomSnackBar.showWarning(
+                                      context,
+                                      "Restaurando pausa masiva...",
                                     );
                                   },
                                   child: const Text("Restaurar"),
