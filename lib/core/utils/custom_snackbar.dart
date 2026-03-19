@@ -1,71 +1,70 @@
 import 'package:flutter/material.dart';
+import 'package:bot_toast/bot_toast.dart';
 
 class CustomSnackBar {
-  // exito (verde)
+  // alerta exito
   static void showSuccess(BuildContext context, String message) {
-    _show(context, message, Colors.green.shade700, Icons.check_circle_outline);
+    _show(message, Colors.green.shade700, Icons.check_circle_outline);
   }
 
-  // error (rojo)
+  // alerta error
   static void showError(BuildContext context, String message) {
-    _show(context, message, Colors.red.shade800, Icons.error_outline);
+    _show(message, Colors.red.shade800, Icons.error_outline);
   }
 
-  // informacion/advertencia (naranja)
+  // alerta advertencia
   static void showWarning(BuildContext context, String message) {
-    _show(
-      context,
-      message,
-      Colors.orange.shade800,
-      Icons.warning_amber_rounded,
-    );
+    _show(message, Colors.orange.shade800, Icons.warning_amber_rounded);
   }
 
-  // constructor base privado
-  static void _show(
-    BuildContext context,
-    String message,
-    Color color,
-    IconData icon,
-  ) {
-    // oculta alerta anterior si hay una en pantalla para que no se acumulen
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(icon, color: Colors.white, size: 24),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
+  static void _show(String message, Color color, IconData icon) {
+    BotToast.showCustomNotification(
+      toastBuilder: (cancelFunc) {
+        return SafeArea(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: EdgeInsets.only(
-          bottom:
-              screenHeight -
-              122,
-          left: 20,
-          right: 20,
-        ),
-        elevation: 6,
-        duration: const Duration(seconds: 4),
-        dismissDirection: DismissDirection
-            .up, 
-      ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Icon(icon, color: Colors.white, size: 24),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: cancelFunc,
+                  child: const Padding(
+                    padding: EdgeInsets.only(left: 8),
+                    child: Icon(Icons.close, color: Colors.white70, size: 20),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+      duration: const Duration(seconds: 4),
+      onlyOne: true,
+      crossPage: true,
     );
   }
 }

@@ -13,12 +13,22 @@ import 'features/auth/data/auth_repository.dart';
 import 'features/plans/data/plan_repository.dart';
 import 'core/widgets/role_dispatcher.dart';
 
+// notificaciones app cerrada
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  debugPrint("manejando mensaje en background: ${message.messageId}");
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   await di.init();
   await initializeDateFormatting('es', null);
 
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  // notificaciones app abierta
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     if (message.notification != null) {
       final title = message.notification!.title ?? 'Nueva alerta';

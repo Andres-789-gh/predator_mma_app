@@ -14,7 +14,27 @@ class AuthCubit extends Cubit<AuthState> {
   final AuthRepository _authRepository;
   StreamSubscription<DocumentSnapshot>? _userSubscription;
 
-  AuthCubit(this._authRepository) : super(const AuthInitial());
+  AuthCubit(this._authRepository) : super(const AuthInitial()) {
+    _listenToTokenRefreshes();
+  }
+
+  // captura token generado en segundo plano y actualiza bd
+  void _listenToTokenRefreshes() {
+    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+      if (state is AuthAuthenticated) {
+        final currentUser = (state as AuthAuthenticated).user;
+        try {
+          await _authRepository.updateNotificationToken(
+            userId: currentUser.userId,
+            token: newToken,
+          );
+          debugPrint('token actualizado en segundo plano por firebase.');
+        } catch (e) {
+          debugPrint('error guardando token en segundo plano: $e');
+        }
+      }
+    });
+  }
 
   // normaliza documento como contraseña
   String _normalizePassword(String documentId) {
@@ -35,6 +55,7 @@ class AuthCubit extends Cubit<AuthState> {
       if (user != null) {
         if (!user.isActive) {
           await _authRepository.signOut();
+          if (isClosed) return;
           emit(
             const AuthError(
               'Tu cuenta ha sido desactivada por un administrador.',
@@ -43,9 +64,13 @@ class AuthCubit extends Cubit<AuthState> {
           return;
         }
 
-        _handleFcmToken(user);
         emit(AuthAuthenticated(user));
+
+        // vigila cambios del usuario en tiempo real
         _listenToUserChanges(user.userId);
+
+        // delega captura de token a hilo secundario
+        unawaited(_handleFcmToken(user));
       } else {
         emit(const AuthUnauthenticated());
       }
@@ -61,19 +86,28 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       emit(const AuthLoading());
 
-      final user = await _authRepository.signIn(
-        email: email,
-        password: password,
-      );
+      final user = await _authRepository
+          .signIn(email: email, password: password)
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => throw TimeoutException(
+              'La conexión tardó demasiado. Revisa tu internet.',
+            ),
+          );
+
       if (isClosed) return;
 
       if (!user.isActive) {
         await _authRepository.signOut();
+        if (isClosed) return;
         emit(const AuthError('Tu cuenta ha sido desactivada.'));
         return;
       }
 
       await checkAuthStatus(silent: true);
+    } on TimeoutException catch (e) {
+      if (isClosed) return;
+      emit(AuthError(e.message ?? 'Tiempo de espera agotado.'));
     } on FirebaseAuthException catch (e) {
       if (isClosed) return;
       String message = 'Error de autenticación';
@@ -115,7 +149,15 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       emit(const AuthLoading());
 
-      final isValidKey = await _authRepository.verifyRegistrationKey(accessKey);
+      final isValidKey = await _authRepository
+          .verifyRegistrationKey(accessKey)
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => throw TimeoutException(
+              'No se pudo verificar el código. Intenta de nuevo.',
+            ),
+          );
+
       if (isClosed) return;
 
       if (!isValidKey) {
@@ -124,14 +166,25 @@ class AuthCubit extends Cubit<AuthState> {
 
       final firebasePassword = _normalizePassword(documentId);
 
-      await _authRepository.signUp(
-        email: email,
-        password: firebasePassword,
-        userModel: userModel,
-      );
+      await _authRepository
+          .signUp(
+            email: email,
+            password: firebasePassword,
+            userModel: userModel,
+          )
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () => throw TimeoutException(
+              'La creación de cuenta tardó demasiado.',
+            ),
+          );
+
       if (isClosed) return;
 
       await checkAuthStatus(silent: true);
+    } on TimeoutException catch (e) {
+      if (isClosed) return;
+      emit(AuthError(e.message ?? 'Tiempo de espera agotado.'));
     } on InvalidAccessKeyException {
       if (isClosed) return;
       emit(const AuthError('El código de acceso es incorrecto.'));
@@ -183,7 +236,7 @@ class AuthCubit extends Cubit<AuthState> {
           if (data != null) {
             final isActive = data['is_active'] ?? true;
             if (!isActive) {
-              // detecta desactivacion y echa al usuario
+              // detecta desactivacion y expulsa al usuario
               signOut();
               if (!isClosed) {
                 emit(
@@ -211,6 +264,7 @@ class AuthCubit extends Cubit<AuthState> {
         if (freshUserData != null) {
           if (!freshUserData.isActive) {
             await signOut();
+            if (isClosed) return;
             emit(const AuthError('Tu cuenta ha sido desactivada.'));
             return;
           }
@@ -236,22 +290,59 @@ class AuthCubit extends Cubit<AuthState> {
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized ||
           settings.authorizationStatus == AuthorizationStatus.provisional) {
-        final token = await messaging.getToken();
+        // solicita token protegiendo hilo principal con timeout
+        final token = await messaging.getToken().timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {
+            debugPrint(
+              'timeout: google play services lento. reintentando en background...',
+            );
+            _retryFetchToken(user);
+            return null;
+          },
+        );
 
         if (token != null && token != user.notificationToken) {
           await _authRepository.updateNotificationToken(
             userId: user.userId,
             token: token,
           );
-          debugPrint(
-            'token guardado en base de datos con exito (actualizacion parcial).',
-          );
-        } else {
-          debugPrint('token repetido o nulo. se ignora guardado.');
+          debugPrint('token fcm guardado con exito.');
         }
       }
     } catch (e) {
-      debugPrint('error critico gestionando fcm token: $e');
+      debugPrint('error gestionando fcm token: $e');
+    }
+  }
+
+  // reintenta obtener token progresivamente
+  void _retryFetchToken(UserModel user, {int attempt = 1}) async {
+    if (attempt > 5) {
+      debugPrint('fcm retry: abortado despues de 5 intentos.');
+      return;
+    }
+
+    // espera progresiva en hilo secundario
+    await Future.delayed(Duration(seconds: 15 * attempt));
+
+    try {
+      debugPrint('fcm retry: intento $attempt...');
+      final token = await FirebaseMessaging.instance.getToken();
+
+      if (token != null && token != user.notificationToken) {
+        await _authRepository.updateNotificationToken(
+          userId: user.userId,
+          token: token,
+        );
+        debugPrint(
+          'fcm retry: token guardado exitosamente en intento $attempt',
+        );
+      }
+    } catch (e) {
+      debugPrint(
+        'fcm retry: fallo en intento $attempt. programando siguiente...',
+      );
+      _retryFetchToken(user, attempt: attempt + 1);
     }
   }
 
@@ -268,8 +359,8 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
-  // actualiza telefono o contacto de emergencia
-  Future<void> updatePhoneFields({
+  // actualiza campo de perfil
+  Future<void> updateProfileField({
     required String fieldName,
     required String newValue,
   }) async {
@@ -285,17 +376,22 @@ class AuthCubit extends Cubit<AuthState> {
         value: newValue,
       );
 
+      if (isClosed) return;
+
       UserModel updatedUser;
       if (fieldName == 'personal_info.phone_number') {
         updatedUser = user.copyWith(phoneNumber: newValue);
       } else if (fieldName == 'emergency_contact') {
         updatedUser = user.copyWith(emergencyContact: newValue);
+      } else if (fieldName == 'personal_info.address') {
+        updatedUser = user.copyWith(address: newValue);
       } else {
         updatedUser = user;
       }
 
       emit(AuthAuthenticated(updatedUser));
     } catch (e) {
+      if (isClosed) return;
       debugPrint('Error actualizando campo: $e');
     }
   }
@@ -318,11 +414,12 @@ class AuthCubit extends Cubit<AuthState> {
 
       if (pickedFile == null) return;
 
+      if (isClosed) return;
       emit(const AuthLoading());
 
       final file = File(pickedFile.path);
 
-      // archivo a storage
+      // envia archivo a storage
       final downloadUrl = await _authRepository.uploadProfilePicture(
         user.userId,
         file,
@@ -335,9 +432,12 @@ class AuthCubit extends Cubit<AuthState> {
         value: downloadUrl,
       );
 
+      if (isClosed) return;
+
       final updatedUser = user.copyWith(profilePictureUrl: downloadUrl);
       emit(AuthAuthenticated(updatedUser));
     } catch (e) {
+      if (isClosed) return;
       debugPrint('error actualizando foto: $e');
       emit(currentState);
     }
@@ -349,7 +449,7 @@ class AuthCubit extends Cubit<AuthState> {
     return super.close();
   }
 
-  // correo recuperacion contraseña
+  // envia correo recuperacion de contraseña
   Future<void> sendPasswordResetEmail(String email) async {
     try {
       await _authRepository.sendPasswordResetEmail(email);

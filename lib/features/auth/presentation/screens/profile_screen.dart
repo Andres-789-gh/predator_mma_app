@@ -1,4 +1,3 @@
-// importa dependencias
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/enums.dart';
@@ -25,6 +24,10 @@ class ProfileScreen extends StatelessWidget {
         }
 
         final user = state.user;
+
+        final dob = user.birthDate;
+        final birthDateStr =
+            '${dob.day.toString().padLeft(2, '0')}/${dob.month.toString().padLeft(2, '0')}/${dob.year}';
 
         return Scaffold(
           backgroundColor: theme.scaffoldBackgroundColor,
@@ -111,6 +114,13 @@ class ProfileScreen extends StatelessWidget {
                   isDark,
                   false,
                 ),
+                _buildInfoRow(
+                  context,
+                  'Fecha de Nacimiento',
+                  birthDateStr,
+                  isDark,
+                  false,
+                ),
 
                 // datos editables
                 _buildInfoRow(
@@ -127,38 +137,9 @@ class ProfileScreen extends StatelessWidget {
                   isDark,
                   true,
                 ),
+                _buildInfoRow(context, 'Dirección', user.address, isDark, true),
 
                 const SizedBox(height: 40),
-
-                // historial cliente
-                /*
-                if (user.role == UserRole.client) ...[
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        // navega a historial
-                      },
-                      icon: const Icon(Icons.history, color: Colors.red),
-                      label: const Text(
-                        'VER HISTORIAL DE PLANES',
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.red),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
-                */
 
                 // btn cambiar contraseña
                 SizedBox(
@@ -250,23 +231,41 @@ class ProfileScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: isDark ? Colors.white : Colors.black87,
+              Expanded(
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
                 ),
               ),
               if (isEditable)
                 GestureDetector(
                   onTap: () {
-                    final firestoreField = label.toLowerCase() == 'teléfono'
-                        ? 'personal_info.phone_number'
-                        : 'emergency_contact';
-
-                    _showEditPhoneDialog(context, label, firestoreField, value);
+                    if (label == 'Dirección') {
+                      _showEditTextDialog(
+                        context,
+                        label,
+                        'personal_info.address',
+                        value,
+                      );
+                    } else {
+                      final firestoreField = label == 'Teléfono'
+                          ? 'personal_info.phone_number'
+                          : 'emergency_contact';
+                      _showEditPhoneDialog(
+                        context,
+                        label,
+                        firestoreField,
+                        value,
+                      );
+                    }
                   },
-                  child: const Icon(Icons.edit, size: 18, color: Colors.grey),
+                  child: const Padding(
+                    padding: EdgeInsets.only(left: 10),
+                    child: Icon(Icons.edit, size: 18, color: Colors.grey),
+                  ),
                 ),
             ],
           ),
@@ -284,7 +283,7 @@ class ProfileScreen extends StatelessWidget {
     String currentValue,
   ) {
     final TextEditingController controller = TextEditingController(
-      text: currentValue,
+      text: currentValue == 'sin teléfono' ? '' : currentValue,
     );
     final formKey = GlobalKey<FormState>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -382,9 +381,118 @@ class ProfileScreen extends StatelessWidget {
                     onPressed: () {
                       if (formKey.currentState!.validate()) {
                         final cleanNumber = controller.text.trim();
-                        context.read<AuthCubit>().updatePhoneFields(
+                        context.read<AuthCubit>().updateProfileField(
                           fieldName: fieldName,
                           newValue: cleanNumber,
+                        );
+                        Navigator.pop(ctx);
+                      }
+                    },
+                    child: const Text(
+                      'GUARDAR',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showEditTextDialog(
+    BuildContext context,
+    String title,
+    String fieldName,
+    String currentValue,
+  ) {
+    final TextEditingController controller = TextEditingController(
+      text: currentValue == 'sin dirección' ? '' : currentValue,
+    );
+    final formKey = GlobalKey<FormState>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+            left: 20,
+            right: 20,
+            top: 20,
+          ),
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Editar $title',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: controller,
+                  keyboardType: TextInputType.streetAddress,
+                  maxLength: 100,
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Ej: Calle 123 # 45-67',
+                    hintStyle: const TextStyle(color: Colors.grey),
+                    prefixIcon: const Icon(
+                      Icons.location_on,
+                      color: Colors.red,
+                    ),
+                    filled: true,
+                    fillColor: isDark ? Colors.black26 : Colors.grey[200],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().length < 5) {
+                      return 'Ingresa una dirección válida';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red[900],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: () {
+                      if (formKey.currentState!.validate()) {
+                        final cleanText = controller.text.trim();
+                        context.read<AuthCubit>().updateProfileField(
+                          fieldName: fieldName,
+                          newValue: cleanText,
                         );
                         Navigator.pop(ctx);
                       }
@@ -433,7 +541,6 @@ class ProfileScreen extends StatelessWidget {
             TextButton(
               onPressed: () {
                 Navigator.pop(ctx);
-                Navigator.pop(context);
                 context.read<AuthCubit>().signOut();
               },
               child: const Text(
