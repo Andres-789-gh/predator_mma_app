@@ -282,7 +282,7 @@ class UserDetailsTab extends StatelessWidget {
                       if (user.isWaiverSigned)
                         TextButton.icon(
                           icon: const Icon(Icons.picture_as_pdf, size: 16),
-                          label: const Text("Descargar PDF"),
+                          label: const Text("Ver PDF"),
                           onPressed: () => _downloadPdf(context),
                         ),
                     ],

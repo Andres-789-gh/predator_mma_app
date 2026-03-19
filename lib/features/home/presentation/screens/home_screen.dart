@@ -36,13 +36,9 @@ class HomeScreen extends StatelessWidget {
         if (state is AuthAuthenticated) {
           final user = state.user;
           final plans = user.validPlans;
-
-          final now = DateTime.now();
-          final bool hasAnyActivePlan = plans.any((p) => p.isActive(now));
           final bool hasTickets = user.accessExceptions.any(
             (t) => t.quantity > 0,
           );
-          final bool canReserve = hasAnyActivePlan || hasTickets;
           final bool isWaiverSigned = user.isWaiverSigned;
 
           return BlocProvider(
@@ -242,7 +238,7 @@ class HomeScreen extends StatelessWidget {
                       const SizedBox(height: 40),
                     ],
 
-                    // Seccion planes
+                    // seccion planes
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -282,7 +278,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
 
-                    // Carrusel planes
+                    // carrusel planes
                     if (plans.isEmpty)
                       _buildNoPlanCard(context, isDark)
                     else if (plans.length == 1)
@@ -306,7 +302,7 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
 
-                    // Ingresos extra
+                    // ingresos extra
                     if (hasTickets) ...[
                       const SizedBox(height: 30),
                       Row(
@@ -435,95 +431,72 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
                 child: SafeArea(
-                  child: canReserve
-                      ? Container(
-                          width: double.infinity,
-                          height: 55,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(15),
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFD32F2F), Color(0xFFB71C1C)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.red.withValues(alpha: 0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(15),
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => BlocProvider(
-                                      create: (context) => ScheduleCubit(
-                                        repository: context
-                                            .read<ScheduleRepository>(),
-                                      ),
-                                      child: const ScheduleScreen(),
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.calendar_month,
-                                    color: Colors.white,
-                                    size: 22,
-                                  ),
-                                  SizedBox(width: 10),
-                                  Text(
-                                    'VER HORARIOS Y RESERVAR',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        )
-                      : SizedBox(
-                          height: 55,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.lock_clock,
-                                size: 20,
-                                color: Colors.grey[400],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'No tienes ingresos disponibles',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ],
-                          ),
+                  child: Container(
+                    width: double.infinity,
+                    height: 55,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFD32F2F), Color(0xFFB71C1C)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.red.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
                         ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(15),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => BlocProvider(
+                                create: (context) => ScheduleCubit(
+                                  repository: context
+                                      .read<ScheduleRepository>(),
+                                ),
+                                child: const ScheduleScreen(),
+                              ),
+                            ),
+                          );
+                        },
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.calendar_month,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                            SizedBox(width: 10),
+                            Text(
+                              'VER HORARIOS Y RESERVAR',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
           );
         }
 
-        // Fallback
+        // fallback
         return const Scaffold(
           body: Center(child: CircularProgressIndicator(color: Colors.red)),
         );

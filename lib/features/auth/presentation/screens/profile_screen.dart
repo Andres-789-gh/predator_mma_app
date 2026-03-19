@@ -540,8 +540,9 @@ class ProfileScreen extends StatelessWidget {
             ),
             TextButton(
               onPressed: () {
-                Navigator.pop(ctx);
                 context.read<AuthCubit>().signOut();
+
+                Navigator.of(context).popUntil((route) => route.isFirst);
               },
               child: const Text(
                 'Salir',
